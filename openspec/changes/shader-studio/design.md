@@ -201,3 +201,37 @@ Five capabilities, in this order, because each is useful before the next exists.
 **Treatment changes what a layer is.** Until now every layer paints and composites. A layer with hue, saturation, contrast or a blend mode reads what is beneath it, which makes the stack order meaningful in a way it has not been, and makes the composite pass genuinely a composite rather than a series of paints. The pass declaration and its workload envelope should be revisited when it lands.
 
 **Handles oblige export proof.** A product editing handle must be provably absent from the exported artifact. That is a browser proof of the same shape as the background-transparency one, and it should be written with the handle rather than after it.
+
+## R61 — the lens falls out of separating reach from opacity
+
+Raised while building R60's treatment (12.4/12.5). The reference works in group B put a shape over a field and the field beneath it shifts hue and brightness without being covered. The obvious reading of that is a mode — "this layer is a lens, not a paint" — and a mode is what the schema would then have to carry, gate controls on, and prove.
+
+### Decision
+
+No mode. Treatment is weighted by the layer's **reach** — visibility and region — and opacity weights **only the paint**. The two were already separate quantities in the composite; they had simply always been multiplied together.
+
+A layer at zero opacity therefore treats everything it covers and paints nothing of its own. That is exactly the lens, reached by dragging a slider the product already had, and every intermediate setting is meaningful rather than being an off state for a mode.
+
+### Consequence
+
+**Opacity now means something more precise.** It was "how much of this layer you see"; it is now "how much of this layer's own colour is painted". For every layer that existed before treatment the two readings coincide, so nothing changes for them, but the second is the one the composite implements.
+
+**The proofs must read outside the region as well as inside.** A reading confined to the layer's own extent cannot tell a lens from a layer that simply painted that colour. Both treatment proofs and any that follow report both places, and the outside one staying put is half the claim.
+
+## R62 — the shape layer type is not free, and the region already carries most of it
+
+Raised while scoping R60's item 1 (task 12.2) after 12.1 landed.
+
+With the region carrying a kind, a rotation, a size, an aspect and a placement, a striped shape is already a stripes layer confined to a region, and the ellipse the works need is a region setting. What a dedicated shape layer type would still add is a **plain fill**.
+
+### Decision
+
+Defer 12.2 rather than build it now, and record what it costs so the decision is not re-taken blind.
+
+A plain-fill type has no second colour and no palette, so registering it turns `selectedLayer.colorB` and all three Layer Palette controls from always-applicable into conditional ones. Every conditional control spawns applicability requirements that each need their own browser evidence — the same shape as the export-format ones already in the catalog. The type is a dozen lines; the gating it forces is the actual work.
+
+### Consequence
+
+**"Plain or striped" is already reachable**, if awkwardly: a gradient layer with both colours equal, confined to an ellipse, is a plain shape. The gap is ergonomic, not expressive, which is why it yields to treatment and handles.
+
+**Nothing re-arms `scene-bounds-image-export`.** R58 deferred that row against "the first layer type with an extent of its own". The region is not that — it clips at composite rather than giving a layer an intrinsic extent — so the deferral stands, and the row stays out rather than joining `canvas.infinity-export` as a second permanently failing requirement.
