@@ -194,17 +194,56 @@ export function collectStudioSelectedLayerEdit(
   return { typeId: entry.typeId, values: next };
 }
 
+/** One entry of the runtime layer list, as much of it as the stack reads. */
+export type StudioRuntimeLayer = Readonly<{
+  id: string;
+  kind?: string;
+  parentGroupId?: string | null;
+  visible: boolean;
+}>;
+
+/**
+ * Whether a layer actually reaches the composite.
+ *
+ * A layer inside a hidden group draws nothing, but the runtime does not write
+ * that through to the member: `layers.toggleVisibility` flips only the layer it
+ * names, so a member of a hidden group still reports `visible: true`. Reading
+ * the member's own flag alone would keep drawing it and make the group's hidden
+ * state a panel-only illusion.
+ *
+ * Resolved by walking the parent chain, with a seen-set because a corrupted or
+ * hand-edited parent link could otherwise cycle forever.
+ */
+function isEffectivelyVisible(
+  layer: StudioRuntimeLayer,
+  byId: ReadonlyMap<string, StudioRuntimeLayer>,
+): boolean {
+  const seen = new Set<string>();
+  let current: StudioRuntimeLayer | undefined = layer;
+
+  while (current) {
+    if (!current.visible) return false;
+    if (seen.has(current.id)) return false;
+    seen.add(current.id);
+    current = current.parentGroupId ? byId.get(current.parentGroupId) : undefined;
+  }
+  return true;
+}
+
 /**
  * The ordered stack the renderer draws.
  *
  * Order comes from the runtime's `layers` array, which is what makes reordering
- * a runtime concern the product never reimplements. Groups are skipped: a group
- * is an organising container in the panel, not something that renders.
+ * a runtime concern the product never reimplements. Groups are skipped as
+ * entries — a group is an organising container in the panel, not something that
+ * renders — but they still govern whether their members draw.
  */
 export function buildStudioStack(
   record: StudioLayerRecord,
-  layers: ReadonlyArray<Readonly<{ id: string; kind?: string; visible: boolean }>>,
+  layers: readonly StudioRuntimeLayer[],
 ): readonly StudioLayerValues[] {
+  const byId = new Map(layers.map((layer) => [layer.id, layer]));
+
   return layers
     .filter((layer) => layer.kind !== "group")
     .map((layer) => {
@@ -215,7 +254,7 @@ export function buildStudioStack(
           ...studioLayerDefaults(entry.typeId),
           ...entry.values,
           // Runtime-owned, so it always wins over anything the record holds.
-          visible: layer.visible ? 1 : 0,
+          visible: isEffectivelyVisible(layer, byId) ? 1 : 0,
         },
       };
     });

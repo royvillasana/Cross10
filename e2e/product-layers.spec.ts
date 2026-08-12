@@ -1,8 +1,12 @@
 import {
+  expectToolcraftLayerGrouping,
+  expectToolcraftLayerReorder,
   expectToolcraftLayerSelection,
   expectToolcraftLayerVisibility,
 } from "./browser-layer-evidence-helpers";
 import {
+  dragStudioLayerRow,
+  openStudioGroupedStack,
   openStudioTwoLayerStack,
   selectStudioLayer,
   toggleStudioLayerVisibility,
@@ -92,5 +96,82 @@ test("browser: studio layer visibility removes the layer from the composite", as
       visible: false,
     },
     { requirementId: "layers.visibility", target: "selectedLayer.type" },
+  );
+});
+
+test("browser: studio layer reorder changes which layer covers which", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { fixture, session } = await openStudioTwoLayerStack(page);
+
+  // Dragging the gradient below the stripes inverts which layer covers which.
+  // Both layers stay in the stack, so the id set is unchanged and only the order
+  // and the drawn result move -- which is exactly what the helper checks.
+  await expectToolcraftLayerReorder(
+    session.observe((root: HTMLElement) => ({
+      layerIds: Array.from(root.querySelectorAll("[data-layer-id]")).map(
+        (row) => row.getAttribute("data-layer-id") ?? "",
+      ),
+      outputSignature:
+        root
+          .querySelector("[data-toolcraft-product-output]")
+          ?.getAttribute("data-studio-stack") ?? "absent",
+    })),
+    session.controlAction("selectedLayer.type", async () => {
+      await dragStudioLayerRow(page, fixture.gradientLayerId, fixture.stripesLayerId);
+    }),
+    {
+      layerIds: [fixture.gradientLayerId, fixture.stripesLayerId],
+      outputSignature: "gradient>stripes",
+    },
+    { requirementId: "layers.reorder", target: "selectedLayer.type" },
+  );
+});
+
+test("browser: studio layer group moves and hides its members together", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { fixture, session } = await openStudioGroupedStack(page);
+
+  // Hiding the group must remove its member from the composite. The runtime
+  // toggles only the row it is given, so this is the product resolving effective
+  // visibility through the parent chain rather than the runtime doing it.
+  await expectToolcraftLayerGrouping(
+    session.observe((root: HTMLElement) => {
+      const rows = Array.from(root.querySelectorAll("[data-layer-id]"));
+      return {
+        groupSignature: rows
+          .map((row) => {
+            const toggle = row.querySelector(
+              'button[aria-label^="Hide"], button[aria-label^="Show"]',
+            );
+            const shown = (toggle?.getAttribute("aria-label") ?? "").startsWith("Hide");
+            return `${row.getAttribute("data-layer-id") ?? ""}:${shown ? "shown" : "hidden"}`;
+          })
+          .join("|"),
+        layerIds: rows.map((row) => row.getAttribute("data-layer-id") ?? ""),
+        outputSignature:
+          root
+            .querySelector("[data-toolcraft-product-output]")
+            ?.getAttribute("data-studio-stack") ?? "absent",
+      };
+    }),
+    session.controlAction("selectedLayer.type", async () => {
+      await toggleStudioLayerVisibility(page, fixture.groupId);
+    }),
+    {
+      groupSignature: [
+        `${fixture.looseLayerId}:shown`,
+        `${fixture.groupId}:hidden`,
+        `${fixture.groupedLayerId}:shown`,
+      ].join("|"),
+      layerIds: [fixture.looseLayerId, fixture.groupId, fixture.groupedLayerId],
+      outputSignature: "stripes",
+    },
+    { requirementId: "layers.grouping", target: "selectedLayer.type" },
   );
 });

@@ -3,6 +3,7 @@ import {
   pruneStudioLayerRecord,
   readStudioLayerRecord,
   STUDIO_LAYER_RECORD_TARGET,
+  type StudioRuntimeLayer,
 } from "./studio-stack-state";
 import { studioColorToLinear } from "./studio-color";
 import type { StudioLayerValues, StudioStackSceneParameters } from "./studio-stack-render";
@@ -37,7 +38,7 @@ import type { StudioLayerValues, StudioStackSceneParameters } from "./studio-sta
  * boundary from depending on the shape of everything else in the store.
  */
 export type StudioSceneStateSlice = Readonly<{
-  layers: ReadonlyArray<Readonly<{ id: string; kind?: string; visible: boolean }>>;
+  layers: readonly StudioRuntimeLayer[];
   values: Readonly<Record<string, unknown>>;
 }>;
 

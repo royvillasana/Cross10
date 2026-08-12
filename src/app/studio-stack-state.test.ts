@@ -178,6 +178,53 @@ describe("stack construction", () => {
     expect(stack[0].values.colorA).toEqual([1, 1, 1]);
   });
 
+  it("hides a layer whose group is hidden", () => {
+    // The runtime toggles only the layer named by the command, so a member of a
+    // hidden group still reports visible: true. Reading that flag alone would
+    // keep drawing the member and make the group's hidden state a panel-only
+    // illusion.
+    const stack = buildStudioStack({}, [
+      { id: "folder", kind: "group", visible: false },
+      { id: "inside", parentGroupId: "folder", visible: true },
+      { id: "outside", visible: true },
+    ]);
+
+    expect(stack).toHaveLength(2);
+    expect(stack[0].values.visible).toBe(0);
+    expect(stack[1].values.visible).toBe(1);
+  });
+
+  it("keeps a hidden layer hidden inside a visible group", () => {
+    const stack = buildStudioStack({}, [
+      { id: "folder", kind: "group", visible: true },
+      { id: "inside", parentGroupId: "folder", visible: false },
+    ]);
+
+    expect(stack[0].values.visible).toBe(0);
+  });
+
+  it("hides through nested groups", () => {
+    const stack = buildStudioStack({}, [
+      { id: "outer", kind: "group", visible: false },
+      { id: "inner", kind: "group", parentGroupId: "outer", visible: true },
+      { id: "deep", parentGroupId: "inner", visible: true },
+    ]);
+
+    expect(stack[0].values.visible).toBe(0);
+  });
+
+  it("survives a cyclic parent link rather than hanging", () => {
+    // Persisted state is not trusted: a hand-edited or corrupted parent chain
+    // must degrade to hidden rather than spin forever on the render path.
+    const stack = buildStudioStack({}, [
+      { id: "a", kind: "group", parentGroupId: "b", visible: true },
+      { id: "b", kind: "group", parentGroupId: "a", visible: true },
+      { id: "leaf", parentGroupId: "a", visible: true },
+    ]);
+
+    expect(stack[0].values.visible).toBe(0);
+  });
+
   it("folds a colour control's hex edit into the record", () => {
     // The colour controls hold hex, and this collector used to accept only a
     // numeric triple — so a colour edit was silently dropped and every layer

@@ -62,6 +62,24 @@ export async function addStudioLayer(page: Page): Promise<void> {
     .toBe(before + 1);
 }
 
+/**
+ * Adds a group through the same header menu.
+ *
+ * The new group becomes the selection, and the panel inserts a subsequent layer
+ * into the selected group — which is how the grouped fixture is built without
+ * simulating a drag into the group.
+ */
+export async function addStudioGroup(page: Page): Promise<void> {
+  const before = await studioLayerRows(page).count();
+  const trigger = page.getByRole("button", { name: "Add layer" }).first();
+  await trigger.click();
+  await page.getByText("Group", { exact: true }).first().click();
+
+  await expect
+    .poll(async () => studioLayerRows(page).count(), { timeout: 5000 })
+    .toBe(before + 1);
+}
+
 export async function selectStudioLayer(page: Page, layerId: string): Promise<void> {
   await studioLayerRow(page, layerId).click();
   await expect
@@ -80,6 +98,37 @@ export async function toggleStudioLayerVisibility(
     .locator('button[aria-label^="Hide"], button[aria-label^="Show"]')
     .first()
     .click();
+}
+
+/**
+ * Drags one row onto another to reorder the stack.
+ *
+ * A real pointer drag, because that is the only reorder affordance the panel
+ * has: the row's keyboard handler selects and does nothing else, so a
+ * keyboard-driven proof would be proving selection twice. The move is stepped
+ * rather than a single jump so the controller sees intermediate pointer moves
+ * and settles a drop indicator, and it finishes just inside the target row's
+ * top edge so the insert lands above it rather than ambiguously between.
+ */
+export async function dragStudioLayerRow(
+  page: Page,
+  sourceLayerId: string,
+  targetLayerId: string,
+): Promise<void> {
+  const from = await studioLayerRow(page, sourceLayerId).boundingBox();
+  const to = await studioLayerRow(page, targetLayerId).boundingBox();
+  if (!from || !to) throw new Error("Layer rows need bounding boxes to drag.");
+
+  const startX = from.x + from.width / 2;
+  const startY = from.y + from.height / 2;
+  const endY = to.y + 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.move(startX, startY + ((endY - startY) * step) / 8);
+  }
+  await page.mouse.up();
 }
 
 export async function readStudioLayerVisible(
@@ -179,6 +228,59 @@ export async function readStudioColorCount(page: Page): Promise<number> {
     }
     return seen.size;
   });
+}
+
+export type StudioGroupedFixture = {
+  /** The gradient layer, inside the group. */
+  groupedLayerId: string;
+  /** The group holding the gradient layer. */
+  groupId: string;
+  /** The stripes layer, outside the group and below it. */
+  looseLayerId: string;
+};
+
+/**
+ * Builds a stripes layer at the root with a gradient layer inside a group above
+ * it.
+ *
+ * One layer stays outside the group deliberately. Hiding a group that held every
+ * layer would leave nothing drawn, and the evidence helper requires a non-empty
+ * output signature — so the proof would have no observable left to name.
+ */
+export async function openStudioGroupedStack(
+  page: Page,
+): Promise<{
+  fixture: StudioGroupedFixture;
+  session: Awaited<ReturnType<typeof createToolcraftBrowserProofSession>>;
+}> {
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+
+  await addStudioLayer(page);
+  const looseLayerId = (await readStudioLayerIds(page))[0] ?? "";
+
+  // The group becomes the selection, so the next added layer lands inside it.
+  await addStudioGroup(page);
+  const groupId =
+    (await readStudioLayerIds(page)).find((id) => id !== looseLayerId) ?? "";
+
+  await addStudioLayer(page);
+  const groupedLayerId =
+    (await readStudioLayerIds(page)).find(
+      (id) => id !== looseLayerId && id !== groupId,
+    ) ?? "";
+
+  await selectStudioLayer(page, groupedLayerId);
+  await setStudioLayerKind(page, "Gradient");
+
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 5000 })
+    .toBe("stripes>gradient");
+
+  return {
+    fixture: { groupedLayerId, groupId, looseLayerId },
+    session: await createToolcraftBrowserProofSession(page),
+  };
 }
 
 export type StudioTwoLayerFixture = {
