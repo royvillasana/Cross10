@@ -183,6 +183,21 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       workflowStage: "ink",
     },
     {
+      entity: "Selected layer",
+      entityId: "selected-layer-treatment",
+      groupingReason:
+        "What the layer does to the picture beneath it rather than what it paints. Its own stage because it is the one group that reads the composite instead of contributing to it, which is also why it is ungated: a lens is a lens whatever the layer's kind.",
+      id: "selected-layer-treatment",
+      targets: [
+        "selectedLayer.hue",
+        "selectedLayer.saturation",
+        "selectedLayer.contrast",
+        "selectedLayer.blendMode",
+      ],
+      title: "Layer Treatment",
+      workflowStage: "treat",
+    },
+    {
       entity: "Image export",
       entityId: "image-export",
       groupingReason:

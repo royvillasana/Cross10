@@ -1,6 +1,8 @@
 import { expectToolcraftSelectedLayerControl } from "./browser-layer-evidence-helpers";
 import {
   openStudioSingleLayer,
+  openStudioTwoLayerStack,
+  selectStudioLayer,
   setStudioColorHex,
   setStudioLayerKind,
   setStudioSelectValue,
@@ -1513,5 +1515,212 @@ test("browser: studio region rotation turns the region about its own centre", as
       requirementId: "selectedLayer.maskRotation",
       target: "selectedLayer.maskRotation",
     },
+  );
+});
+
+/**
+ * The colour the layer leaves behind, read inside its region and outside it.
+ *
+ * Treatment is not something a layer does to itself -- it is something it does
+ * to what is beneath it -- so a reading that only looked inside could not tell
+ * a lens from a layer that simply painted that colour. Two places, and the
+ * outside one staying put, is what makes it a lens.
+ *
+ * Channels are reported to the nearest sixteenth so a driver that rounds a
+ * multiply differently by a count or two reads the same. Measured before the
+ * expectations were written: a red field turns to (0, 178, 0) at a hue shift of
+ * 120, drains to (127, 127, 127) at zero saturation, and flattens to
+ * (188, 188, 188) at zero contrast.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const TREATED_FIELD = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const width = 32;
+      const height = 4;
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(
+        Math.round(canvas.width * fx),
+        Math.round(canvas.height * 0.5),
+        width,
+        height,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+
+      const counts = new Map<string, number>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        const quantised = [pixels[index], pixels[index + 1], pixels[index + 2]]
+          .map((channel) => Math.min(Math.round(channel / 16) * 16, 255))
+          .map((channel) => channel.toString(16).padStart(2, "0"))
+          .join("");
+        counts.set(quantised, (counts.get(quantised) ?? 0) + 1);
+      }
+
+      return `#${
+        [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? ""
+      }`;
+    };
+
+    outputSignature = `inside=${at(0.5)} outside=${at(0.05)}`;
+  }
+
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.blendMode"]')
+    ?.querySelector('[role="combobox"]');
+
+  return {
+    controlValue: {
+      blend: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+      contrast: sliderValue("Contrast"),
+      hue: sliderValue("Hue shift"),
+      saturation: sliderValue("Saturation"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+/**
+ * A lens: a coloured field below, and above it a region-confined layer that
+ * paints nothing of its own.
+ *
+ * Zero opacity is what makes it a lens rather than a filter on a visible layer.
+ * Treatment is weighted by reach and opacity only weights the paint, so the
+ * layer at zero opacity still treats what it covers -- which is precisely the
+ * construction the reference works use, and the one worth proving.
+ */
+async function openStudioTreatmentLens(
+  page: Parameters<typeof openStudioTwoLayerStack>[0],
+) {
+  const { fixture, session } = await openStudioTwoLayerStack(page);
+
+  await setStudioColorHex(page, "First colour", "#FF0000");
+  await setStudioColorHex(page, "Second colour", "#0000FF");
+  await setStudioSlider(page, "Band count", 8);
+
+  await selectStudioLayer(page, fixture.gradientLayerId);
+  await setStudioSlider(page, "Opacity", 0);
+  await setStudioSlider(page, "Region size", 0.3);
+
+  return { layerId: fixture.gradientLayerId, session };
+}
+
+const LENS_DEFAULTS = { blend: "Normal", contrast: 1, hue: 0, saturation: 1 };
+
+test("browser: studio hue shift turns the colours beneath the layer", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioTreatmentLens(page);
+
+  // Red becomes green where the layer reaches and stays red where it does not.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(TREATED_FIELD),
+    session.controlAction("selectedLayer.hue", async () => {
+      await setStudioSlider(page, "Hue shift", 120);
+    }),
+    {
+      controlValue: { ...LENS_DEFAULTS, hue: 120 },
+      outputSignature: "inside=#00b000 outside=#0000ff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.hue", target: "selectedLayer.hue" },
+  );
+});
+
+test("browser: studio saturation drains the colour beneath the layer", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioTreatmentLens(page);
+
+  // The colour goes and the brightness stays, which is what separates draining
+  // a colour from darkening it.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(TREATED_FIELD),
+    session.controlAction("selectedLayer.saturation", async () => {
+      await setStudioSlider(page, "Saturation", 0);
+    }),
+    {
+      controlValue: { ...LENS_DEFAULTS, saturation: 0 },
+      outputSignature: "inside=#808080 outside=#0000ff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.saturation", target: "selectedLayer.saturation" },
+  );
+});
+
+test("browser: studio contrast flattens what the layer covers", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioTreatmentLens(page);
+
+  // Everything the layer reaches collapses to one tone; the field outside keeps
+  // its own, so this is the layer's doing rather than the renderer's.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(TREATED_FIELD),
+    session.controlAction("selectedLayer.contrast", async () => {
+      await setStudioSlider(page, "Contrast", 0);
+    }),
+    {
+      controlValue: { ...LENS_DEFAULTS, contrast: 0 },
+      outputSignature: "inside=#c0c0c0 outside=#0000ff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.contrast", target: "selectedLayer.contrast" },
+  );
+});
+
+test("browser: studio blend mode changes how the layer meets what it sits on", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioTreatmentLens(page);
+
+  // A visible mid grey this time, because a blend mode has nothing to do until
+  // the layer paints. Under Normal it covers the red with grey; under Multiply
+  // the same grey darkens the red instead.
+  await setStudioSlider(page, "Opacity", 1);
+  await setStudioColorHex(page, "First colour", "#808080");
+  await setStudioColorHex(page, "Second colour", "#808080");
+
+  await expectToolcraftSelectedLayerControl(
+    session.observe(TREATED_FIELD),
+    session.controlAction("selectedLayer.blendMode", async () => {
+      await setStudioSelectValue(page, "selectedLayer.blendMode", "Multiply");
+    }),
+    {
+      controlValue: { ...LENS_DEFAULTS, blend: "Multiply" },
+      outputSignature: "inside=#800000 outside=#0000ff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.blendMode", target: "selectedLayer.blendMode" },
   );
 });

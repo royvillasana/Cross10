@@ -131,6 +131,34 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
     name: "maskInvert",
     type: "float",
   },
+  /**
+   * Treatment of what lies beneath the layer, applied wherever the layer
+   * reaches. This is what makes a layer a lens rather than a sticker: the
+   * reference works put a shape over a field and the field beneath it shifts
+   * hue and brightness rather than being covered up.
+   *
+   * Weighted by reach -- visibility and region -- and deliberately not by
+   * opacity, so a layer at zero opacity is pure treatment and paints nothing of
+   * its own. That is exactly the lens the works ask for, and it falls out of the
+   * two being separate rather than needing a mode to select it.
+   *
+   * The defaults are the identity: no shift, full saturation, unchanged
+   * contrast. A layer that has never been treated composites exactly as it did
+   * before treatment existed.
+   */
+  { defaultValue: 0, name: "hue", type: "float" },
+  { defaultValue: 1, name: "saturation", type: "float" },
+  { defaultValue: 1, name: "contrast", type: "float" },
+  /**
+   * How the layer's own colour meets what it sits on. Order matches the branch
+   * order in `studioBlend`.
+   */
+  {
+    defaultValue: 0,
+    name: "blendMode",
+    optionValues: ["normal", "multiply", "screen", "overlay"],
+    type: "float",
+  },
 ];
 
 const CHUNK_LAYER_SUPPORT = `
@@ -168,11 +196,64 @@ vec3 studioPaletteSlot(float index, float slots, vec3 a, vec3 b, vec3 c, vec3 d)
   return d;
 }
 
+// Hue, saturation and contrast against what is already composited.
+//
+// Saturation and contrast are the usual readings -- toward the luma of the
+// colour, and away from mid grey. Hue is a rotation about the grey axis, which
+// is what keeps a shifted colour as bright as it was rather than merely
+// swapping channels.
+//
+// At the identity arguments this returns its input unchanged, so an untreated
+// layer costs a few multiplies and changes nothing.
+vec3 studioTreat(vec3 colour, float hueDegrees, float saturation, float contrast) {
+  float luma = dot(colour, vec3(0.2126, 0.7152, 0.0722));
+  vec3 saturated = mix(vec3(luma), colour, saturation);
+  vec3 contrasted = (saturated - 0.5) * contrast + 0.5;
+
+  float angle = radians(hueDegrees);
+  float c = cos(angle);
+  float s = sin(angle);
+  // Written as columns, which is the order the constructor reads.
+  mat3 rotation = mat3(
+    vec3(
+      0.213 + c * 0.787 - s * 0.213,
+      0.213 - c * 0.213 + s * 0.143,
+      0.213 - c * 0.213 - s * 0.787
+    ),
+    vec3(
+      0.715 - c * 0.715 - s * 0.715,
+      0.715 + c * 0.285 + s * 0.140,
+      0.715 - c * 0.715 + s * 0.715
+    ),
+    vec3(
+      0.072 - c * 0.072 + s * 0.928,
+      0.072 - c * 0.072 - s * 0.283,
+      0.072 + c * 0.928 + s * 0.072
+    )
+  );
+
+  return clamp(rotation * contrasted, 0.0, 1.0);
+}
+
+// How the layer's colour meets what it sits on. Branch order is the contract
+// with the blendMode uniform's option order.
+vec3 studioBlend(vec3 below, vec3 above, float mode) {
+  if (mode < 0.5) return above;
+  if (mode < 1.5) return below * above;
+  if (mode < 2.5) return 1.0 - (1.0 - below) * (1.0 - above);
+  return mix(
+    2.0 * below * above,
+    1.0 - 2.0 * (1.0 - below) * (1.0 - above),
+    step(vec3(0.5), below)
+  );
+}
+
 // Source-over in linear light. Weight folds opacity and visibility together so a
 // hidden layer contributes exactly nothing without costing a branch.
-vec4 studioComposite(vec4 below, vec4 above, float weight) {
+vec4 studioComposite(vec4 below, vec4 above, float weight, float mode) {
   float alpha = above.a * clamp(weight, 0.0, 1.0);
-  return vec4(mix(below.rgb, above.rgb, alpha), max(below.a, alpha));
+  vec3 blended = studioBlend(below.rgb, above.rgb, mode);
+  return vec4(mix(below.rgb, blended, alpha), max(below.a, alpha));
 }
 `;
 
@@ -415,7 +496,8 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
     .map((uniform) => studioLayerUniformName(index, uniform.name))
     .join(", ");
   const name = (suffix: string): string => studioLayerUniformName(index, suffix);
-  const weight = `${name("opacity")} * ${name("visible")} * maskCoverage`;
+  const reach = `${name("visible")} * maskCoverage`;
+  const weight = `${name("opacity")} * layerReach`;
 
   return `  {
     // The layer is confined to a region placed on the frame, and the sense
@@ -451,8 +533,26 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       ? 1.0
       : mix(maskInside, 1.0 - maskInside, step(0.5, ${name("maskInvert")}));
 
+    // Treatment first and weighted by reach alone: a layer at zero opacity
+    // still treats what is beneath it, which is the lens the reference works
+    // are built on, and paints none of its own colour.
+    float layerReach = ${reach};
+    composite = vec4(
+      mix(
+        composite.rgb,
+        studioTreat(
+          composite.rgb,
+          ${name("hue")},
+          ${name("saturation")},
+          ${name("contrast")}
+        ),
+        clamp(layerReach, 0.0, 1.0)
+      ),
+      composite.a
+    );
+
     vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution${args ? `, ${args}` : ""});
-    composite = studioComposite(composite, layer, ${weight});
+    composite = studioComposite(composite, layer, ${weight}, ${name("blendMode")});
   }`;
 }
 
