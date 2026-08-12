@@ -102,7 +102,7 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 
 Croix10's surface is the floor, not the ceiling. Each control carried across still obliges its own acceptance row and browser proof here — a proof passing in Croix10 proves nothing about this app.
 
-- [ ] 4.1 Carry the stripe field controls onto the stripes layer type
+- [ ] 4.1 Carry the stripe field controls onto the stripes layer type. **Mirror is done**; jitter amount, jitter frequency and band separator are not, and they are blocked on the section budget rather than on the shader. Mirror took `selected-layer` to exactly ten controls, and an eleventh fails with *"owns 11 controls in section Selected Layer. Split entities above 10 controls into explicit workflow stages"*. So the entity must be split into workflow stages before any further per-layer control lands — and the split has to keep R34 (the `selectedLayer.type` gate sits in the section it gates) and R33 (section titles cannot collide with the gate's option labels), which is what made the earlier single-section arrangement the right one at nine controls
 - [ ] 4.2 Carry the chromatic ramp surface (9A) onto the gradient layer type, consuming all five gradient parts per R23
 - [ ] 4.3 Carry the cursor field (9B) as a per-layer effect, with the hotspot committed to state per R44 and persisted through `additionalValueTargets`
 - [ ] 4.4 Carry the palette and colour slot surface
