@@ -4,7 +4,11 @@ import {
 } from "@/toolcraft/runtime";
 
 import { STUDIO_BAND_COUNT } from "./studio-layer-sections";
-import { studioPipelineRegistration } from "./studio-pipeline";
+import {
+  STUDIO_DRAGGABLE_TARGETS,
+  STUDIO_SCENE_TARGETS,
+  studioPipelineRegistration,
+} from "./studio-pipeline";
 
 /**
  * Shader Studio performance model.
@@ -125,7 +129,119 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         "WebGPU: no coverage advantage over WebGL2 for these passes, and the assembled-source artifact this product delivers targets one GLSL dialect.",
       ],
     },
-    scenarios: [],
+    // One scenario per derived canonical path. The path ids are products of
+    // `deriveToolcraftPerformancePaths` rather than hand-authored strings, and
+    // `coversTargets` equals each path's exact target set — the two are checked
+    // against each other, so a widened invalidation list must be reflected here.
+    scenarios: [
+      {
+        automated: true,
+        automatedTestName:
+          "declares the initial render path resolves the stack once at mount",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio initial render resolves the layer stack",
+        coversTargets: [...STUDIO_SCENE_TARGETS],
+        expectedObservable:
+          "The composited stack is visible on first paint with the seeded stripes layer.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.initial-render",
+        interaction: "initial-render",
+        pathId:
+          "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+      {
+        automated: true,
+        automatedTestName:
+          "declares the control change path re-resolves the stack for discrete edits",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio control change re-resolves the layer stack",
+        coversTargets: [...STUDIO_SCENE_TARGETS, "canvas.renderScale"],
+        expectedObservable:
+          "Committing a control edit produces a changed composite without recompiling an unchanged stack signature.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.control-change",
+        interaction: "control-change",
+        pathId:
+          "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+      {
+        automated: true,
+        automatedTestName:
+          "declares the control drag path stays live through the gesture",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio band count drag stays live through the gesture",
+        controlLabel: "Band count",
+        coversTargets: [...STUDIO_DRAGGABLE_TARGETS],
+        expectedObservable:
+          "The composite updates continuously while the band count thumb is dragged, before pointer release.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.control-drag",
+        interaction: "control-drag",
+        pathId:
+          "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+        target: "selectedLayer.count",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+      {
+        automated: true,
+        automatedTestName:
+          "declares the viewport drag path keeps the stack resident",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio viewport drag keeps the layer stack resident",
+        coversTargets: ["canvas.offset"],
+        expectedObservable:
+          "Panning moves the viewport without re-resolving the stack, and canvas zoom and offset stay stable afterwards.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.viewport-drag",
+        interaction: "viewport-drag",
+        pathId:
+          "performance-path:%5B%22interactive-continuous%22%2C%22viewport-drag%22%2C%5B%5D%2C%5B%5D%2C%5B%5D%5D",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+      {
+        automated: true,
+        automatedTestName:
+          "declares the viewport zoom path keeps the stack resident",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio viewport zoom keeps the layer stack resident",
+        coversTargets: ["canvas.zoom"],
+        expectedObservable:
+          "Zoom magnifies the presented frame without re-resolving the stack.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.viewport-zoom",
+        interaction: "viewport-zoom",
+        pathId:
+          "performance-path:%5B%22interactive-continuous%22%2C%22viewport-zoom%22%2C%5B%5D%2C%5B%5D%2C%5B%5D%5D",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+      {
+        actionValue: "export-image",
+        automated: true,
+        automatedTestName:
+          "declares the image export path renders one deterministic frame",
+        browser: true,
+        browserTestName:
+          "browser perf: shader studio image export renders one deterministic frame",
+        completionEvidence: "download",
+        controlLabel: "Export PNG",
+        coversTargets: ["export.image.format", "export.image.resolution"],
+        expectedObservable:
+          "Exporting produces a decodable artifact at the selected resolution containing the composited stack.",
+        fixture: "a single stripes layer at the band-count default",
+        id: "perf.export-image",
+        interaction: "export",
+        pathId:
+          "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+        uiSelector: "[data-toolcraft-product-output]",
+      },
+    ],
     usesCustomRenderer: true,
     workloadEnvelope: {
       dimensions: [

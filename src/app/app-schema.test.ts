@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { deriveToolcraftPerformancePaths } from "@/toolcraft/runtime";
+
 import {
   appAcceptance,
   validateProductAcceptanceCoverage,
@@ -105,10 +107,17 @@ describe("appSchema", () => {
     expect(bandCount?.defaultValue).toBe(STUDIO_BAND_COUNT.defaultValue);
   });
 
-  it("keeps performance scenarios empty until the pipeline is registered", () => {
-    // Scenarios are derived from pipeline paths, which task 2.8b registers.
-    // Authoring them before the passes exist would invent paths.
-    expect(appPerformance.scenarios).toEqual([]);
+  it("declares exactly one scenario for every derived performance path", () => {
+    // Path ids are products of the pipeline declaration, never hand-authored.
+    // This is the guard that a widened invalidation list -- which mints a new
+    // canonical path -- cannot land without the scenario that proves it.
+    const derived = deriveToolcraftPerformancePaths(appSchema, appPerformance)
+      .map((path) => path.id)
+      .sort();
+    const declared = appPerformance.scenarios.map((scenario) => scenario.pathId).sort();
+
+    expect(declared).toEqual(derived);
+    expect(new Set(declared).size).toBe(declared.length);
   });
 
   it("declares production reload coverage for the product schema", () => {
