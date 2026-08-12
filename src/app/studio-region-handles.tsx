@@ -292,6 +292,11 @@ export function StudioRegionHandles({
     (handle: StudioRegionHandleId) =>
     (event: React.PointerEvent<HTMLButtonElement>): void => {
       event.preventDefault();
+      // The canvas world pans on a drag of its own. Without this the shell sees
+      // the same pointerdown the handle did and moves the whole view, so
+      // grabbing a layer scrolled the picture instead of shaping the region --
+      // which is the one thing a handle must never do.
+      event.stopPropagation();
       const canvas = canvasRef.current;
       const live = canvas?.getBoundingClientRect();
       const rectNow = live
@@ -310,6 +315,8 @@ export function StudioRegionHandles({
 
   const beginMove = (event: React.PointerEvent<HTMLButtonElement>): void => {
     event.preventDefault();
+    // As above: the gesture belongs to the layer, not to the view behind it.
+    event.stopPropagation();
     const canvas = canvasRef.current;
     const live = canvas?.getBoundingClientRect();
     const rectNow = live
