@@ -21,8 +21,6 @@ export type ToolcraftAcceptanceValidationContext = {
   layersEnabled: boolean;
   productReadiness: ToolcraftProductReadiness;
   schema: ResolvedToolcraftAppSchema;
-  /** Whether any visible scene element occupies less than the whole artboard. */
-  sceneElementsHaveIndependentBounds?: boolean;
   sectionInventory: readonly ToolcraftControlSectionInventoryEntry[];
   timelineMode: ToolcraftTimelineMode | null;
   transferMode: ToolcraftTransferMode;

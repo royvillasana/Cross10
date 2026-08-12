@@ -169,10 +169,6 @@ describe("Toolcraft canvas sizing acceptance coverage", () => {
         schema: createEditableOutputSchema("export-image"),
         acceptance: [makeInfinityCanvasAcceptance("mode-and-restoration")],
         productReadiness: infinityProductReadiness,
-        // Stated explicitly: the requirement only applies to a product whose
-        // scene elements can occupy less than the artboard, because only then
-        // can an infinite export crop to something narrower than a finite one.
-        sceneElementsHaveIndependentBounds: true,
       }),
     ).toEqual(
       expect.arrayContaining([

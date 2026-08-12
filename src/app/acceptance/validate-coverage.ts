@@ -16,7 +16,6 @@ import { getToolcraftControlSectionInventoryErrors } from "./control-section-inv
 import { isToolcraftVisibleAcceptanceControl } from "./controls";
 import { getToolcraftInlineLayoutErrors } from "./inline-layout";
 import { getToolcraftInfinityCanvasCoverageErrors } from "./infinity-canvas";
-import { studioHasBoundedLayerType } from "../studio-layers";
 import {
   getToolcraftOutputExportErrors,
   schemaHasVideoExportPanelAction,
@@ -52,12 +51,6 @@ import { getToolcraftViewInteractionErrors } from "./view-interaction";
 
 export type ToolcraftAcceptanceValidationInput = {
   acceptance: readonly ToolcraftComponentAcceptance[];
-  /**
-   * Whether any visible scene element occupies less than the whole artboard.
-   * Defaults to what the layer registry reports, so the product and a validation
-   * of equivalent cloned data always resolve the same value.
-   */
-  sceneElementsHaveIndependentBounds?: boolean;
   productReadiness: ToolcraftProductReadiness;
   schema: ResolvedToolcraftAppSchema;
   sectionInventory: readonly ToolcraftControlSectionInventoryEntry[];
@@ -82,14 +75,12 @@ function createToolcraftAcceptanceValidationContext({
   acceptance,
   productReadiness,
   schema,
-  sceneElementsHaveIndependentBounds,
   sectionInventory,
   transferMode,
 }: {
   acceptance: readonly ToolcraftComponentAcceptance[];
   productReadiness: ToolcraftProductReadiness;
   schema: ResolvedToolcraftAppSchema;
-  sceneElementsHaveIndependentBounds?: boolean;
   sectionInventory: readonly ToolcraftControlSectionInventoryEntry[];
   transferMode: ToolcraftTransferMode;
 }): ToolcraftAcceptanceValidationContext {
@@ -101,7 +92,6 @@ function createToolcraftAcceptanceValidationContext({
     hasVideoExportAction: schemaHasVideoExportPanelAction(schema),
     layersEnabled: Boolean(schema.panels.layers),
     productReadiness,
-    sceneElementsHaveIndependentBounds,
     schema,
     sectionInventory,
     timelineMode: schema.panels.timeline?.enabled
@@ -254,18 +244,11 @@ const toolcraftAcceptanceValidators: readonly ToolcraftAcceptanceValidator[] = [
   {
     path: "acceptance.infinityCanvasCoverage",
     ruleId: "infinity-canvas-scene-bounds",
-    validate: ({
-      acceptance,
-      productReadiness,
-      schema,
-      sceneElementsHaveIndependentBounds,
-    }) =>
+    validate: ({ acceptance, productReadiness, schema }) =>
       getToolcraftInfinityCanvasCoverageErrors({
         acceptance,
         productReadiness,
         schema,
-        sceneElementsHaveIndependentBounds:
-          sceneElementsHaveIndependentBounds ?? studioHasBoundedLayerType(),
       }),
   },
   {
@@ -309,7 +292,6 @@ export function validateToolcraftAcceptanceCoverage({
   acceptance,
   productReadiness,
   schema,
-  sceneElementsHaveIndependentBounds,
   sectionInventory,
   transferMode,
 }: ToolcraftAcceptanceValidationInput): string[] {
@@ -318,7 +300,6 @@ export function validateToolcraftAcceptanceCoverage({
       acceptance,
       productReadiness,
       schema,
-      sceneElementsHaveIndependentBounds,
       sectionInventory,
       transferMode,
     }),

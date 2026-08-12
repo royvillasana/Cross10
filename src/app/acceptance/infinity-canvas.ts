@@ -35,23 +35,10 @@ export function getToolcraftInfinityCanvasCoverageErrors({
   acceptance,
   productReadiness,
   schema,
-  sceneElementsHaveIndependentBounds,
 }: {
   acceptance: readonly ToolcraftComponentAcceptance[];
   productReadiness: ToolcraftProductReadiness;
   schema: ResolvedToolcraftAppSchema;
-  /**
-   * Whether any visible scene element occupies less than the whole artboard.
-   *
-   * An infinite export can only crop to something narrower than the artboard
-   * when some element has an extent of its own. A product whose elements all
-   * cover the whole scene has a union identical to its artboard, so its infinite
-   * export is the same size as its finite one and the protected helper -- which
-   * requires the two to differ -- cannot be satisfied by anything but a
-   * fabricated bound. Requiring the proof anyway buys a green suite for an
-   * assertion that says nothing.
-   */
-  sceneElementsHaveIndependentBounds: boolean;
 }): string[] {
   if (
     productReadiness.mode !== "product" ||
@@ -70,7 +57,7 @@ export function getToolcraftInfinityCanvasCoverageErrors({
     },
   ];
 
-  if (schemaHasPngExportPanelAction(schema) && sceneElementsHaveIndependentBounds) {
+  if (schemaHasPngExportPanelAction(schema)) {
     requiredProofs.push({
       coverage: "scene-bounds-image-export",
       evidence: "exported-bytes",
