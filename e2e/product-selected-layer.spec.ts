@@ -220,6 +220,7 @@ const LAYER_FIELD = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
     },
     outputSignature,
     selectedLayerId:
@@ -231,6 +232,7 @@ const LAYER_FIELD = (
 
 const DEFAULT_SLIDERS = {
   angle: 0,
+  taper: 0,
   jitter: 0,
   bandWidth: 0.5,
   count: 24,
@@ -390,6 +392,7 @@ const LAYER_PHASE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
     },
     outputSignature,
     selectedLayerId:
@@ -671,6 +674,7 @@ const BAND_COVERAGE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
     },
     outputSignature,
     selectedLayerId:
@@ -777,6 +781,7 @@ const BAND_REGULARITY = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
     },
     outputSignature,
     selectedLayerId:
@@ -807,5 +812,98 @@ test("browser: studio jitter displaces each band from its even position", async 
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.jitterAmount", target: "selectedLayer.jitterAmount" },
+  );
+});
+
+/**
+ * How much thicker a band is at one end than the other.
+ *
+ * Taper moves the split between a band's two colours along the band's own
+ * length, so the band becomes a wedge. Sampling a column near each end and
+ * comparing their light share names that directly: a wedge separates them, and
+ * anything that changes a band's width uniformly -- band width, separator --
+ * moves them together and leaves the difference at zero.
+ *
+ * That distinction is the whole point of the reading. An earlier attempt at this
+ * control drove the wrong uniform entirely, and a signature that only tracked
+ * overall lightness reported it as working.
+ *
+ * Each column is read in its own call so one cannot serve stale bytes for the
+ * other. Thresholds from measurement: flat at zero, and about 0.45 and 0.90 at
+ * a third and two thirds of the control's range.
+ */
+const BAND_WEDGE = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const share = (fraction: number) => {
+      const x = Math.min(Math.floor(canvas.width * fraction), canvas.width - 1);
+      const pixels = new Uint8Array(canvas.height * 4);
+      gl.readPixels(x, 0, 1, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      let light = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index] + pixels[index + 1] + pixels[index + 2] > 382) light += 1;
+      }
+      return light / (pixels.length / 4);
+    };
+
+    const delta = Math.abs(share(0.08) - share(0.92));
+    outputSignature = delta < 0.05 ? "even" : delta > 0.3 ? "wedged" : "leaning";
+  }
+
+  return {
+    controlValue: {
+      angle: sliderValue("Angle"),
+      bandWidth: sliderValue("Band width"),
+      count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
+      offset: sliderValue("Offset"),
+      opacity: sliderValue("Opacity"),
+      separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio taper turns each band into a wedge", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  // Few bands running across the frame, so each band's length is the horizontal
+  // axis and a wedge shows as a thickness difference between its two ends.
+  await setStudioSlider(page, "Band count", 6);
+  await setStudioSlider(page, "Angle", 90);
+
+  await expectToolcraftSelectedLayerControl(
+    session.observe(BAND_WEDGE),
+    session.controlAction("selectedLayer.taper", async () => {
+      await setStudioSlider(page, "Taper", 0.6);
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, angle: 90, count: 6, taper: 0.6 },
+      outputSignature: "wedged",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.taper", target: "selectedLayer.taper" },
   );
 });

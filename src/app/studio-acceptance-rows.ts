@@ -239,6 +239,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares taper turns each band into a wedge",
+    browser: true,
+    browserTestName: "browser: studio taper turns each band into a wedge",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Raising Taper moves the split between a band's two colours along the band's length, so each band reads as a wedge that is thick at one end and thin at the other, while the bands keep their count and their spacing, and the control is absent while a gradient layer is selected.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.taper",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.taper",
+    userAction: "Drag Taper with a stripes layer selected.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares band width changes the light-to-dark balance",
     browser: true,
     browserTestName: "browser: studio band width changes the selected layer's balance",

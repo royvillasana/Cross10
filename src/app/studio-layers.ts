@@ -111,6 +111,7 @@ vec4 studioStripesBody(
   float widthRatio,
   float phase,
   float mirror,
+  float taper,
   float separator,
   float jitterAmount,
   float jitterFrequency,
@@ -142,8 +143,21 @@ vec4 studioStripesBody(
   // Analytic edge from the screen-space derivative rather than supersampling:
   // per-pixel cost stays constant with respect to band count, which is what lets
   // the pipeline declare a constant relationship for the stripe dimensions.
+  // Where one colour gives way to the other, drifting along the band rather
+  // than sitting at a constant fraction of it. That drift is what turns a band
+  // of even thickness into a wedge: the split reaches one edge at one end of the
+  // band and the other edge at the other, so the darker colour reads as a
+  // triangle rather than a line. It is the same construction the kinetic
+  // painters used to make a shape emerge from a field that stays parallel.
+  //
+  // Measured along the band, which is the axis perpendicular to the one the
+  // bands repeat along, so the drift follows the band's own length whatever
+  // angle the field is set to.
+  float along = centered.x * -sin(radians) + centered.y * cos(radians);
+  float split = widthRatio + taper * along;
+
   float edge = max(fwidth(position) * 1.5, 1e-5);
-  float band = smoothstep(widthRatio - edge, widthRatio + edge, position);
+  float band = smoothstep(split - edge, split + edge, position);
 
   // A separator is a gap the layer does not paint rather than a third colour:
   // in a stack, what shows through is whatever sits beneath, which is the only
@@ -217,6 +231,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
+        { defaultValue: 0, name: "taper", type: "float" },
         { defaultValue: 0, name: "separator", type: "float" },
         { defaultValue: 0, name: "jitterAmount", type: "float" },
         // No control yet, deliberately. Varying this changes *which* bands

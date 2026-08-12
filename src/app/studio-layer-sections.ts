@@ -191,6 +191,21 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.jitterAmount",
         type: "slider",
       },
+      taper: {
+        semanticGroup: "pattern",
+        applicability: STRIPES_APPLICABILITY,
+        defaultValue: 0,
+        label: "Taper",
+        max: 1,
+        min: -1,
+        performanceReason:
+          "One multiply and add against a coordinate the body already has.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.taper",
+        type: "slider",
+      },
 widthRatio: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,
