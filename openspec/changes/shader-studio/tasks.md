@@ -107,7 +107,7 @@ Croix10's surface is the floor, not the ceiling. Each control carried across sti
 - [ ] 4.1 Carry the stripe field controls onto the stripes layer type. **Mirror is done**; jitter amount, jitter frequency and band separator are not, and they are blocked on the section budget rather than on the shader. Mirror took `selected-layer` to exactly ten controls, and an eleventh fails with *"owns 11 controls in section Selected Layer. Split entities above 10 controls into explicit workflow stages"*. So the entity must be split into workflow stages before any further per-layer control lands — and the split has to keep R34 (the `selectedLayer.type` gate sits in the section it gates) and R33 (section titles cannot collide with the gate's option labels), which is what made the earlier single-section arrangement the right one at nine controls
 - [ ] 4.2 Carry the chromatic ramp surface (9A) onto the gradient layer type, consuming all five gradient parts per R23
 - [ ] 4.3 Carry the cursor field (9B) as a per-layer effect, with the hotspot committed to state per R44 and persisted through `additionalValueTargets`
-- [ ] 4.4 Carry the palette and colour slot surface
+- [x] 4.4 Carry the palette and colour slot surface (delivered as 12.0)
 - [ ] 4.5 Acceptance rows and browser proofs for every control carried, batched per group
 - [ ] 4.6 Run `npm run verify:delivery`
 
@@ -159,8 +159,8 @@ Deferred here deliberately — neither the selection model nor the control surfa
 
 Raised from the user's reference set and decomposed in R60. Ordered so each item is useful before the next exists. Group 4.4's palette moves ahead of 4.2 and 4.3, because the two-ink limit is what holds back half the references and nothing here removes it.
 
-- [ ] 12.0 Carry the palette surface first (this is 4.4, pulled forward). A layer carries two colours and the works carry three or four; wedge zones and wedge prints are otherwise reachable today
-- [ ] 12.1 Extend the region with **shape kind** — rectangle or ellipse — and **rotation**. The region is already a placed, sized rectangle, so the shape lives there rather than in a parallel construct. Ellipse is what group B needs; rotation is what group C needs
+- [x] 12.0 Carry the palette surface first (this is 4.4, pulled forward). A layer carries two colours and the works carry three or four; wedge zones and wedge prints are otherwise reachable today
+- [x] 12.1 Extend the region with **shape kind** — rectangle or ellipse — and **rotation**. The region is already a placed, sized rectangle, so the shape lives there rather than in a parallel construct. Ellipse is what group B needs; rotation is what group C needs
 - [ ] 12.2 Register the **shape layer type**: a layer that draws its region rather than being clipped to it, with a plain or striped fill. This is the "component", and it is the first layer type with an extent of its own — which is also what re-arms the `scene-bounds-image-export` requirement deferred in R58, so that row returns with it
 - [ ] 12.3 **Canvas handles** for the shape: drag to move, node handles to resize. Runtime extension point with acceptance `kind: "canvas-handle"`; handles write runtime state, carry no text, and are proved absent from the exported artifact in the same batch
 - [ ] 12.4 **Layer treatment** — hue, saturation, contrast. Applied as the layer composites, so a layer can change what is beneath it rather than only painting over it
