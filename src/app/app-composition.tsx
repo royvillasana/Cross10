@@ -4,6 +4,7 @@ import { appSchema } from "./app-schema";
 import { StudioCanvas } from "./studio-canvas";
 import { studioPipelineRegistration } from "./studio-pipeline";
 import { buildStudioSceneParameters, studioSceneRect } from "./studio-scene";
+import { studioAssembleDeliverableSource } from "./studio-source";
 import { createStudioStackRenderer } from "./studio-stack-render";
 
 /**
@@ -59,8 +60,35 @@ function renderStudioExportFrame({
   }
 }
 
+/**
+ * Copies the assembled shader source to the clipboard.
+ *
+ * Built from the same scene the renderer draws, so what is copied is the frame
+ * on screen rather than a re-derivation of it.
+ *
+ * The real Promise is returned rather than awaited and discarded: the runtime
+ * owns the sticky footer indicator, and handing it an already-resolved Promise
+ * would report the copy finished before the clipboard write had.
+ *
+ * Deliberately not an export action. It writes no artifact and downloads
+ * nothing, so the recorded image-and-video artifact intent is untouched.
+ */
+function handleStudioPanelAction({
+  action,
+  state,
+}: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]):
+  | Promise<void>
+  | void {
+  if (action.value !== "copy-source") return;
+
+  return navigator.clipboard.writeText(
+    studioAssembleDeliverableSource(buildStudioSceneParameters(state, true)),
+  );
+}
+
 export const appComposition: ToolcraftAppComposition = {
   canvasContent: <StudioCanvas />,
+  onPanelAction: handleStudioPanelAction,
   exportRenderer: {
     baseFileName: "shader-studio",
     renderFrame: renderStudioExportFrame,

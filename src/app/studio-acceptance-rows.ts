@@ -336,7 +336,7 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
         "Select each Resolution option in turn and export the image after each.",
     },
     {
-      actionCoverage: ["export-image"],
+      actionCoverage: ["copy-source", "export-image"],
       automated: true,
       automatedTestName: "declares complete image export artifact behaviour",
       browser: true,

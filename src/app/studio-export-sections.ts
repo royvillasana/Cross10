@@ -66,6 +66,16 @@ export const STUDIO_EXPORT_SECTIONS = [
             role: "export-image",
             value: "export-image",
           },
+          {
+            // No `role`: copying the source writes no artifact and downloads
+            // nothing, so the recorded image-and-video artifact intent stands.
+            // It rides on the same acceptance entry as Export PNG because the
+            // sticky footer is one surface -- footer coverage is checked against
+            // every action in it, whichever control declares them.
+            icon: "copy",
+            label: "Copy shader source",
+            value: "copy-source",
+          },
         ],
         target: "export.actions",
         type: "panelActions",

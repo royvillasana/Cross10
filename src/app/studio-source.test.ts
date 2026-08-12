@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { appProductReadiness } from "./app-acceptance-data";
+import { appSchema } from "./app-schema";
 import { STUDIO_LAYER_TYPE_IDS } from "./studio-layers";
 import { studioAssembleDeliverableSource } from "./studio-source";
 import type { StudioStackSceneParameters } from "./studio-stack-render";
@@ -155,5 +157,41 @@ describe("deliverable shader source", () => {
 
     expect(source).toContain("const float uLayer0_count = 24.0;");
     expect(source).toContain("const vec3 uLayer0_colorA = vec3(1.0, 1.0, 1.0);");
+  });
+});
+
+describe("clipboard delivery leaves artifact intent alone", () => {
+  it("keeps exportIntent describing only image and video", () => {
+    // Copying the source is an additional product action, not an export one. If
+    // shipping it ever moved the recorded intent, the product would be claiming
+    // a third artifact kind it does not encode, download, or prove.
+    // Narrowed rather than asserted: readiness is a union, and a product that
+    // slipped back to starter mode would make the rest of this vacuous.
+    expect(appProductReadiness.mode).toBe("product");
+    if (appProductReadiness.mode !== "product") return;
+
+    expect(Object.keys(appProductReadiness.exportIntent).sort()).toEqual([
+      "image",
+      "video",
+    ]);
+    expect(appProductReadiness.exportIntent.video.mode).toBe("not-requested");
+  });
+
+  it("declares the copy action without an export role", () => {
+    const actions = appSchema.panels.controls?.sections
+      .flatMap((section) => Object.values(section.controls))
+      .filter((control) => control.type === "panelActions")
+      .flatMap((control) => control.actions ?? []);
+    // An action may be declared as a bare string or as a typed object; only the
+    // object form can carry a role, which is the thing under test here.
+    const copy = actions?.find(
+      (action) => typeof action === "object" && action.value === "copy-source",
+    );
+
+    expect(copy, "the copy-source action must be declared").toBeDefined();
+    expect(
+      typeof copy === "object" ? copy.role : undefined,
+      "a role would make it an export action",
+    ).toBeUndefined();
   });
 });

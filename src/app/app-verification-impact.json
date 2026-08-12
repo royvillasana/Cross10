@@ -277,6 +277,13 @@
     },
     {
       "acceptanceIds": [
+        "export.image-action"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-source.ts"
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include",
         "selectedLayer.angle",

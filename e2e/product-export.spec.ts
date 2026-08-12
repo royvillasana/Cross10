@@ -64,6 +64,22 @@ test("browser: studio export png produces a decodable layer stack artifact", asy
     },
     { requirementId: "export.image-action" },
   );
+
+  // The sticky footer is one surface and this row covers every action in it, so
+  // the clipboard action is proved here rather than in a row of its own. What
+  // lands has to be runnable source, not a description of one.
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy shader source" }).click();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+
+  expect(copied).toContain("void main()");
+  expect(copied).toContain("uniform vec2 uResolution;");
+  // Baked, so the recipient wires one uniform rather than fifty.
+  expect(copied).toMatch(/const float uLayer0_count = [\d.]+;/u);
+  // The artifact has to compile elsewhere, so it can carry nothing of ours.
+  expect(copied).not.toContain("Shader Studio");
+  expect(copied).not.toContain("Toolcraft");
 });
 
 test("browser: studio image export format changes the decoded artifact type", async ({
