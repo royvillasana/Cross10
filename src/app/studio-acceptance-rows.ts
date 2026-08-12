@@ -339,6 +339,74 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "studioMoveRegion keeps the region's size and only moves its centre",
+    browser: true,
+    browserTestName: "browser: studio region body drags the layer across the canvas",
+    canvasHandle: {
+      exportCleanTestName: "browser: studio region handles stay out of the exported artifact",
+      outputObservable:
+        "The layer's confined area moves with the pointer, so the field appears where the region was dragged to and the ground shows where it left.",
+      testId: "studio-region-move",
+      writesTarget: "selectedLayer.maskCenterX",
+    },
+    componentType: "canvas-handle",
+    evidence: "product-output",
+    expectedObservable:
+      "Dragging the region body moves the selected layer's area on the canvas, and the Region across and Region down sliders follow it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.regionHandle.move",
+    kind: "canvas-handle",
+    target: "selectedLayer.maskCenterX",
+    userAction: "Drag the dashed region body on the canvas.",
+  },
+  {
+    automated: true,
+    automatedTestName:
+      "studioResizeRegion holds the opposite corner still, so a corner drag resizes rather than moves",
+    browser: true,
+    browserTestName: "browser: studio region corner node resizes the layer on the canvas",
+    canvasHandle: {
+      exportCleanTestName: "browser: studio region handles stay out of the exported artifact",
+      outputObservable:
+        "The layer's confined area grows or shrinks about the opposite corner, so the field reaches further across the frame than it did.",
+      testId: "studio-region-node-southEast",
+      writesTarget: "selectedLayer.maskSize",
+    },
+    componentType: "canvas-handle",
+    evidence: "product-output",
+    expectedObservable:
+      "Dragging a corner node resizes the selected layer's area about the opposite corner, and the Region size slider follows it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.regionHandle.corner",
+    kind: "canvas-handle",
+    target: "selectedLayer.maskSize",
+    userAction: "Drag the south-east node of the region on the canvas.",
+  },
+  {
+    automated: true,
+    automatedTestName:
+      "studioResizeRegion leaves the height alone when a side node carries only the width",
+    browser: true,
+    browserTestName: "browser: studio region side node widens the layer without heightening it",
+    canvasHandle: {
+      exportCleanTestName: "browser: studio region handles stay out of the exported artifact",
+      outputObservable:
+        "The layer's confined area widens while its top and bottom stay where they were, so the field reaches the sides of the frame and no further up or down.",
+      testId: "studio-region-node-east",
+      writesTarget: "selectedLayer.maskAspect",
+    },
+    componentType: "canvas-handle",
+    evidence: "product-output",
+    expectedObservable:
+      "Dragging a side node changes only the width of the selected layer's area, and the Region aspect slider follows it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.regionHandle.side",
+    kind: "canvas-handle",
+    target: "selectedLayer.maskAspect",
+    userAction: "Drag the east node of the region on the canvas.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the region shape switches between a rectangle and an ellipse",
     browser: true,
     browserTestName: "browser: studio region shape switches the rectangle for an ellipse",

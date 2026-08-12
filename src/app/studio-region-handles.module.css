@@ -1,0 +1,47 @@
+/*
+ * The overlay is fixed to the viewport and positioned from the canvas's own
+ * bounding rectangle, rather than absolutely inside a wrapper. A wrapper would
+ * mean putting an element between the runtime's scene surface and the canvas it
+ * positions, and the canvas is the product's output element -- not something to
+ * reparent for the sake of a coordinate system.
+ */
+.overlay {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 5;
+}
+
+/* Only while a gesture is running, so the overlay never swallows a click that
+   was meant for the canvas or the panel behind it. */
+.dragging {
+  pointer-events: auto;
+}
+
+.body {
+  background: transparent;
+  border: 1px dashed rgb(255 255 255 / 70%);
+  cursor: move;
+  padding: 0;
+  pointer-events: auto;
+  position: fixed;
+}
+
+.body:focus-visible,
+.node:focus-visible {
+  outline: 2px solid rgb(120 180 255);
+  outline-offset: 2px;
+}
+
+.node {
+  background: rgb(255 255 255);
+  border: 1px solid rgb(30 30 30);
+  border-radius: 2px;
+  cursor: pointer;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  padding: 0;
+  pointer-events: auto;
+  position: fixed;
+  width: 12px;
+}
