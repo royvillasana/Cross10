@@ -160,7 +160,15 @@ export function StudioCanvas(): React.JSX.Element {
       // used. Layer coverage proves against real panel rows, and this is what
       // lets a proof assert the assembled order matches the order the panel
       // shows rather than asserting the runtime agrees with itself.
-      data-studio-stack={parameters.layers.map((entry) => entry.typeId).join(">")}
+      //
+      // Hidden layers are omitted rather than listed, because this describes what
+      // was drawn: a layer at zero visibility contributes nothing to the
+      // composite, so including it would make the attribute claim more than the
+      // frame contains.
+      data-studio-stack={parameters.layers
+        .filter((entry) => entry.values.visible !== 0)
+        .map((entry) => entry.typeId)
+        .join(">")}
       data-toolcraft-product-output=""
       ref={canvasRef}
     />
