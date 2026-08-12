@@ -235,3 +235,53 @@ A plain-fill type has no second colour and no palette, so registering it turns `
 **"Plain or striped" is already reachable**, if awkwardly: a gradient layer with both colours equal, confined to an ellipse, is a plain shape. The gap is ergonomic, not expressive, which is why it yields to treatment and handles.
 
 **Nothing re-arms `scene-bounds-image-export`.** R58 deferred that row against "the first layer type with an extent of its own". The region is not that — it clips at composite rather than giving a layer an intrinsic extent — so the deferral stands, and the row stays out rather than joining `canvas.infinity-export` as a second permanently failing requirement.
+
+## R63 — shape layers, free-form shapes, and imported images
+
+Raised by the user: *"the layers [should] be shapes — all the shapes that we had before, the geometric shapes, but also we need to be able to create free-form shapes. Also we need to be able to import images: PNG, SVG, JPEG."*
+
+Three capabilities that look like one request and are not. Each has a different cost, and one of them changes the schema for all the others.
+
+### What already exists
+
+The region carries kind (rectangle or ellipse), size, aspect, placement and rotation (12.1), and it is shaped on the canvas by handles that write those targets (12.3). What is missing is that a region *clips* a layer rather than *being* one — there is no layer whose subject is its own outline.
+
+### Decision
+
+**1. The shape layer type, and the gating bill that comes with it.**
+
+R62 deferred this and priced it: a plain-fill type has no second colour and no palette, so registering it turns `selectedLayer.colorB` and all three Layer Palette controls from always-applicable into conditional ones, and every conditional control spawns applicability requirements that each need their own browser evidence. That bill is now due — it is not avoidable by cleverness, because the user wants shapes as *layers*, not as regions.
+
+Pay it once and deliberately: introduce the type, gate the four controls, and write the applicability proofs in the same batch. Do not spread it across several changes, because a half-gated schema is harder to reason about than either end state.
+
+**2. Free-form shapes are a vertex list, and the handles already exist for them.**
+
+A free-form shape is a closed polygon: an ordered list of points in the same normalised, height-relative units the region already uses. This is the right model rather than bezier paths, because the reference works are hard-edged — every shape in the set is a straight-sided figure — and a curve model would cost a control surface, a solver, and a shader that no reference needs.
+
+The vertex list makes the existing canvas-handle work pay off twice: a vertex is a node handle, and 12.3's geometry module already converts between pointer and region units. What is new is that the number of handles is data rather than a fixed eight, which the handle layer currently assumes.
+
+Rendering: point-in-polygon by crossing count in the fragment shader, bounded by the vertex count. The count must therefore be a workload dimension, since unlike every existing control it changes work per pixel.
+
+**3. Images are two different features wearing one word.**
+
+PNG and JPEG are raster: decode to a texture, sample it, and the layer is an image layer. This is task 3.1, and it needs the runtime's media lifecycle coverage rather than a plain control — the acceptance types already carry `mediaLifecycleCoverage` for exactly this.
+
+SVG is not raster. Rasterising it to a texture throws away the thing that makes it worth importing — it is already a set of shapes, and the product now has a shape layer to put them in. **An imported SVG should become free-form shape layers, one per path, not a picture.** That makes import a conversion into the product's own model rather than a foreign object inside it, and it means an imported logo can be recoloured, tapered, and treated like anything else the user drew.
+
+That decision has a boundary worth stating: SVG features with no equivalent in the shape model — curves, gradients, strokes, clip paths, text — must be reported as unsupported at import rather than silently dropped. Curves specifically will need flattening to line segments, and the flattening tolerance is a real decision, not a constant to guess.
+
+### Consequence
+
+**Order matters, and it is not the order the request was made in.** The shape layer type is the foundation: free-form shapes are a shape layer with a vertex list, and SVG import produces free-form shapes. Raster import is independent of all three and can land whenever. Doing SVG before shapes would mean building a rasteriser that the shape work then makes pointless.
+
+**The handle layer needs to become plural before free-form starts.** It currently renders a fixed eight nodes around one rectangle. A vertex list needs one handle per point, added and removed as the shape is edited, and an acceptance row per handle kind rather than per handle.
+
+**The workload envelope changes for the first time since the stack landed.** Every control so far has been constant per-pixel cost. A polygon's vertex count is not, so `workloadEnvelope` and `rendererPipelineRegistration` both need revisiting — the same revisit 12.7 already asks for after treatment.
+
+### Sequence
+
+1. Shape layer type with the geometric shapes, and the R62 gating bill paid in full.
+2. Handle layer generalised from a fixed eight to a list.
+3. Free-form vertex shapes, with vertex count declared as a workload dimension.
+4. Raster image layer (3.1), PNG and JPEG, through media lifecycle coverage.
+5. SVG import as a conversion to free-form shape layers, with an explicit unsupported-feature report.
