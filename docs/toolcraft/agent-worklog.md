@@ -89,9 +89,11 @@ The quoted evidence must be an exact nontrivial raw substring of `Request` with 
 
 ### Export
 
-- Decision: Runtime-owned image export drawing the product frame through the preview renderer, with the background composited by the runtime.
-- Reason: Runtime owns typed image actions end to end, and letting it own the artifact background is what keeps the transparent-image coverage claim true.
-- Evidence: `exportRenderer` in `app-composition.tsx` draws the stack alone; `studio-export-sections.ts` declares the Image Export section and its actions.
+- Decision: The primary artifact is the assembled shader source — a script the author takes elsewhere. Image and video export are the secondary surface, and an exported frame is always exactly the canvas: its bounds are the artboard's bounds, in every canvas mode.
+- Reason: A shader field has no extent of its own; it fills whatever it is asked to fill. There is no smaller "real" content inside the frame for an export to discover, so the artboard is the only honest boundary — and it is the one an author sets deliberately through Canvas width and height.
+- Evidence: `sceneBoundsProvider` in `app-composition.tsx` returns the `canvas.size` rectangle, and `exportRenderer` draws that frame through the same renderer as preview. Measured: finite and infinite exports are both 4096x2304.
+- Consequence: `canvas.infinity-export` cannot be proved by this product, and not only until layers gain bounds. Its coverage asks for evidence that an infinite export crops to the union of visible scene elements *rather than* the artboard, and the protected helper requires the infinite artifact to differ in size from the finite one. Under this decision they are equal by design, so the requirement is inapplicable rather than outstanding.
+- Follow-up: The contract enforces that coverage from signed validators, and neither schema lever opens it — `fixed-output` sizing is rejected outright for products with export actions, and removing the export surface contradicts the declared image export intent. Both were tried and measured. Resolving it belongs upstream in the shared Toolcraft source, which is where `core/runtime-boundary.md` sends a wrong shared behaviour, followed by a regeneration or sync of this app.
 
 ### Performance
 
