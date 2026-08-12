@@ -161,10 +161,26 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.maskAspect",
         "selectedLayer.maskCenterX",
         "selectedLayer.maskCenterY",
+        "selectedLayer.maskShape",
+        "selectedLayer.maskRotation",
         "selectedLayer.maskInvert",
       ],
       title: "Layer Region",
       workflowStage: "confine",
+    },
+    {
+      entity: "Selected layer",
+      entityId: "selected-layer-palette",
+      groupingReason:
+        "The inks the layer works in and how many of them are in play. Independent of the kind because the slots mean something to both -- extra inks in a stripe rhythm, extra stops in a ramp -- so they are neither gated nor placed beside the gate.",
+      id: "selected-layer-palette",
+      targets: [
+        "selectedLayer.paletteSlots",
+        "selectedLayer.colorC",
+        "selectedLayer.colorD",
+      ],
+      title: "Layer Palette",
+      workflowStage: "ink",
     },
     {
       entity: "Image export",

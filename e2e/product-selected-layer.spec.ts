@@ -1200,3 +1200,318 @@ test("browser: studio region moves down the frame", async ({ page }) => {
     { requirementId: "selectedLayer.maskCenterY", target: "selectedLayer.maskCenterY" },
   );
 });
+
+/**
+ * Which inks the layer is actually working in, and how many.
+ *
+ * Every ink in use covers a fair share of the row -- a fifth or more when four
+ * are in play -- while the blend between two neighbouring bands covers well
+ * under a percent. Measurement across two, three and four slots put the
+ * smallest ink at 20% and the largest blend at 0.8%, so a 5% share separates
+ * them with room to spare and without hard-coding how many there are.
+ *
+ * The whole row is read rather than a leading slice: a slice narrow enough to
+ * be cheap covers only a band or two, which cannot tell a four-ink cycle from a
+ * two-ink one.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const PALETTE_INKS = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const pixels = new Uint8Array(canvas.width * 4);
+    gl.readPixels(
+      0,
+      Math.floor(canvas.height / 2),
+      canvas.width,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    const counts = new Map<string, number>();
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] < 250) continue;
+      const hex = `#${[pixels[index], pixels[index + 1], pixels[index + 2]]
+        .map((channel) => channel.toString(16).padStart(2, "0"))
+        .join("")}`;
+      counts.set(hex, (counts.get(hex) ?? 0) + 1);
+    }
+
+    const total = canvas.width;
+    outputSignature =
+      [...counts.entries()]
+        .filter(([, count]) => count / total > 0.05)
+        .map(([hex]) => hex)
+        .sort()
+        .join("|") || "none";
+  }
+
+  const hexField = (label: string): string =>
+    root
+      .querySelector<HTMLInputElement>(`input[aria-label="${label} hex"]`)
+      ?.value.toLowerCase() ?? "";
+
+  const slots = root.querySelector('input[aria-label="Colour slots"]');
+
+  return {
+    controlValue: {
+      colorC: hexField("Third colour"),
+      colorD: hexField("Fourth colour"),
+      slots: Number(slots?.getAttribute("aria-valuenow") ?? Number.NaN),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+/**
+ * Few enough bands that every slot of the cycle gets a wide run of its own,
+ * which is what lets a share threshold see the whole palette at once.
+ */
+async function openStudioPaletteLayer(
+  page: Parameters<typeof openStudioSingleLayer>[0],
+) {
+  const fixture = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  return fixture;
+}
+
+test("browser: studio colour slots change how many inks the layer cycles", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPaletteLayer(page);
+
+  // Two inks alternating becomes four inks in rotation: the third and fourth
+  // colours enter the field, and the first two keep the shares they had.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(PALETTE_INKS),
+    session.controlAction("selectedLayer.paletteSlots", async () => {
+      await setStudioSlider(page, "Colour slots", 4);
+    }),
+    {
+      controlValue: { colorC: "#ff0000", colorD: "#0000ff", slots: 4 },
+      outputSignature: "#000000|#0000ff|#ff0000|#ffffff",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.paletteSlots",
+      target: "selectedLayer.paletteSlots",
+    },
+  );
+});
+
+test("browser: studio third palette colour recolours its own slot", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPaletteLayer(page);
+  await setStudioSlider(page, "Colour slots", 4);
+
+  // Red leaves the field and green takes its place; the other three inks are
+  // exactly where they were, which is what makes this the third slot rather
+  // than a recolour of the whole layer.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(PALETTE_INKS),
+    session.controlAction("selectedLayer.colorC", async () => {
+      await setStudioColorHex(page, "Third colour", "#00FF00");
+    }),
+    {
+      controlValue: { colorC: "#00ff00", colorD: "#0000ff", slots: 4 },
+      outputSignature: "#000000|#0000ff|#00ff00|#ffffff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.colorC", target: "selectedLayer.colorC" },
+  );
+});
+
+test("browser: studio fourth palette colour occupies the last slot", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPaletteLayer(page);
+  await setStudioSlider(page, "Colour slots", 4);
+
+  // The same reading against the last slot: blue goes, yellow arrives, and the
+  // first three inks are untouched.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(PALETTE_INKS),
+    session.controlAction("selectedLayer.colorD", async () => {
+      await setStudioColorHex(page, "Fourth colour", "#FFFF00");
+    }),
+    {
+      controlValue: { colorC: "#ff0000", colorD: "#ffff00", slots: 4 },
+      outputSignature: "#000000|#ff0000|#ffff00|#ffffff",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.colorD", target: "selectedLayer.colorD" },
+  );
+});
+
+/**
+ * Where the region reaches, read at the corners of its bounding box, at the
+ * middle of its sides, and at the middle of its caps.
+ *
+ * Three places rather than one because the two controls this serves change
+ * different pairs of them. A rectangle reaches all three; the ellipse inscribed
+ * in it gives up the corners and keeps the rest, which is exactly the
+ * difference between the shapes. A wide region reaches its sides and not its
+ * caps, and turning it a quarter-turn trades one for the other -- which a
+ * reading of the corners alone could not tell from the region simply shrinking.
+ *
+ * The sample points sit at nine tenths of each half-extent so they fall inside
+ * a rectangle with room to spare, which is what makes "outside" mean the shape
+ * and not the sampling. Measured before the expectations were written: the
+ * rectangle reads field at all eight points, the ellipse ground at all four
+ * corners.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const REGION_EXTENT = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number, fy: number): string => {
+      const width = 40;
+      const height = 6;
+      const x = Math.min(
+        Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const y = Math.min(
+        Math.max(Math.round(canvas.height * fy) - height / 2, 0),
+        canvas.height - height,
+      );
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const colours = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        colours.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      // The bands run across the frame, so a patch always crosses several of
+      // them where the layer draws and sees one flat colour where it does not.
+      return colours.size > 1 ? "field" : "ground";
+    };
+
+    const agree = (places: readonly string[]): string =>
+      places.every((place) => place === places[0]) ? places[0] : "mixed";
+
+    const corners = agree([
+      at(0.5 - 0.152, 0.5 - 0.27),
+      at(0.5 + 0.152, 0.5 - 0.27),
+      at(0.5 - 0.152, 0.5 + 0.27),
+      at(0.5 + 0.152, 0.5 + 0.27),
+    ]);
+    const sides = agree([at(0.5 - 0.152, 0.5), at(0.5 + 0.152, 0.5)]);
+    const caps = agree([at(0.5, 0.5 - 0.27), at(0.5, 0.5 + 0.27)]);
+
+    outputSignature = `corners=${corners} sides=${sides} caps=${caps}`;
+  }
+
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.maskShape"]')
+    ?.querySelector('[role="combobox"]');
+
+  return {
+    controlValue: {
+      aspect: sliderValue("Region aspect"),
+      rotation: sliderValue("Region rotation"),
+      shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+      size: sliderValue("Region size"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio region shape switches the rectangle for an ellipse", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Region size", 0.3);
+
+  // The corners go and nothing else does: the ellipse is inscribed in the
+  // rectangle it replaces rather than being a smaller region of the same kind.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(REGION_EXTENT),
+    session.controlAction("selectedLayer.maskShape", async () => {
+      await setStudioSelectValue(page, "selectedLayer.maskShape", "Ellipse");
+    }),
+    {
+      controlValue: { aspect: 1, rotation: 0, shape: "Ellipse", size: 0.3 },
+      outputSignature: "corners=ground sides=field caps=field",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskShape", target: "selectedLayer.maskShape" },
+  );
+});
+
+test("browser: studio region rotation turns the region about its own centre", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Region size", 0.15);
+  await setStudioSlider(page, "Region aspect", 4);
+
+  // A wide region that reached its sides and not its caps reaches its caps and
+  // not its sides. Trading one pair for the other is what separates a turn from
+  // a resize, which would have lost both or gained both.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(REGION_EXTENT),
+    session.controlAction("selectedLayer.maskRotation", async () => {
+      await setStudioSlider(page, "Region rotation", 90);
+    }),
+    {
+      controlValue: { aspect: 4, rotation: 90, shape: "Rectangle", size: 0.15 },
+      outputSignature: "corners=ground sides=ground caps=field",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.maskRotation",
+      target: "selectedLayer.maskRotation",
+    },
+  );
+});

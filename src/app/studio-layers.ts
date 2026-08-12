@@ -106,6 +106,25 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
    */
   { defaultValue: 0, name: "maskCenterX", type: "float" },
   { defaultValue: 0, name: "maskCenterY", type: "float" },
+  /**
+   * Whether the region is a rectangle or an ellipse inscribed in it. The two
+   * share every other control -- size, aspect, placement, rotation, sense --
+   * because they are the same extent read two ways, which is why this is a kind
+   * on the region rather than a second region construct.
+   */
+  {
+    defaultValue: 0,
+    name: "maskShape",
+    optionValues: ["rectangle", "ellipse"],
+    type: "float",
+  },
+  /**
+   * Rotation of the region about its own centre, in degrees. Applied to the
+   * sampling coordinate before the extent is tested, so it turns the region and
+   * not the layer inside it -- a rotated zone still carries bands at whatever
+   * angle the pattern asks for.
+   */
+  { defaultValue: 0, name: "maskRotation", type: "float" },
   {
     booleanControl: true,
     defaultValue: 0,
@@ -120,6 +139,33 @@ vec3 studioLinearToSrgb(vec3 linear) {
   vec3 low = clamped * 12.92;
   vec3 high = 1.055 * pow(clamped, vec3(1.0 / 2.4)) - 0.055;
   return mix(high, low, step(clamped, vec3(0.0031308)));
+}
+
+// One colour from the palette at position t, walking whichever slots are in use.
+// Shared by both bodies so a four-colour stripe field and a four-stop gradient
+// agree about what the slots mean.
+vec3 studioPaletteRamp(float t, float slots, vec3 a, vec3 b, vec3 c, vec3 d) {
+  float clamped = clamp(t, 0.0, 1.0);
+  if (slots < 2.5) return mix(a, b, clamped);
+  if (slots < 3.5) {
+    float scaled = clamped * 2.0;
+    return scaled < 1.0 ? mix(a, b, scaled) : mix(b, c, scaled - 1.0);
+  }
+  float scaled = clamped * 3.0;
+  if (scaled < 1.0) return mix(a, b, scaled);
+  if (scaled < 2.0) return mix(b, c, scaled - 1.0);
+  return mix(c, d, scaled - 2.0);
+}
+
+// The slot a band falls in, as flat colour rather than a ramp. This is the
+// stripe reading of a palette: consecutive bands take consecutive inks, which is
+// what makes a three or four ink rhythm rather than a gradient.
+vec3 studioPaletteSlot(float index, float slots, vec3 a, vec3 b, vec3 c, vec3 d) {
+  float slot = mod(floor(index), max(slots, 1.0));
+  if (slot < 0.5) return a;
+  if (slot < 1.5) return b;
+  if (slot < 2.5) return c;
+  return d;
 }
 
 // Source-over in linear light. Weight folds opacity and visibility together so a
@@ -143,8 +189,11 @@ vec4 studioStripesBody(
   float separator,
   float jitterAmount,
   float jitterFrequency,
+  float paletteSlots,
   vec3 colorA,
-  vec3 colorB
+  vec3 colorB,
+  vec3 colorC,
+  vec3 colorD
 ) {
   // Normalised against height so the field does not stretch with aspect ratio.
   vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
@@ -198,7 +247,15 @@ vec4 studioStripesBody(
   float seamDistance = min(position, 1.0 - position);
   float coverage = smoothstep(separator - edge, separator + edge, seamDistance);
 
-  return vec4(mix(colorA, colorB, band), coverage);
+  // Two inks keep the original reading exactly: one colour either side of the
+  // split. Beyond two, consecutive bands take consecutive inks and the split
+  // divides each band between its own ink and the one after it, which is how a
+  // three or four colour rhythm carries a wedge without losing either.
+  vec3 near = studioPaletteSlot(bandIndex, paletteSlots, colorA, colorB, colorC, colorD);
+  vec3 far = studioPaletteSlot(bandIndex + 1.0, paletteSlots, colorA, colorB, colorC, colorD);
+  vec3 pair = paletteSlots < 2.5 ? mix(colorA, colorB, band) : mix(near, far, band);
+
+  return vec4(pair, coverage);
 }
 `;
 
@@ -208,8 +265,11 @@ vec4 studioGradientBody(
   vec2 resolution,
   float angle,
   float rampType,
+  float paletteSlots,
   vec3 colorA,
-  vec3 colorB
+  vec3 colorB,
+  vec3 colorC,
+  vec3 colorD
 ) {
   vec2 uv = fragmentPosition / max(resolution, vec2(1.0));
   vec2 centered = uv - 0.5;
@@ -224,7 +284,10 @@ vec4 studioGradientBody(
     position = fract((atan(centered.y, centered.x) - radians) * 0.15915494309189535 + 1.0);
   }
 
-  return vec4(mix(colorA, colorB, clamp(position, 0.0, 1.0)), 1.0);
+  return vec4(
+    studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD),
+    1.0
+  );
 }
 `;
 
@@ -244,8 +307,11 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
           optionValues: ["linear", "radial", "angular"],
           type: "float",
         },
+        { defaultValue: 2, name: "paletteSlots", type: "float" },
         { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
+        { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorD", type: "vec3" },
       ],
     },
     stripes: {
@@ -270,8 +336,11 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         // fingerprint that depends on backing size and GPU. Carried as a fixed
         // characteristic of the field until it has an observable worth naming.
         { defaultValue: 12, name: "jitterFrequency", type: "float" },
+        { defaultValue: 2, name: "paletteSlots", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
+        { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorD", type: "vec3" },
       ],
     },
   };
@@ -349,18 +418,35 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
   const weight = `${name("opacity")} * ${name("visible")} * maskCoverage`;
 
   return `  {
-    // The layer is confined to a rectangle centred on the frame, and the sense
-    // decides whether it draws inside that rectangle or everywhere except it.
+    // The layer is confined to a region placed on the frame, and the sense
+    // decides whether it draws inside that region or everywhere except it.
     // Coverage folds into the composite weight rather than discarding the
     // fragment, so a masked-out layer contributes exactly nothing and still
     // costs the same as one that does not.
-    vec2 maskOffset = abs(
+    vec2 maskDelta =
       (fragmentPosition - uResolution * 0.5) / max(uResolution.y, 1.0)
-        - vec2(${name("maskCenterX")}, ${name("maskCenterY")})
-    );
-    float maskInside =
-      step(maskOffset.x, ${name("maskSize")} * max(${name("maskAspect")}, 0.01))
-        * step(maskOffset.y, ${name("maskSize")});
+        - vec2(${name("maskCenterX")}, ${name("maskCenterY")});
+    // Turn the coordinate into the region's own frame rather than turning the
+    // region: the test below stays axis-aligned, and the layer inside keeps
+    // whatever angle its pattern asks for.
+    float maskAngle = radians(${name("maskRotation")});
+    vec2 maskOffset = abs(vec2(
+      maskDelta.x * cos(maskAngle) + maskDelta.y * sin(maskAngle),
+      -maskDelta.x * sin(maskAngle) + maskDelta.y * cos(maskAngle)
+    ));
+    float maskWidth = ${name("maskSize")} * max(${name("maskAspect")}, 0.01);
+    // Rectangle and ellipse share the same half-extents. The rectangle asks
+    // whether both are within reach; the ellipse asks the same question of the
+    // two together, which is the only difference between them.
+    float maskInside = ${name("maskShape")} < 0.5
+      ? step(maskOffset.x, maskWidth) * step(maskOffset.y, ${name("maskSize")})
+      : step(
+          length(vec2(
+            maskOffset.x / max(maskWidth, 0.0001),
+            maskOffset.y / max(${name("maskSize")}, 0.0001)
+          )),
+          1.0
+        );
     float maskCoverage = ${name("maskSize")} <= 0.0
       ? 1.0
       : mix(maskInside, 1.0 - maskInside, step(0.5, ${name("maskInvert")}));
