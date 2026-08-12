@@ -2,14 +2,309 @@
   "version": 3,
   "owners": [
     {
-      "acceptanceIds": ["persistence.reload"],
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "layers.selection",
+        "persistence.reload",
+        "selectedLayer.type"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-acceptance-data.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "layers.grouping",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "persistence.reload",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-acceptance.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "persistence.reload"
+      ],
       "kind": "functional",
       "path": "src/app/app-composition.tsx"
     },
     {
-      "acceptanceIds": ["persistence.reload"],
+      "acceptanceIds": [
+        "persistence.reload"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-identity.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.render-scale",
+        "layers.reorder",
+        "layers.visibility",
+        "selectedLayer.count"
+      ],
+      "kind": "performance",
+      "path": "src/app/app-performance.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "layers.grouping",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "persistence.reload",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
       "kind": "functional",
       "path": "src/app/app-schema.ts"
+    },
+    {
+      "acceptanceIds": [
+        "layers.grouping",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-acceptance-rows.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-background-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.render-scale"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-canvas.module.css"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-canvas.tsx",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "canvas.infinity-export",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-export-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-layer-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "layers.selection",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-layer-sync.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-layers.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-pipeline.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.render-scale",
+        "layers.reorder",
+        "layers.visibility",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-scene.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-stack-render.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "layers.grouping",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "persistence.reload",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-stack-state.ts"
     }
   ]
 }
