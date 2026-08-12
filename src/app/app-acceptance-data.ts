@@ -156,7 +156,13 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       groupingReason:
         "Where the selected layer is allowed to draw. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages.",
       id: "selected-layer-region",
-      targets: ["selectedLayer.maskSize", "selectedLayer.maskInvert"],
+      targets: [
+        "selectedLayer.maskSize",
+        "selectedLayer.maskAspect",
+        "selectedLayer.maskCenterX",
+        "selectedLayer.maskCenterY",
+        "selectedLayer.maskInvert",
+      ],
       title: "Layer Region",
       workflowStage: "confine",
     },

@@ -1055,3 +1055,148 @@ test("browser: studio region sense swaps which side the layer draws on", async (
     { requirementId: "selectedLayer.maskInvert", target: "selectedLayer.maskInvert" },
   );
 });
+
+/**
+ * Which edges of the frame the layer reaches.
+ *
+ * Placement is about where the region sits, so the reading asks the frame's four
+ * edges whether the layer got there. Widening it reaches left and right without
+ * reaching further up or down; moving it across trades one side for the other;
+ * moving it down trades top for bottom. One reading names all three because each
+ * changes a different pair.
+ *
+ * Reports only the controls this fixture touches, so an expectation stays
+ * legible rather than restating every slider on the layer.
+ */
+const REGION_PLACEMENT = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number, fy: number) => {
+      const width = 16;
+      const height = Math.min(Math.floor(canvas.height / 4), canvas.height);
+      const x = Math.min(
+        Math.max(Math.floor(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const y = Math.min(
+        Math.max(Math.floor(canvas.height * fy) - height / 2, 0),
+        canvas.height - height,
+      );
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const seen = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      // Bands run across the frame in this fixture, so a strip always crosses
+      // them where the layer draws and sees one flat colour where it does not.
+      return seen.size > 1 ? "field" : "ground";
+    };
+
+    outputSignature = `L=${at(0.08, 0.5)} R=${at(0.92, 0.5)} T=${at(0.5, 0.12)} B=${at(0.5, 0.88)}`;
+  }
+
+  return {
+    controlValue: {
+      across: sliderValue("Region across"),
+      angle: sliderValue("Angle"),
+      aspect: sliderValue("Region aspect"),
+      down: sliderValue("Region down"),
+      region: sliderValue("Region size"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+/** A centred region, small enough to leave all four edges uncovered. */
+async function openStudioPlacedRegion(page: Parameters<typeof openStudioSingleLayer>[0]) {
+  const fixture = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Angle", 90);
+  await setStudioSlider(page, "Region size", 0.3);
+  return fixture;
+}
+
+const PLACEMENT_DEFAULTS = { across: 0, angle: 90, aspect: 1, down: 0, region: 0.3 };
+
+test("browser: studio region aspect reshapes the rectangle", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPlacedRegion(page);
+
+  // Wider without being taller: the sides come within reach while the top and
+  // bottom stay exactly as they were.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(REGION_PLACEMENT),
+    session.controlAction("selectedLayer.maskAspect", async () => {
+      await setStudioSlider(page, "Region aspect", 4);
+    }),
+    {
+      controlValue: { ...PLACEMENT_DEFAULTS, aspect: 4 },
+      outputSignature: "L=field R=field T=field B=field",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskAspect", target: "selectedLayer.maskAspect" },
+  );
+});
+
+test("browser: studio region moves across the frame", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPlacedRegion(page);
+
+  // One side for the other: the region leaves the centre and the left edge is
+  // covered while the right is not.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(REGION_PLACEMENT),
+    session.controlAction("selectedLayer.maskCenterX", async () => {
+      await setStudioSlider(page, "Region across", -0.6);
+    }),
+    {
+      controlValue: { ...PLACEMENT_DEFAULTS, across: -0.6 },
+      outputSignature: "L=field R=ground T=ground B=ground",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskCenterX", target: "selectedLayer.maskCenterX" },
+  );
+});
+
+test("browser: studio region moves down the frame", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioPlacedRegion(page);
+
+  // Top for bottom, and the sides untouched, which is what separates a vertical
+  // move from a horizontal one.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(REGION_PLACEMENT),
+    session.controlAction("selectedLayer.maskCenterY", async () => {
+      await setStudioSlider(page, "Region down", -0.4);
+    }),
+    {
+      controlValue: { ...PLACEMENT_DEFAULTS, down: -0.4 },
+      outputSignature: "L=ground R=ground T=field B=ground",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskCenterY", target: "selectedLayer.maskCenterY" },
+  );
+});

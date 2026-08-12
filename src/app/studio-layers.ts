@@ -93,6 +93,19 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
    * every layer starts unmasked.
    */
   { defaultValue: 0, name: "maskSize", type: "float" },
+  /**
+   * Width of the region relative to its height. One is square; larger is a wide
+   * band, smaller a tall column. Aspect rather than a second size, so resizing
+   * the region does not require moving two controls in step to keep its shape.
+   */
+  { defaultValue: 1, name: "maskAspect", type: "float" },
+  /**
+   * Centre of the region, measured in the same units as the field: normalised
+   * against height, from the centre of the frame. Zero leaves it centred, which
+   * is where an unplaced region belongs.
+   */
+  { defaultValue: 0, name: "maskCenterX", type: "float" },
+  { defaultValue: 0, name: "maskCenterY", type: "float" },
   {
     booleanControl: true,
     defaultValue: 0,
@@ -341,10 +354,13 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
     // Coverage folds into the composite weight rather than discarding the
     // fragment, so a masked-out layer contributes exactly nothing and still
     // costs the same as one that does not.
-    vec2 maskOffset =
-      abs(fragmentPosition - uResolution * 0.5) / max(uResolution.y, 1.0);
+    vec2 maskOffset = abs(
+      (fragmentPosition - uResolution * 0.5) / max(uResolution.y, 1.0)
+        - vec2(${name("maskCenterX")}, ${name("maskCenterY")})
+    );
     float maskInside =
-      step(maskOffset.x, ${name("maskSize")}) * step(maskOffset.y, ${name("maskSize")});
+      step(maskOffset.x, ${name("maskSize")} * max(${name("maskAspect")}, 0.01))
+        * step(maskOffset.y, ${name("maskSize")});
     float maskCoverage = ${name("maskSize")} <= 0.0
       ? 1.0
       : mix(maskInside, 1.0 - maskInside, step(0.5, ${name("maskInvert")}));

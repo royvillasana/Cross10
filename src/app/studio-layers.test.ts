@@ -54,6 +54,9 @@ describe("per-layer uniform mangling", () => {
       "opacity",
       "visible",
       "maskSize",
+      "maskAspect",
+      "maskCenterX",
+      "maskCenterY",
       "maskInvert",
     ]);
   });
