@@ -4,6 +4,7 @@ import {
   readStudioLayerRecord,
   STUDIO_LAYER_RECORD_TARGET,
 } from "./studio-stack-state";
+import { studioColorToLinear } from "./studio-color";
 import type { StudioLayerValues, StudioStackSceneParameters } from "./studio-stack-render";
 
 /**
@@ -50,76 +51,6 @@ const RENDER_SCALE_TARGET = "canvas.renderScale";
 
 /** Opaque black, used when a colour cannot be read rather than failing the draw. */
 const FALLBACK_COLOR: readonly [number, number, number] = [0, 0, 0];
-
-/**
- * sRGB transfer function, inverse of `studioLinearToSrgb` in the shader.
- *
- * The two must stay inverses: the shader encodes on the way out, so a colour
- * that is decoded here and encoded there has to survive the round trip, or a
- * flat single-layer stack would not match the colour the user picked.
- */
-function srgbChannelToLinear(channel: number): number {
-  const normalized = Math.min(Math.max(channel, 0), 1);
-
-  return normalized <= 0.04045
-    ? normalized / 12.92
-    : Math.pow((normalized + 0.055) / 1.055, 2.4);
-}
-
-/**
- * `#rgb` and `#rrggbb`, with or without the hash.
- *
- * Anything else returns undefined rather than a guess: a malformed colour is
- * persisted state that should degrade to the fallback, not silently become a
- * different colour the user never chose.
- */
-function readHexColor(value: string): readonly [number, number, number] | undefined {
-  const hex = value.trim().replace(/^#/u, "");
-  const expanded =
-    hex.length === 3
-      ? hex
-          .split("")
-          .map((channel) => `${channel}${channel}`)
-          .join("")
-      : hex;
-
-  if (expanded.length !== 6 || !/^[0-9a-f]{6}$/iu.test(expanded)) return undefined;
-
-  const channels = [0, 2, 4].map((offset) =>
-    Number.parseInt(expanded.slice(offset, offset + 2), 16) / 255,
-  );
-
-  return [
-    srgbChannelToLinear(channels[0] ?? 0),
-    srgbChannelToLinear(channels[1] ?? 0),
-    srgbChannelToLinear(channels[2] ?? 0),
-  ];
-}
-
-function isNumericTriple(value: unknown): value is readonly [number, number, number] {
-  return (
-    Array.isArray(value) &&
-    value.length === 3 &&
-    value.every((channel) => typeof channel === "number" && Number.isFinite(channel))
-  );
-}
-
-/**
- * A colour in whichever representation it is stored in, as linear light.
- *
- * Both are accepted because both exist in the product today: the schema colour
- * controls carry sRGB hex, while the layer-type registry declares its vec3
- * defaults as numeric triples. A numeric triple is taken to be linear already —
- * it comes from the registry rather than from a picker — so it passes through
- * untouched.
- */
-export function studioColorToLinear(
-  value: unknown,
-): readonly [number, number, number] | undefined {
-  if (typeof value === "string") return readHexColor(value);
-  if (isNumericTriple(value)) return value;
-  return undefined;
-}
 
 function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
   const values: Record<string, number | readonly [number, number, number]> = {};

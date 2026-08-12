@@ -162,6 +162,15 @@
     },
     {
       "acceptanceIds": [
+        "background.color",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-color.ts"
+    },
+    {
+      "acceptanceIds": [
         "canvas.infinity-export",
         "export.image-action",
         "export.image-format",

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildStudioSceneParameters,
-  readStudioRenderScale,
-  studioColorToLinear,
-} from "./studio-scene";
+import { buildStudioSceneParameters, readStudioRenderScale } from "./studio-scene";
 import { STUDIO_LAYER_RECORD_TARGET } from "./studio-stack-state";
 
 const layer = (id: string, overrides: Partial<{ kind: string; visible: boolean }> = {}) => ({
@@ -14,35 +10,6 @@ const layer = (id: string, overrides: Partial<{ kind: string; visible: boolean }
 });
 
 describe("studio scene parameters", () => {
-  it("decodes sRGB hex into linear light", () => {
-    // Mid grey is the case worth pinning: sRGB 50% is roughly 21.6% linear, not
-    // 50%. If this ever reads 0.5 the transfer function has been dropped and
-    // every overlap composites too bright.
-    const grey = studioColorToLinear("#808080");
-
-    expect(grey?.[0]).toBeCloseTo(0.2159, 3);
-    expect(studioColorToLinear("#ffffff")).toEqual([1, 1, 1]);
-    expect(studioColorToLinear("#000000")).toEqual([0, 0, 0]);
-  });
-
-  it("accepts short hex and a missing hash", () => {
-    expect(studioColorToLinear("#fff")).toEqual([1, 1, 1]);
-    expect(studioColorToLinear("ffffff")).toEqual([1, 1, 1]);
-  });
-
-  it("passes a numeric triple through as already linear", () => {
-    // The layer-type registry declares its vec3 defaults as numbers rather than
-    // hex, and those are linear by construction. Running them through the
-    // transfer function would darken every default colour.
-    expect(studioColorToLinear([0.25, 0.5, 0.75])).toEqual([0.25, 0.5, 0.75]);
-  });
-
-  it("rejects a malformed colour rather than guessing one", () => {
-    expect(studioColorToLinear("#12345")).toBeUndefined();
-    expect(studioColorToLinear("not-a-colour")).toBeUndefined();
-    expect(studioColorToLinear(42)).toBeUndefined();
-  });
-
   it("prunes record entries whose layers no longer exist", () => {
     // A record read from persistence can name a deleted layer. Left in, its
     // values would be uploaded as a uniform for a layer the stack does not draw.

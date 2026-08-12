@@ -47,7 +47,7 @@ The quoted evidence must be an exact nontrivial raw substring of `Request` with 
 - State/output mapping: The runtime `layers` array supplies order and visibility; `stack.layerRecord` supplies per-layer values, projected into the `selectedLayer.*` controls for whichever layer is selected and folded back on edit; `appearance.background` and `canvas.renderScale` supply the background colour and backing scale. `buildStudioSceneParameters` prunes the record against the live layer array and converts sRGB hex to linear light, and the result is both the pass cache input and the renderer's argument, so preview and export read one scene.
 - Performance intent: ordinary-product-work
 - Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: The colour controls carry hex strings while `collectStudioSelectedLayerEdit` accepts only numeric triples, so a colour edit does not currently reach the record; the representation has to be settled before colour editing can be proved. The `stack-depth` maximum is a declared proof ceiling chosen as a plausible authoring depth rather than derived from measurement. The non-constant composite pass leaves a kernel benchmark requirement pending, which functional delivery defers.
+- Risks: The `stack-depth` maximum is a declared proof ceiling chosen as a plausible authoring depth rather than derived from measurement, so a measurement could move it. The non-constant composite pass leaves a kernel benchmark requirement pending, which functional delivery defers. Colour now round-trips through the record, but only unit proof covers it so far; the browser proof arrives with the rest of the layer surface.
 
 ## Decisions
 
@@ -110,6 +110,6 @@ Protected receipts own changed files, the derived plan, commands, selectors, rep
 
 ## Risks
 
-- Risk: Colour edits do not currently reach the layer record, because the controls carry hex strings and the collector accepts only numeric triples. Colour editing cannot be proved end to end until that representation is settled.
+- Risk: Colour round-trips through the record under unit proof only. The browser proof that an author's picked colour reaches the composite arrives with the rest of the layer surface.
 - Risk: The declared `stack-depth` maximum is a proof ceiling rather than a measured one, and a measurement could move it.
 - Risk: The composite pass is non-constant, so a kernel benchmark requirement stays pending until an authorized performance run resolves it.

@@ -177,4 +177,42 @@ describe("stack construction", () => {
     expect(stack[0].values.count).toBe(24);
     expect(stack[0].values.colorA).toEqual([1, 1, 1]);
   });
+
+  it("folds a colour control's hex edit into the record", () => {
+    // The colour controls hold hex, and this collector used to accept only a
+    // numeric triple — so a colour edit was silently dropped and every layer
+    // rendered with its default colour no matter what the author picked.
+    const entry = collectStudioSelectedLayerEdit(
+      { typeId: "stripes", values: {} },
+      { "selectedLayer.colorA": "#ff0000" },
+    );
+
+    expect(entry.values.colorA).toEqual([1, 0, 0]);
+  });
+
+  it("projects a stored colour back as hex the picker can hold", () => {
+    const assignments = projectStudioLayerEntry({
+      typeId: "stripes",
+      values: { colorA: [1, 0, 0] },
+    });
+
+    expect(
+      assignments.find((entry) => entry.target === "selectedLayer.colorA")?.value,
+    ).toBe("#ff0000");
+  });
+
+  it("survives an edit and projection round trip unchanged", () => {
+    // Selection changes run project, edits run collect. A drift in either
+    // direction would walk a colour away from what the author chose each time
+    // they clicked between layers.
+    const edited = collectStudioSelectedLayerEdit(
+      { typeId: "stripes", values: {} },
+      { "selectedLayer.colorA": "#3c8fd1" },
+    );
+    const projected = projectStudioLayerEntry(edited);
+
+    expect(
+      projected.find((entry) => entry.target === "selectedLayer.colorA")?.value,
+    ).toBe("#3c8fd1");
+  });
 });

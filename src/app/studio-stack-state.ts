@@ -22,6 +22,11 @@ import {
   type StudioLayerTypeId,
 } from "./studio-layers";
 import {
+  isStudioLinearColor,
+  studioColorToLinear,
+  studioLinearToHex,
+} from "./studio-color";
+import {
   studioLayerDefaults,
   type StudioLayerValues,
 } from "./studio-stack-render";
@@ -149,9 +154,16 @@ export function projectStudioLayerEntry(
   }> = [{ target: STUDIO_LAYER_TYPE_TARGET, value: entry.typeId }];
 
   for (const uniform of studioLayerUniforms(entry.typeId)) {
+    const stored = entry.values[uniform.name] ?? uniform.defaultValue;
     assignments.push({
       target: studioSelectedLayerTarget(uniform.name),
-      value: entry.values[uniform.name] ?? uniform.defaultValue,
+      // The record holds linear triples; a colour control holds hex. Projecting
+      // the triple unconverted would push an array into a picker, which is how
+      // the value silently failed to round-trip before.
+      value:
+        uniform.type === "vec3" && isStudioLinearColor(stored)
+          ? studioLinearToHex(stored)
+          : stored,
     });
   }
   return assignments;
@@ -170,13 +182,12 @@ export function collectStudioSelectedLayerEdit(
     const raw = values[studioSelectedLayerTarget(uniform.name)];
     if (uniform.type === "float" && typeof raw === "number") {
       next[uniform.name] = raw;
-    } else if (
-      uniform.type === "vec3" &&
-      Array.isArray(raw) &&
-      raw.length === 3 &&
-      raw.every((channel) => typeof channel === "number")
-    ) {
-      next[uniform.name] = raw as unknown as readonly [number, number, number];
+    } else if (uniform.type === "vec3") {
+      // A colour control holds sRGB hex, so the edit decodes here rather than
+      // being dropped for not already being a triple. Accepting a triple too
+      // keeps a value that never went through a picker working unchanged.
+      const color = studioColorToLinear(raw);
+      if (color) next[uniform.name] = color;
     }
   }
 
