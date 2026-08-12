@@ -161,6 +161,21 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.mirror",
         type: "switch",
       },
+      separator: {
+        semanticGroup: "pattern",
+        applicability: STRIPES_APPLICABILITY,
+        defaultValue: 0,
+        label: "Band separator",
+        max: 0.4,
+        min: 0,
+        performanceReason:
+          "The gap is one smoothstep against the distance already computed for the band edge.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.separator",
+        type: "slider",
+      },
       widthRatio: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,

@@ -207,6 +207,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares the band separator opens a gap to what sits beneath",
+    browser: true,
+    browserTestName: "browser: studio band separator opens a gap to what sits beneath",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Raising Band separator opens an unpainted gap at each band seam, so whatever sits beneath the layer shows through it, and the control is absent while a gradient layer is selected.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.separator",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.separator",
+    userAction: "Drag Band separator with a stripes layer selected.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares band width changes the light-to-dark balance",
     browser: true,
     browserTestName: "browser: studio band width changes the selected layer's balance",

@@ -111,6 +111,7 @@ vec4 studioStripesBody(
   float widthRatio,
   float phase,
   float mirror,
+  float separator,
   vec3 colorA,
   vec3 colorB
 ) {
@@ -130,7 +131,18 @@ vec4 studioStripesBody(
   float edge = max(fwidth(position) * 1.5, 1e-5);
   float band = smoothstep(widthRatio - edge, widthRatio + edge, position);
 
-  return vec4(mix(colorA, colorB, band), 1.0);
+  // A separator is a gap the layer does not paint rather than a third colour:
+  // in a stack, what shows through is whatever sits beneath, which is the only
+  // reading that stays true when a layer is composited over another.
+  //
+  // Measured from the nearest cycle boundary, so the gap straddles the seam
+  // evenly instead of eating one band from one side. At a separator of zero the
+  // smoothstep saturates and the coverage is exactly one, so the default costs
+  // nothing and changes nothing.
+  float seamDistance = min(position, 1.0 - position);
+  float coverage = smoothstep(separator - edge, separator + edge, seamDistance);
+
+  return vec4(mix(colorA, colorB, band), coverage);
 }
 `;
 
@@ -191,6 +203,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
+        { defaultValue: 0, name: "separator", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
       ],

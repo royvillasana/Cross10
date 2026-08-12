@@ -218,6 +218,7 @@ const LAYER_FIELD = (
       count: sliderValue("Band count"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
+      separator: sliderValue("Band separator"),
     },
     outputSignature,
     selectedLayerId:
@@ -233,6 +234,7 @@ const DEFAULT_SLIDERS = {
   count: 24,
   offset: 0,
   opacity: 1,
+  separator: 0,
 };
 
 test("browser: studio band count changes the selected layer's frequency", async ({
@@ -384,6 +386,7 @@ const LAYER_PHASE = (
       count: sliderValue("Band count"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
+      separator: sliderValue("Band separator"),
     },
     outputSignature,
     selectedLayerId:
@@ -595,5 +598,103 @@ test("browser: studio mirror reflects the selected layer about its axis", async 
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.mirror", target: "selectedLayer.mirror" },
+  );
+});
+
+/**
+ * How much of the band field is actually painted, alongside its frequency.
+ *
+ * The separator opens a gap the layer does not paint, so what changes is
+ * coverage rather than the pattern: the bands stay where they are and stay as
+ * many, and progressively less of each one is drawn. Reading both is what makes
+ * the proof say that specifically -- a reader that only counted light pixels
+ * could not tell a separator from a narrower band.
+ *
+ * Thresholds picked from measurement rather than intuition: at no separator the
+ * field is a little over half light, and at the maximum it is an eighth.
+ */
+const BAND_COVERAGE = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const pixels = new Uint8Array(canvas.width * 4);
+    gl.readPixels(
+      0,
+      Math.floor(canvas.height / 2),
+      canvas.width,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    let light = 0;
+    let transitions = 0;
+    let previous: boolean | undefined;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const isLight = pixels[index] + pixels[index + 1] + pixels[index + 2] > 382;
+      if (isLight) light += 1;
+      if (previous !== undefined && previous !== isLight) transitions += 1;
+      previous = isLight;
+    }
+
+    const share = light / (pixels.length / 4);
+    const frequency = transitions > 40 ? "fine" : transitions > 4 ? "coarse" : "flat";
+    const coverage = share > 0.4 ? "half" : share < 0.2 ? "sparse" : "reduced";
+    outputSignature = `${frequency}:${coverage}`;
+  }
+
+  return {
+    controlValue: {
+      angle: sliderValue("Angle"),
+      bandWidth: sliderValue("Band width"),
+      count: sliderValue("Band count"),
+      offset: sliderValue("Offset"),
+      opacity: sliderValue("Opacity"),
+      separator: sliderValue("Band separator"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio band separator opens a gap to what sits beneath", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // The bands keep their count and their positions; each one is simply painted
+  // over less of its own cycle, and the ground shows through the rest.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(BAND_COVERAGE),
+    session.controlAction("selectedLayer.separator", async () => {
+      await setStudioSlider(page, "Band separator", 0.4);
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, separator: 0.4 },
+      outputSignature: "fine:sparse",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.separator", target: "selectedLayer.separator" },
   );
 });
