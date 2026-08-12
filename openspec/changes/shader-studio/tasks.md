@@ -87,7 +87,7 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 - [x] 2.8d Write `studio-canvas.tsx`: mount the WebGL2 surface, run `useStudioLayerSync`, and draw through `useToolcraftPipelinePass` rather than a loose effect, so runtime execution, invalidation, and performance evidence all describe the same declared pass
 - [x] 2.8e Wire `appComposition`: `canvasContent`, `rendererPipelineRegistration`, `sceneBoundsProvider`, and an `exportRenderer` that draws through the same renderer as preview so the two cannot drift
 - [x] 2.8f Switch `docs/toolcraft/agent-worklog.md` to `Mode: product` with the first Decision Trail entry — the Verification field must match one of the accepted literals exactly, not a results narrative
-- [ ] 2.9 Browser proofs for both rows, plus an app-owned proof that the assembled shader reflects the same order the panel shows. Layer coverage **must drive real LayersPanel rows and buttons**, never `layers.*` command dispatch (`component-contracts.runtime.ts:297`)
+- [x] 2.9 Browser proofs for both rows, plus an app-owned proof that the assembled shader reflects the same order the panel shows. Layer coverage **must drive real LayersPanel rows and buttons**, never `layers.*` command dispatch (`component-contracts.runtime.ts:297`)
 - [ ] 2.10 Run `npm run verify:delivery` — **first protected delivery**, and the point at which product mode is satisfied
 
 ## 3. Remaining layer types
