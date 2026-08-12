@@ -1,0 +1,114 @@
+## ADDED Requirements
+
+### Requirement: WebGL2 rendering inside the runtime scene surface
+All 2D output SHALL be rendered by WebGL2 fragment shaders into a product canvas mounted in `canvasContent`. Backing size and world-to-local translation SHALL come from `useToolcraftProductSceneFrame()`. Product code MUST NOT read DOM geometry, position a second scene wrapper, or use dormant finite `canvas.size` while in infinite mode.
+
+#### Scenario: Scene frame drives backing size
+- **WHEN** the renderer prepares a frame
+- **THEN** it sizes its drawing buffer from the frame reported by `useToolcraftProductSceneFrame()`
+- **AND** `empty` and `unavailable` frames are handled explicitly rather than falling back to finite dimensions
+
+#### Scenario: Infinite mode uses provider bounds
+- **WHEN** Infinity canvas is enabled
+- **THEN** product output fills the runtime-positioned scene surface derived from `sceneBoundsProvider`
+- **AND** no synthetic workspace rectangle is drawn
+
+#### Scenario: WebGL2 unavailable
+- **WHEN** the browser cannot provide a WebGL2 context
+- **THEN** DOM product text inside `canvasContent`, marked `data-toolcraft-product-text`, names WebGL2 as the requirement rather than leaving a blank canvas
+- **AND** it is product output rather than app chrome, because a WebGL2 failure means there is no other output to show
+
+### Requirement: Product scene extent is a fixed world rect
+`sceneBoundsProvider` SHALL return a fixed world rectangle of constant dimensions anchored at the world origin, declared as a product constant rather than a control. It MUST NOT vary with `canvas.mode`, playback time, or parameter values, and MUST NOT be derived from dormant finite `canvas.size` while infinite. This is required because a full-field shader has no intrinsic extent and infinite video export unions the provider across every scheduled frame.
+
+#### Scenario: Extent is stable across the timeline
+- **WHEN** the provider is resolved at several scheduled timeline times
+- **THEN** it returns the same world rectangle every time, so infinite video export forms one stable envelope
+
+#### Scenario: Extent is independent of canvas mode
+- **WHEN** the user toggles Infinity canvas on and off
+- **THEN** the provider returns the same world rectangle in both modes
+- **AND** the finite artboard pixels and width/height control values are restored exactly on return to finite
+
+#### Scenario: Infinite image export crops to the union
+- **WHEN** PNG is exported in infinite mode
+- **THEN** the artifact crops to the outward-rounded union of the provider rect and visible runtime media frames, excluding editor-only handles and the gizmo
+
+### Requirement: Declared renderer pipeline before renderer code
+One compiled `rendererPipelineRegistration` SHALL declare every pass with its workload dimensions, cost relationship, execution frequency, lifecycle, execution location, output quality, and exact interaction invalidation, including `initial-render`. `assessToolcraftRenderPlan` SHALL return no structural errors before any renderer code is written, and the same registration SHALL be reused as `rendererPipeline` in performance assessment.
+
+#### Scenario: Assessment gates implementation
+- **WHEN** the render plan assessment reports a structural error
+- **THEN** renderer implementation does not begin until the error is resolved
+
+#### Scenario: One canonical registration
+- **WHEN** the composition and the performance configuration are compared
+- **THEN** both reference the same compiled pipeline registration rather than parallel declarations
+
+### Requirement: Fixed, bypassable pass order
+Passes SHALL execute in the documented order source → interference → stylization → glitch → present, composited through ping-pong framebuffers. A bypassed pass SHALL be skipped entirely rather than neutralized by an identity computation, and disabled features SHALL contribute no per-frame cost.
+
+#### Scenario: Disabled interference costs nothing
+- **WHEN** the second stripe layer is disabled
+- **THEN** the compiled shader variant omits its code path and no interference pass executes
+
+#### Scenario: Bypass preserves relative order
+- **WHEN** an enabled effect is bypassed
+- **THEN** the remaining passes execute in the same relative order
+
+### Requirement: Shader variant assembly and caching
+Shaders SHALL be assembled from shared GLSL chunks plus one engine chunk, compiled per feature-flag variant, and cached by variant key. The stripe field SHALL have exactly one implementation shared by every consumer.
+
+#### Scenario: Variant reuse
+- **WHEN** the user toggles a feature off and on again
+- **THEN** the previously compiled variant is reused from cache rather than recompiled
+
+### Requirement: Non-blocking parameter updates
+Parameter changes SHALL take effect on the next rendered frame by uploading uniform values, without recompiling shaders and without blocking the render loop. Discrete sliders SHALL still drag smoothly, and product output MUST NOT remain unchanged until pointer release.
+
+#### Scenario: Dragging a slider during playback
+- **WHEN** the user drags a geometry slider while the timeline is playing
+- **THEN** the canvas continues to advance frames and updates continuously during the drag with no shader recompilation
+
+### Requirement: Honest pass cost declaration
+Each pass SHALL declare the `relationship` that is true of its cost with respect to its declared workload dimensions. The 2D fragment passes SHALL declare `relationship: "constant"` for stripe count and line frequency, because per-pixel cost does not vary with either. Passes whose cost genuinely scales with a declared dimension SHALL say so; a conservative but false non-constant declaration MUST NOT be used.
+
+#### Scenario: Stripe dimensions are constant-cost
+- **WHEN** the pipeline registration declares the engine and composite passes
+- **THEN** their cost relationship with respect to stripe count and line frequency is `constant`
+- **AND** `assessToolcraftRenderPlan` raises no kernel benchmark requirement for them
+
+#### Scenario: Genuinely scaling passes are declared as such
+- **WHEN** a pass cost does scale with a declared dimension, as the 3D lamellae rasterize pass does with lamella count
+- **THEN** its relationship states that scaling and any resulting benchmark requirement is recorded as pending
+
+### Requirement: Quality is never reduced to hold a budget
+The renderer MUST NOT reduce stripe count, render scale, backing resolution, product range, source fidelity, or visible quality to hold a frame budget. Frame cost SHALL be addressed through pass cost, invalidation, cache lifetime, scheduling, and execution location.
+
+#### Scenario: No runtime quality clamping
+- **WHEN** frame time approaches the budget at the maximum reachable workload
+- **THEN** the renderer continues rendering at the user's selected quality and render scale
+- **AND** no automatic reduction of stripe count, resolution, or fidelity occurs
+
+#### Scenario: Workload dimensions mirror the schema
+- **WHEN** a workload control is declared
+- **THEN** it carries `performanceRole: "workload"`, maps to exactly one numeric `workloadEnvelope` dimension, and that dimension's `interactiveMax` equals the schema endpoint selected by its `workloadBoundary`
+
+#### Scenario: Render scale is runtime-resolved
+- **WHEN** `canvas.renderScale` is enabled
+- **THEN** the schema authors only `step`, and the runtime resolves `min` 1, `defaultValue` 2, and `max` 2
+- **AND** actual backing pixels equal CSS size × devicePixelRatio × the selected scale in interaction, playback, and steady states
+
+### Requirement: Animation work yields during viewport interaction
+The renderer SHALL suspend or coalesce non-essential animation work during canvas drag, pan, pinch, zoom, and radar or center interactions, then resume from the correct timeline time without changing play or pause state.
+
+#### Scenario: Pan does not change playback state
+- **WHEN** the user pans the canvas while playback is running
+- **THEN** non-essential work is coalesced during the gesture and playback resumes at the correct time in the same play state
+
+### Requirement: Resource lifecycle
+Source-bound GPU resources SHALL be created outside React render, retained according to their declared pass lifecycle, reused across unrelated interactions, and released during cleanup. Animation frames SHALL be cancelled on cleanup, and timeline-only updates MUST NOT recreate source-bound resources.
+
+#### Scenario: Timeline scrub does not rebuild resources
+- **WHEN** the user scrubs the timeline
+- **THEN** textures, framebuffers, and programs are reused and no source-bound resource is recreated
