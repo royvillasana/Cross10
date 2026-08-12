@@ -44,6 +44,9 @@ describe("appSchema", () => {
       // into explicit workflow stages, and the kind gate moves with the
       // controls it reveals because R34 scopes gating to the section.
       "Layer Pattern",
+      // Where the layer is allowed to draw, independent of what it draws, so it
+      // needs neither the kind gate nor a place beside it.
+      "Layer Region",
       "Image Export",
       "Export",
     ]);

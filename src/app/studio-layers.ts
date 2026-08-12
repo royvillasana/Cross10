@@ -84,6 +84,21 @@ export type StudioLayerTypeId = "gradient" | "stripes";
 export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
   { defaultValue: 1, name: "opacity", type: "float" },
   { defaultValue: 1, name: "visible", type: "float" },
+  /**
+   * Half-extent of the region the layer is confined to, measured the same way
+   * the field is: normalised against height, from the centre of the frame.
+   *
+   * Zero means unmasked rather than empty. A size control that made the layer
+   * vanish at its default would be a switch wearing a slider's clothes, and
+   * every layer starts unmasked.
+   */
+  { defaultValue: 0, name: "maskSize", type: "float" },
+  {
+    booleanControl: true,
+    defaultValue: 0,
+    name: "maskInvert",
+    type: "float",
+  },
 ];
 
 const CHUNK_LAYER_SUPPORT = `
@@ -317,9 +332,23 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
   const args = type.uniforms
     .map((uniform) => studioLayerUniformName(index, uniform.name))
     .join(", ");
-  const weight = `${studioLayerUniformName(index, "opacity")} * ${studioLayerUniformName(index, "visible")}`;
+  const name = (suffix: string): string => studioLayerUniformName(index, suffix);
+  const weight = `${name("opacity")} * ${name("visible")} * maskCoverage`;
 
   return `  {
+    // The layer is confined to a rectangle centred on the frame, and the sense
+    // decides whether it draws inside that rectangle or everywhere except it.
+    // Coverage folds into the composite weight rather than discarding the
+    // fragment, so a masked-out layer contributes exactly nothing and still
+    // costs the same as one that does not.
+    vec2 maskOffset =
+      abs(fragmentPosition - uResolution * 0.5) / max(uResolution.y, 1.0);
+    float maskInside =
+      step(maskOffset.x, ${name("maskSize")}) * step(maskOffset.y, ${name("maskSize")});
+    float maskCoverage = ${name("maskSize")} <= 0.0
+      ? 1.0
+      : mix(maskInside, 1.0 - maskInside, step(0.5, ${name("maskInvert")}));
+
     vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution${args ? `, ${args}` : ""});
     composite = studioComposite(composite, layer, ${weight});
   }`;

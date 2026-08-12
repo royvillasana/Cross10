@@ -43,13 +43,18 @@ describe("per-layer uniform mangling", () => {
     expect(source).toContain("uniform float uLayer1_angle;");
   });
 
-  it("declares each type's own uniforms plus the common pair", () => {
+  it("declares each type's own uniforms plus the common set", () => {
+    // The common set carries what belongs to a layer whatever it draws: how
+    // much of it reaches the composite, whether it is shown, and the region it
+    // is confined to.
     const uniforms = studioLayerUniforms("gradient").map((entry) => entry.name);
 
     expect(uniforms).toEqual([
       ...STUDIO_LAYER_TYPES.gradient.uniforms.map((entry) => entry.name),
       "opacity",
       "visible",
+      "maskSize",
+      "maskInvert",
     ]);
   });
 

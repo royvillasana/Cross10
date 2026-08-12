@@ -151,6 +151,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       workflowStage: "shape",
     },
     {
+      entity: "Selected layer",
+      entityId: "selected-layer-region",
+      groupingReason:
+        "Where the selected layer is allowed to draw. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages.",
+      id: "selected-layer-region",
+      targets: ["selectedLayer.maskSize", "selectedLayer.maskInvert"],
+      title: "Layer Region",
+      workflowStage: "confine",
+    },
+    {
       entity: "Image export",
       entityId: "image-export",
       groupingReason:

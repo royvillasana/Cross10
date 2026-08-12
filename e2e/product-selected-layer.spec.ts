@@ -220,6 +220,7 @@ const LAYER_FIELD = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -232,6 +233,7 @@ const LAYER_FIELD = (
 
 const DEFAULT_SLIDERS = {
   angle: 0,
+  region: 0,
   taper: 0,
   jitter: 0,
   bandWidth: 0.5,
@@ -392,6 +394,7 @@ const LAYER_PHASE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -674,6 +677,7 @@ const BAND_COVERAGE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -781,6 +785,7 @@ const BAND_REGULARITY = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -875,6 +880,7 @@ const BAND_WEDGE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
+      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -905,5 +911,126 @@ test("browser: studio taper turns each band into a wedge", async ({ page }) => {
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.taper", target: "selectedLayer.taper" },
+  );
+});
+
+/**
+ * Where the layer draws, read as the centre of the frame against its corners.
+ *
+ * A region confines the layer, so the two disagree: one carries the field and
+ * the other carries whatever sits beneath it. Unmasked they agree, because the
+ * layer covers everything. Inverting the sense swaps which is which, so the
+ * same reading names all three states without a separate observable.
+ */
+const LAYER_REGION = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    // A tall strip rather than a pixel or a square. A square small enough to sit
+    // inside one band reports a striped field as bare ground, which is how this
+    // reading first lied in both directions at once: the corner looked empty
+    // whether the layer covered it or not.
+    const patch = (fx: number, fy: number) => {
+      const width = 16;
+      const height = Math.min(Math.floor(canvas.height / 3), canvas.height);
+      const x = Math.min(
+        Math.max(Math.floor(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const y = Math.min(
+        Math.max(Math.floor(canvas.height * fy) - height / 2, 0),
+        canvas.height - height,
+      );
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const seen = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      // A patch of the striped field carries both colours; a patch of bare
+      // ground carries one.
+      return seen.size > 1 ? "field" : "ground";
+    };
+
+    outputSignature = `centre=${patch(0.5, 0.5)} corner=${patch(0.06, 0.06)}`;
+  }
+
+  return {
+    controlValue: {
+      angle: sliderValue("Angle"),
+      bandWidth: sliderValue("Band width"),
+      count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
+      offset: sliderValue("Offset"),
+      opacity: sliderValue("Opacity"),
+      region: sliderValue("Region size"),
+      separator: sliderValue("Band separator"),
+      taper: sliderValue("Taper"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio region confines the layer to a rectangle", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // Unmasked the layer covers the frame, so centre and corner both carry the
+  // field. Confining it leaves the corner on bare ground.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(LAYER_REGION),
+    session.controlAction("selectedLayer.maskSize", async () => {
+      await setStudioSlider(page, "Region size", 0.35);
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, region: 0.35 },
+      outputSignature: "centre=field corner=ground",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskSize", target: "selectedLayer.maskSize" },
+  );
+});
+
+test("browser: studio region sense swaps which side the layer draws on", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Region size", 0.35);
+
+  // The region becomes a hole rather than the whole of the layer: the field and
+  // the bare ground trade places.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(LAYER_REGION),
+    session.controlAction("selectedLayer.maskInvert", async () => {
+      await toggleStudioSwitch(page, "selectedLayer.maskInvert");
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, region: 0.35 },
+      outputSignature: "centre=ground corner=field",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskInvert", target: "selectedLayer.maskInvert" },
   );
 });

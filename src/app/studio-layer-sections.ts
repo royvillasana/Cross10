@@ -256,4 +256,35 @@ widthRatio: {
     id: "selected-layer-pattern",
     title: "Layer Pattern",
   },
+  {
+    controls: {
+      maskSize: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Region size",
+        max: 0.8,
+        min: 0,
+        performanceReason:
+          "Two steps against a coordinate the composite already has; the layer costs the same masked or not.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.maskSize",
+        type: "slider",
+      },
+      maskInvert: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        defaultValue: false,
+        label: "Outside the region",
+        performanceReason: "Selects between two coverage values already computed.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.maskInvert",
+        type: "switch",
+      },
+    },
+    id: "selected-layer-region",
+    title: "Layer Region",
+  },
 ] as const;
