@@ -247,6 +247,29 @@ export async function setStudioSlider(
     .toBe(value);
 }
 
+/**
+ * A switch, located by the target it writes.
+ *
+ * The switches carry no accessible name of their own — the label sits beside
+ * them in the field — so they are reached through their control boundary. There
+ * are two on the page and a name-based query matches neither.
+ */
+export function studioSwitch(page: Page, target: string) {
+  return page
+    .locator(`[data-toolcraft-control-target="${target}"]`)
+    .getByRole("switch")
+    .first();
+}
+
+export async function toggleStudioSwitch(page: Page, target: string): Promise<void> {
+  const control = studioSwitch(page, target);
+  const before = await control.getAttribute("aria-checked");
+  await control.click();
+  await expect
+    .poll(async () => control.getAttribute("aria-checked"), { timeout: 5000 })
+    .not.toBe(before);
+}
+
 /** The assembled stack the renderer drew, in draw order, lowest first. */
 export async function readStudioStackSignature(page: Page): Promise<string> {
   return (
