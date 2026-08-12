@@ -112,6 +112,8 @@ vec4 studioStripesBody(
   float phase,
   float mirror,
   float separator,
+  float jitterAmount,
+  float jitterFrequency,
   vec3 colorA,
   vec3 colorB
 ) {
@@ -123,7 +125,19 @@ vec4 studioStripesBody(
   // rather than merely repeated. Folding the coordinate rather than branching
   // keeps the cost identical whether the switch is on or off.
   coordinate = mix(coordinate, abs(coordinate), step(0.5, mirror));
-  float position = fract(coordinate * max(count, 1.0) + phase);
+  // Each band is displaced by a value drawn from its own index, so the field
+  // stays deterministic: the same stack renders the same frame here, in the
+  // exported artifact, and in the delivered source. A displacement drawn from
+  // the fragment instead would dissolve the bands into noise rather than move
+  // them.
+  //
+  // The amount is bounded by the control's own domain rather than clamped here,
+  // so a band cannot be displaced past its neighbour and swap identity with it.
+  float scaled = coordinate * max(count, 1.0) + phase;
+  float bandIndex = floor(scaled);
+  float jitter =
+    fract(sin(bandIndex * max(jitterFrequency, 1e-4)) * 43758.5453) - 0.5;
+  float position = fract(scaled + jitterAmount * jitter);
 
   // Analytic edge from the screen-space derivative rather than supersampling:
   // per-pixel cost stays constant with respect to band count, which is what lets
@@ -204,6 +218,15 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "phase", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
         { defaultValue: 0, name: "separator", type: "float" },
+        { defaultValue: 0, name: "jitterAmount", type: "float" },
+        // No control yet, deliberately. Varying this changes *which* bands
+        // move rather than how irregular the field is, so every statistic a
+        // proof could name -- run spread, run count, band frequency -- holds
+        // steady across its whole domain. The only honest observable is the
+        // arrangement itself, and asserting that would mean pinning a
+        // fingerprint that depends on backing size and GPU. Carried as a fixed
+        // characteristic of the field until it has an observable worth naming.
+        { defaultValue: 12, name: "jitterFrequency", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
       ],

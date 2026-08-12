@@ -141,6 +141,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.count",
         "selectedLayer.mirror",
         "selectedLayer.separator",
+        "selectedLayer.jitterAmount",
         "selectedLayer.widthRatio",
         "selectedLayer.phase",
         "selectedLayer.rampType",

@@ -223,6 +223,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares jitter displaces each band from its even position",
+    browser: true,
+    browserTestName: "browser: studio jitter displaces each band from its even position",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Raising Jitter moves each band off its even spacing by an amount drawn from its own index, so the bands become irregular without changing how many there are, and the control is absent while a gradient layer is selected.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.jitterAmount",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.jitterAmount",
+    userAction: "Drag Jitter with a stripes layer selected.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares band width changes the light-to-dark balance",
     browser: true,
     browserTestName: "browser: studio band width changes the selected layer's balance",

@@ -176,7 +176,22 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.separator",
         type: "slider",
       },
-      widthRatio: {
+      jitterAmount: {
+        semanticGroup: "pattern",
+        applicability: STRIPES_APPLICABILITY,
+        defaultValue: 0,
+        label: "Jitter",
+        max: 0.9,
+        min: 0,
+        performanceReason:
+          "One hash and one add inside the body already computing the position.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.jitterAmount",
+        type: "slider",
+      },
+widthRatio: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,
         defaultValue: 0.5,

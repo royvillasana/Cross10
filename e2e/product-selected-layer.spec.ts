@@ -216,6 +216,7 @@ const LAYER_FIELD = (
       angle: sliderValue("Angle"),
       bandWidth: sliderValue("Band width"),
       count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
@@ -230,6 +231,7 @@ const LAYER_FIELD = (
 
 const DEFAULT_SLIDERS = {
   angle: 0,
+  jitter: 0,
   bandWidth: 0.5,
   count: 24,
   offset: 0,
@@ -384,6 +386,7 @@ const LAYER_PHASE = (
       angle: sliderValue("Angle"),
       bandWidth: sliderValue("Band width"),
       count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
@@ -664,6 +667,7 @@ const BAND_COVERAGE = (
       angle: sliderValue("Angle"),
       bandWidth: sliderValue("Band width"),
       count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
@@ -696,5 +700,112 @@ test("browser: studio band separator opens a gap to what sits beneath", async ({
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.separator", target: "selectedLayer.separator" },
+  );
+});
+
+/**
+ * How evenly the bands are spaced, measured as the spread of their run lengths.
+ *
+ * Jitter displaces each band from its even position, so what changes is the
+ * regularity of the spacing rather than the number of bands or the balance of
+ * light and dark. Run-length spread names that directly: an unjittered field's
+ * runs are all the same length, and a jittered one's are not.
+ *
+ * The first and last runs are dropped because they are clipped by the edge of
+ * the frame and would read as irregular in a field that is not.
+ *
+ * Thresholds from measurement: an even field spreads by about 0.02, and any
+ * jitter worth the name spreads by more than 0.3.
+ */
+const BAND_REGULARITY = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const pixels = new Uint8Array(canvas.width * 4);
+    gl.readPixels(
+      0,
+      Math.floor(canvas.height / 2),
+      canvas.width,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    const runs: number[] = [];
+    let current = 0;
+    let previous: boolean | undefined;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const isLight = pixels[index] + pixels[index + 1] + pixels[index + 2] > 382;
+      if (previous === undefined || isLight === previous) current += 1;
+      else {
+        runs.push(current);
+        current = 1;
+      }
+      previous = isLight;
+    }
+
+    const inner = runs.slice(1, -1);
+    const mean = inner.reduce((sum, run) => sum + run, 0) / (inner.length || 1);
+    const variance =
+      inner.reduce((sum, run) => sum + (run - mean) ** 2, 0) / (inner.length || 1);
+    const spread = Math.sqrt(variance) / (mean || 1);
+    outputSignature = spread < 0.1 ? "even" : spread > 0.3 ? "irregular" : "uneven";
+  }
+
+  return {
+    controlValue: {
+      angle: sliderValue("Angle"),
+      bandWidth: sliderValue("Band width"),
+      count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
+      offset: sliderValue("Offset"),
+      opacity: sliderValue("Opacity"),
+      separator: sliderValue("Band separator"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio jitter displaces each band from its even position", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // The count holds and the light-to-dark balance holds; only the evenness of
+  // the spacing gives way, which is what distinguishes a displacement from a
+  // change of frequency or width.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(BAND_REGULARITY),
+    session.controlAction("selectedLayer.jitterAmount", async () => {
+      await setStudioSlider(page, "Jitter", 0.6);
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, jitter: 0.6 },
+      outputSignature: "irregular",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.jitterAmount", target: "selectedLayer.jitterAmount" },
   );
 });
