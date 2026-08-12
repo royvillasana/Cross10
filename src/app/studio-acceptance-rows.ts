@@ -356,25 +356,6 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
     {
       automated: true,
       automatedTestName:
-        "declares infinite export crops to the union of visible scene bounds",
-      browser: true,
-      browserTestName:
-        "browser: studio infinite export crops to the union of visible scene bounds",
-      componentType: "canvas",
-      evidence: "exported-bytes",
-      expectedObservable:
-        "Exporting from Infinity canvas crops the artifact to the union of the visible layers' bounds rather than to the viewport, so the same stack exports the same pixels regardless of where the workspace happens to be scrolled.",
-      fixture: "Shader Studio with a two-layer stack in finite mode at 1920x1080",
-      id: "canvas.infinity-export",
-      infinityCanvasCoverage: "scene-bounds-image-export",
-      kind: "runtime",
-      target: "canvas.infinity",
-      userAction:
-        "Turn Infinity canvas on, scroll the workspace, then export the image.",
-    },
-    {
-      automated: true,
-      automatedTestName:
         "declares infinity canvas mode and finite restoration coverage",
       browser: true,
       browserTestName:

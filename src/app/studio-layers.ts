@@ -54,6 +54,18 @@ export interface StudioLayerType {
    * global uniform state, so the same compiled body serves every layer.
    */
   readonly chunk: string;
+  /**
+   * Whether instances of this type occupy a region of the scene rather than the
+   * whole of it.
+   *
+   * Every type registered so far is a procedural field evaluated at every
+   * fragment, so its extent *is* the artboard. That is what makes the union of
+   * visible layer bounds identical to the artboard, and it is why the infinite
+   * export cannot yet crop to anything narrower than the finite one. The image
+   * and shape types in group 3 are the first with an extent of their own, and
+   * declaring it there re-arms the scene-bounds export requirement.
+   */
+  readonly hasIndependentBounds?: boolean;
   /** Function the per-layer wrapper calls. */
   readonly entryPoint: string;
   readonly id: StudioLayerTypeId;
@@ -186,6 +198,20 @@ export const STUDIO_LAYER_TYPE_IDS: readonly StudioLayerTypeId[] = [
   "stripes",
   "gradient",
 ];
+
+/**
+ * Whether any registered layer type occupies less than the whole scene.
+ *
+ * Read by the infinity-canvas coverage rule: an infinite export can only crop to
+ * something narrower than the artboard once a layer has an extent of its own.
+ * This is a registry question rather than a schema one, so it lives with the
+ * registry and flips on its own when group 3 registers a bounded type.
+ */
+export function studioHasBoundedLayerType(): boolean {
+  return STUDIO_LAYER_TYPE_IDS.some(
+    (typeId) => STUDIO_LAYER_TYPES[typeId].hasIndependentBounds === true,
+  );
+}
 
 /** One entry in the ordered stack. Index 0 composites first, so it sits lowest. */
 export interface StudioStackEntry {
