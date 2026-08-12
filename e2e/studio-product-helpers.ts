@@ -195,10 +195,16 @@ export async function setStudioColorHex(
 }
 
 /**
- * Sets a slider through its range input.
+ * Sets a slider to an exact value through its range input.
  *
- * Dispatching input and change together is what commits the edit: input alone
- * reads as a drag in progress, which is a different interaction with a different
+ * The value goes through `HTMLInputElement`'s prototype setter rather than a
+ * plain assignment. React tracks a controlled input's value with its own setter
+ * and swallows a direct write, so `input.value = x` followed by an `input` event
+ * moves nothing: the thumb, `aria-valuenow`, and runtime state all keep the old
+ * value while the test believes it applied a new one.
+ *
+ * Dispatching input and change together is what commits the edit. Input alone
+ * reads as a drag in progress, which is a different interaction on a different
  * invalidation path.
  */
 export async function setStudioSlider(
@@ -206,14 +212,24 @@ export async function setStudioSlider(
   label: string,
   value: number,
 ): Promise<void> {
-  const slider = page.getByRole("slider", { name: label });
-  await slider.first().focus();
-  await slider.first().evaluate((element, next) => {
+  const slider = page.getByRole("slider", { name: label }).first();
+  await slider.focus();
+  await slider.evaluate((element, next) => {
     const input = element as HTMLInputElement;
-    input.value = String(next);
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, String(next));
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
+
+  await expect
+    .poll(async () => Number(await slider.getAttribute("aria-valuenow")), {
+      timeout: 5000,
+    })
+    .toBe(value);
 }
 
 /** The assembled stack the renderer drew, in draw order, lowest first. */

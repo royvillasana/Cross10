@@ -171,7 +171,15 @@ function stackApplications(page: Page) {
         await slider.first().focus();
         await slider.first().evaluate((element, next) => {
           const input = element as HTMLInputElement;
-          input.value = String(next);
+          // Through the prototype setter, not a plain assignment: React tracks a
+          // controlled input's value with its own setter and swallows a direct
+          // write, so the compiled fixture value would never reach the product
+          // and the observation would read back the old one.
+          const setter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value",
+          )?.set;
+          setter?.call(input, String(next));
           input.dispatchEvent(new Event("input", { bubbles: true }));
           input.dispatchEvent(new Event("change", { bubbles: true }));
         }, value);
