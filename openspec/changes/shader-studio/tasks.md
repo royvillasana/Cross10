@@ -162,7 +162,7 @@ Raised from the user's reference set and decomposed in R60. Ordered so each item
 - [x] 12.0 Carry the palette surface first (this is 4.4, pulled forward). A layer carries two colours and the works carry three or four; wedge zones and wedge prints are otherwise reachable today
 - [x] 12.1 Extend the region with **shape kind** — rectangle or ellipse — and **rotation**. The region is already a placed, sized rectangle, so the shape lives there rather than in a parallel construct. Ellipse is what group B needs; rotation is what group C needs
 - [~] 12.2 (deferred, R62) Register the **shape layer type**: a layer that draws its region rather than being clipped to it, with a plain or striped fill. This is the "component", and it is the first layer type with an extent of its own — which is also what re-arms the `scene-bounds-image-export` requirement deferred in R58, so that row returns with it
-- [ ] 12.3 **Canvas handles** for the shape: drag to move, node handles to resize. Runtime extension point with acceptance `kind: "canvas-handle"`; handles write runtime state, carry no text, and are proved absent from the exported artifact in the same batch
+- [~] 12.3 (started, branch `region-handles-wip` in ../shader-studio) **Canvas handles** for the shape: drag to move, node handles to resize. Runtime extension point with acceptance `kind: "canvas-handle"`; handles write runtime state, carry no text, and are proved absent from the exported artifact in the same batch
 - [x] 12.4 **Layer treatment** — hue, saturation, contrast. Applied as the layer composites, so a layer can change what is beneath it rather than only painting over it
 - [x] 12.5 **Blend mode** per layer. With 12.4 this is what makes a shape read as a lens, which is the whole of group B
 - [ ] 12.6 **Tapered shadow** attached to a shape: an offset band whose thickness varies along its length. The reference shadows are wedges rather than blurs, so this reuses the taper construction rather than adding a filter
@@ -176,3 +176,15 @@ Raised from the user's reference set and decomposed in R60. Ordered so each item
 - [ ] 11.1 Full `npm run verify:delivery` with a valid receipt
 - [ ] 11.2 Record the closing Decision Trail entry with the exact Verification literal the validator accepts
 - [ ] 11.3 Run `openspec validate shader-studio --strict` and archive the change
+
+### 12.3 in progress — what is done and what blocks it
+
+Raised by the user: *"instead of having this layer region where we need to handle the layer by these range controls, I wanted to have an Edge and Node controller so I can resize the layer how I want on the canvas and I can drag and drop and move this layer however I want."*
+
+On branch `region-handles-wip`, not merged, because it is not finished.
+
+**Done.** `studio-region-geometry.ts` carries the whole screen-to-shader conversion with 14 passing tests — corner drags hold the opposite corner still, side nodes carry only width, cap nodes only height, and no gesture can ask for a value its slider could not hold. The handles render over the canvas as DOM and are *proved* absent from the exported artifact by the framework's differential export check, which forces every handle to a colour nothing in the stack uses and requires the two artifacts to be indistinguishable.
+
+**Blocked on.** A drag reaches `controls.setValue` for all four region targets and only two land: `maskAspect` and `maskCenterX` take the written value, `maskSize` and `maskCenterY` are dropped — on every handle, including the ones whose purpose is to write them. Half the targets of one batched gesture surviving points at the R56 layer sync rather than the geometry, since the sync folds control edits back into the per-layer record on the same tick and four dispatches in one batch is a case it has not met. The geometry is tested in isolation and computes the right values, so the next session starts by watching what the sync does with a four-target batch, not by re-deriving the arithmetic.
+
+**Also learned.** The product canvas is much larger than the viewport (1920x1080 at a 1280x720 viewport, origin at -320,-180), so a drag expressed as a fraction of the canvas leaves the viewport and its later moves are never delivered. Handle proofs must use modest pixel deltas.
