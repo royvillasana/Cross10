@@ -324,3 +324,90 @@ test("browser: studio layer opacity fades only the selected layer", async ({
     { requirementId: "selectedLayer.opacity", target: "selectedLayer.opacity" },
   );
 });
+
+/**
+ * The field's phase, read as which colour the row starts in.
+ *
+ * Offset is the one slider the frequency-and-tone reader cannot see: sliding the
+ * bands leaves their count and their balance exactly as they were, so both
+ * buckets hold and the proof would claim nothing moved. Where the first band
+ * begins is the property offset actually changes, and it returns to its starting
+ * value after a full cycle, which is what makes it a phase rather than a drift.
+ */
+const LAYER_PHASE = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const pixels = new Uint8Array(canvas.width * 4);
+    gl.readPixels(
+      0,
+      Math.floor(canvas.height / 2),
+      canvas.width,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    const isLight = (index: number) =>
+      pixels[index] + pixels[index + 1] + pixels[index + 2] > 382;
+    let transitions = 0;
+    for (let index = 4; index < pixels.length; index += 4) {
+      if (isLight(index) !== isLight(index - 4)) transitions += 1;
+    }
+
+    const frequency = transitions > 40 ? "fine" : transitions > 4 ? "coarse" : "flat";
+    outputSignature = `${frequency}:${isLight(0) ? "light" : "dark"}`;
+  }
+
+  return {
+    controlValue: {
+      angle: sliderValue("Angle"),
+      bandWidth: sliderValue("Band width"),
+      count: sliderValue("Band count"),
+      offset: sliderValue("Offset"),
+      opacity: sliderValue("Opacity"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio offset slides the selected layer's bands", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // Half a cycle swaps which colour the row opens in while leaving the band
+  // count untouched -- the bands slide rather than change.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(LAYER_PHASE),
+    session.controlAction("selectedLayer.phase", async () => {
+      await setStudioSlider(page, "Offset", 0.5);
+    }),
+    {
+      controlValue: { ...DEFAULT_SLIDERS, offset: 0.5 },
+      outputSignature: "fine:light",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.phase", target: "selectedLayer.phase" },
+  );
+});
