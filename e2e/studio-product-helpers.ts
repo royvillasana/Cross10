@@ -312,6 +312,15 @@ export async function readStudioOutputSignature(page: Page): Promise<string> {
   });
 }
 
+/**
+ * How many distinct colours a patch of the composite carries.
+ *
+ * Read from the middle of the frame rather than from its corner. A layer is a
+ * shape (R64), so it arrives confined to a region centred on the frame and the
+ * corner is bare ground until something is put there — a corner reading would
+ * report one colour for a stack that is drawing perfectly well, which is
+ * exactly what "has the composite painted yet" must not do.
+ */
 export async function readStudioColorCount(page: Page): Promise<number> {
   return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((element) => {
     const canvas = element as HTMLCanvasElement;
@@ -321,7 +330,15 @@ export async function readStudioColorCount(page: Page): Promise<number> {
     const height = Math.min(canvas.height, 64);
     if (width === 0 || height === 0) return 0;
     const pixels = new Uint8Array(width * height * 4);
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.readPixels(
+      Math.floor((canvas.width - width) / 2),
+      Math.floor((canvas.height - height) / 2),
+      width,
+      height,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
     const seen = new Set<string>();
     for (let index = 0; index < pixels.length; index += 4) {
       seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);

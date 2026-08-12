@@ -162,6 +162,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.maskCenterX",
         "selectedLayer.maskCenterY",
         "selectedLayer.maskShape",
+        "selectedLayer.maskSides",
         "selectedLayer.maskRotation",
         "selectedLayer.maskInvert",
       ],

@@ -261,7 +261,7 @@ widthRatio: {
       maskSize: {
         semanticGroup: "region",
         applicability: { mode: "always" },
-        defaultValue: 0,
+        defaultValue: 0.35,
         label: "Region size",
         max: 0.8,
         min: 0,
@@ -320,15 +320,49 @@ widthRatio: {
         applicability: { mode: "always" },
         defaultValue: "rectangle",
         label: "Region shape",
+        // The vocabulary R64 asks for, as named forms rather than as the two
+        // constructions underneath them. A square is Rectangle at equal
+        // extents and a circle is Ellipse at equal extents, so neither is its
+        // own entry: the extents are handle-driven, and a form that named
+        // itself a square would stop being one the moment a handle moved.
         options: [
           { label: "Rectangle", value: "rectangle" },
           { label: "Ellipse", value: "ellipse" },
+          { label: "Triangle", value: "triangle" },
+          { label: "Diamond", value: "diamond" },
+          { label: "Pentagon", value: "pentagon" },
+          { label: "Hexagon", value: "hexagon" },
+          { label: "Polygon", value: "polygon" },
         ],
         performanceReason:
-          "Selects between two tests of the same two half-extents; neither is cheaper than the other.",
+          "Selects among tests of the same two half-extents; the polygon folds its angle into one wedge, so no form is cheaper than another.",
         performanceRole: "responsiveness",
         target: "selectedLayer.maskShape",
         type: "select",
+      },
+      maskSides: {
+        semanticGroup: "region",
+        // The general case behind the five named polygons. Gated to the form
+        // that reads it: left always applicable it would sit at eight beside a
+        // triangle and appear to be lying about the shape on screen.
+        applicability: {
+          all: [{ oneOf: ["polygon"], target: "selectedLayer.maskShape" }],
+          mode: "conditional",
+        },
+        defaultValue: 8,
+        label: "Region sides",
+        max: 12,
+        min: 3,
+        performanceReason:
+          "The side count folds into one angle test, so a twelve-sided shape costs what a triangle does.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.maskSides",
+        type: "slider",
+        // Ten whole-number positions, so the ticks are the value rather than
+        // noise: a side count is countable in a way a band count of 200 is not.
+        variant: "discrete",
       },
       maskRotation: {
         semanticGroup: "region",

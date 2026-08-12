@@ -58,6 +58,7 @@ describe("per-layer uniform mangling", () => {
       "maskCenterX",
       "maskCenterY",
       "maskShape",
+      "maskSides",
       "maskRotation",
       "maskInvert",
       "hue",

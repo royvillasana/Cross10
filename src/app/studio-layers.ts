@@ -85,14 +85,20 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
   { defaultValue: 1, name: "opacity", type: "float" },
   { defaultValue: 1, name: "visible", type: "float" },
   /**
-   * Half-extent of the region the layer is confined to, measured the same way
+   * Half-extent of the shape the layer is confined to, measured the same way
    * the field is: normalised against height, from the centre of the frame.
    *
-   * Zero means unmasked rather than empty. A size control that made the layer
-   * vanish at its default would be a switch wearing a slider's clothes, and
-   * every layer starts unmasked.
+   * The default is a real size rather than nothing (R64): a layer *is* a shape,
+   * so it arrives with one already drawn and already grabbable. A layer that
+   * started at zero would have to be given an extent before its canvas handles
+   * could be reached at all, which is what left the handles depending on a
+   * sidebar slider to bring the shape into existence.
+   *
+   * Zero still means unmasked rather than empty. It is no longer where a layer
+   * starts, but it is the only way to say "the whole frame", and a size that
+   * made the layer vanish instead would leave that unsayable.
    */
-  { defaultValue: 0, name: "maskSize", type: "float" },
+  { defaultValue: 0.35, name: "maskSize", type: "float" },
   /**
    * Width of the region relative to its height. One is square; larger is a wide
    * band, smaller a tall column. Aspect rather than a second size, so resizing
@@ -107,17 +113,45 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
   { defaultValue: 0, name: "maskCenterX", type: "float" },
   { defaultValue: 0, name: "maskCenterY", type: "float" },
   /**
-   * Whether the region is a rectangle or an ellipse inscribed in it. The two
-   * share every other control -- size, aspect, placement, rotation, sense --
-   * because they are the same extent read two ways, which is why this is a kind
-   * on the region rather than a second region construct.
+   * Which form the layer's shape takes (R64).
+   *
+   * Named forms rather than three constructions. Underneath there are only two
+   * here -- an extent read as a box, and an extent read as a regular polygon --
+   * and the free vertex list that is the third arrives with the pen (14.4),
+   * because a vertex list nothing can author yet would be a form nobody could
+   * choose. Every named form shares size, aspect, placement, rotation and
+   * sense, so the vocabulary costs one uniform rather than one geometry each.
+   *
+   * A square is a rectangle at equal extents and a circle is an ellipse at
+   * equal extents, so neither gets its own entry: the handles drive the extents
+   * directly, and a form that claimed to be a square would stop being one the
+   * moment a handle was dragged.
+   *
+   * Order is the contract with the branch order in `compositeLayer`, and
+   * rectangle and ellipse keep indices 0 and 1 so a stack persisted before the
+   * vocabulary existed still reads as the shape it was saved as.
    */
   {
     defaultValue: 0,
     name: "maskShape",
-    optionValues: ["rectangle", "ellipse"],
+    optionValues: [
+      "rectangle",
+      "ellipse",
+      "triangle",
+      "diamond",
+      "pentagon",
+      "hexagon",
+      "polygon",
+    ],
     type: "float",
   },
+  /**
+   * Side count for the `polygon` form, which is the general case the five named
+   * polygons are instances of. Read only in that branch; the named forms carry
+   * their own count so that choosing "Triangle" cannot be contradicted by a
+   * slider left at eight.
+   */
+  { defaultValue: 8, name: "maskSides", type: "float" },
   /**
    * Rotation of the region about its own centre, in degrees. Applied to the
    * sampling coordinate before the extent is tested, so it turns the region and
@@ -194,6 +228,34 @@ vec3 studioPaletteSlot(float index, float slots, vec3 a, vec3 b, vec3 c, vec3 d)
   if (slot < 1.5) return b;
   if (slot < 2.5) return c;
   return d;
+}
+
+// Whether a point falls inside a regular polygon centred on the origin.
+//
+// The polygon is inscribed in the circle the radius names, so its vertices
+// touch exactly the extent an ellipse of that radius would fill. That is what
+// keeps every form honest against the same handles: whatever the form, the
+// shape sits inside the box its size and aspect describe and never spills past
+// the corner a handle is drawn on.
+//
+// Folding the angle into a single wedge is why the side count is not a workload
+// dimension -- a twelve-sided polygon reads the same one atan, one mod and one
+// cos that a triangle does, so the cost is flat across the control's domain.
+//
+// The base angle turns the polygon before the test, which is how a shape points
+// up rather than sitting on whichever vertex the fold happens to start from.
+float studioPolygonInside(vec2 point, float radius, float sides, float baseDegrees) {
+  float count = max(sides, 3.0);
+  float wedge = 6.283185307179586 / count;
+  float reach = length(point);
+  // atan is undefined at the origin, and the centre is inside every polygon.
+  if (reach < 1e-6) return 1.0;
+
+  float folded = mod(atan(point.y, point.x) - radians(baseDegrees) + wedge * 0.5, wedge)
+    - wedge * 0.5;
+  // Measured to the side rather than to the vertex: the apothem is where the
+  // edge actually is, and the radius only says where the corners reach.
+  return step(reach * cos(folded), radius * cos(wedge * 0.5));
 }
 
 // Hue, saturation and contrast against what is already composited.
@@ -499,36 +561,68 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
   const reach = `${name("visible")} * maskCoverage`;
   const weight = `${name("opacity")} * layerReach`;
 
+  const aspect = `max(${name("maskAspect")}, 0.01)`;
+
   return `  {
-    // The layer is confined to a region placed on the frame, and the sense
-    // decides whether it draws inside that region or everywhere except it.
+    // The layer is confined to a shape placed on the frame, and the sense
+    // decides whether it draws inside that shape or everywhere except it.
     // Coverage folds into the composite weight rather than discarding the
     // fragment, so a masked-out layer contributes exactly nothing and still
     // costs the same as one that does not.
     vec2 maskDelta =
       (fragmentPosition - uResolution * 0.5) / max(uResolution.y, 1.0)
         - vec2(${name("maskCenterX")}, ${name("maskCenterY")});
-    // Turn the coordinate into the region's own frame rather than turning the
-    // region: the test below stays axis-aligned, and the layer inside keeps
+    // Turn the coordinate into the shape's own frame rather than turning the
+    // shape: the tests below stay axis-aligned, and the layer inside keeps
     // whatever angle its pattern asks for.
     float maskAngle = radians(${name("maskRotation")});
-    vec2 maskOffset = abs(vec2(
+    vec2 maskLocal = vec2(
       maskDelta.x * cos(maskAngle) + maskDelta.y * sin(maskAngle),
       -maskDelta.x * sin(maskAngle) + maskDelta.y * cos(maskAngle)
-    ));
-    float maskWidth = ${name("maskSize")} * max(${name("maskAspect")}, 0.01);
-    // Rectangle and ellipse share the same half-extents. The rectangle asks
-    // whether both are within reach; the ellipse asks the same question of the
-    // two together, which is the only difference between them.
-    float maskInside = ${name("maskShape")} < 0.5
-      ? step(maskOffset.x, maskWidth) * step(maskOffset.y, ${name("maskSize")})
-      : step(
-          length(vec2(
-            maskOffset.x / max(maskWidth, 0.0001),
-            maskOffset.y / max(${name("maskSize")}, 0.0001)
-          )),
-          1.0
-        );
+    );
+    vec2 maskOffset = abs(maskLocal);
+    float maskWidth = ${name("maskSize")} * ${aspect};
+    // Every form is read against the same half-extents, which is what lets the
+    // vocabulary be one uniform rather than one geometry each. The rectangle
+    // asks whether both extents are within reach; the ellipse asks the same
+    // question of the two together; the polygons ask it of a coordinate
+    // un-stretched by aspect, so a widened shape stays the form it was.
+    //
+    // The branch order is the contract with the maskShape option order.
+    float maskForm = ${name("maskShape")};
+    float maskInside;
+    if (maskForm < 0.5) {
+      maskInside =
+        step(maskOffset.x, maskWidth) * step(maskOffset.y, ${name("maskSize")});
+    } else if (maskForm < 1.5) {
+      maskInside = step(
+        length(vec2(
+          maskOffset.x / max(maskWidth, 0.0001),
+          maskOffset.y / max(${name("maskSize")}, 0.0001)
+        )),
+        1.0
+      );
+    } else {
+      // The named polygons carry their own side count so that choosing one
+      // cannot be contradicted by the count control; only the polygon form reads it.
+      float maskSides = maskForm < 2.5
+        ? 3.0
+        : maskForm < 3.5
+          ? 4.0
+          : maskForm < 4.5
+            ? 5.0
+            : maskForm < 5.5 ? 6.0 : ${name("maskSides")};
+      // Point up, whatever the count: turning the polygon so a vertex lands at
+      // the top is what makes a triangle read as a triangle and a four-sided
+      // one read as a diamond rather than as the rectangle it would otherwise
+      // duplicate.
+      maskInside = studioPolygonInside(
+        vec2(maskLocal.x / ${aspect}, maskLocal.y),
+        ${name("maskSize")},
+        maskSides,
+        90.0 - 180.0 / max(maskSides, 3.0)
+      );
+    }
     float maskCoverage = ${name("maskSize")} <= 0.0
       ? 1.0
       : mix(maskInside, 1.0 - maskInside, step(0.5, ${name("maskInvert")}));

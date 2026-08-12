@@ -26,6 +26,26 @@ import { test } from "./toolcraft-product-test";
  * reports.
  */
 
+/**
+ * The single-layer fixture with its shape released to the whole frame.
+ *
+ * Every proof about the *field* -- what the layer draws -- releases the layer
+ * first, because a layer now arrives confined to a shape (R65) and a statistic
+ * taken across the frame would otherwise be measuring the shape as much as the
+ * field. Zero still means unmasked, so this is one slider rather than a
+ * different fixture.
+ *
+ * The proofs about the shape itself keep the layer confined and use
+ * `openStudioSingleLayer` directly.
+ */
+async function openStudioFieldLayer(
+  page: Parameters<typeof openStudioSingleLayer>[0],
+) {
+  const fixture = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Region size", 0);
+  return fixture;
+}
+
 test("browser: studio layer kind switches the layer between stripes and gradient", async ({
   page,
 }) => {
@@ -33,7 +53,7 @@ test("browser: studio layer kind switches the layer between stripes and gradient
   // per-test budget when the whole suite runs on one worker.
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   await expectToolcraftSelectedLayerControl(
     session.observe((root: HTMLElement) => {
@@ -74,7 +94,7 @@ test("browser: studio layer colours recolour only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // White to red: the bands keep their geometry, so the dominant pair moves from
   // black-and-white to black-and-red and nothing else about the frame changes.
@@ -250,7 +270,7 @@ test("browser: studio band count changes the selected layer's frequency", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // 24 bands to 4: the field keeps its balance of light and dark and only its
   // frequency drops, which is exactly what the control claims to do.
@@ -273,7 +293,7 @@ test("browser: studio layer angle rotates only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // A quarter turn puts the bands parallel to the sampled row, so the row that
   // crossed every band now sits inside one of them.
@@ -296,7 +316,7 @@ test("browser: studio band width changes the selected layer's balance", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // Widening the band keeps every boundary where it was and moves the balance
   // between the two colours -- frequency holds, tone does not.
@@ -319,7 +339,7 @@ test("browser: studio layer opacity fades only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // At zero the layer contributes nothing and the background is all that is
   // left, which is the composite weight doing its job rather than a branch.
@@ -410,7 +430,7 @@ const LAYER_PHASE = (
 test("browser: studio offset slides the selected layer's bands", async ({ page }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // Half a cycle swaps which colour the row opens in while leaving the band
   // count untouched -- the bands slide rather than change.
@@ -500,7 +520,7 @@ test("browser: studio transition shape redistributes the gradient", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
   await setStudioLayerKind(page, "Gradient");
 
   // Linear runs across the row; radial is symmetric about a bright centre. The
@@ -589,7 +609,7 @@ test("browser: studio mirror reflects the selected layer about its axis", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
   // Few, wide bands at the default offset. Two choices, both load-bearing:
   // at the default band count the bands are fine enough that mirrored and
   // unmirrored pairs agree by coincidence about as often as they disagree, and
@@ -695,7 +715,7 @@ test("browser: studio band separator opens a gap to what sits beneath", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // The bands keep their count and their positions; each one is simply painted
   // over less of its own cycle, and the ground shows through the rest.
@@ -803,7 +823,7 @@ test("browser: studio jitter displaces each band from its even position", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
 
   // The count holds and the light-to-dark balance holds; only the evenness of
   // the spacing gives way, which is what distinguishes a displacement from a
@@ -896,7 +916,7 @@ const BAND_WEDGE = (
 test("browser: studio taper turns each band into a wedge", async ({ page }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioSingleLayer(page);
+  const { layerId, session } = await openStudioFieldLayer(page);
   // Few bands running across the frame, so each band's length is the horizontal
   // axis and a wedge shows as a thickness difference between its two ends.
   await setStudioSlider(page, "Band count", 6);
@@ -1006,6 +1026,10 @@ test("browser: studio region confines the layer to a rectangle", async ({ page }
   const { layerId, session } = await openStudioSingleLayer(page);
   // Bands across the frame, so a vertical sampling strip always crosses them.
   await setStudioSlider(page, "Angle", 90);
+  // Released to the whole frame first. A layer now arrives already confined
+  // (R65), so the transition this control is proved by has to start from the
+  // one state where it is not: zero, which still means unmasked.
+  await setStudioSlider(page, "Region size", 0);
 
   // Unmasked the layer covers the frame, so centre and corner both carry the
   // field. Confining it leaves the corner on bare ground.
@@ -1290,7 +1314,7 @@ const PALETTE_INKS = (
 async function openStudioPaletteLayer(
   page: Parameters<typeof openStudioSingleLayer>[0],
 ) {
-  const fixture = await openStudioSingleLayer(page);
+  const fixture = await openStudioFieldLayer(page);
   await setStudioSlider(page, "Band count", 8);
   return fixture;
 }
@@ -1487,6 +1511,142 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
     },
     { requirementId: "selectedLayer.maskShape", target: "selectedLayer.maskShape" },
   );
+
+  // The same extent read as three sides rather than as a rounded box. Choosing
+  // a named polygon leaves the apex and gives up the rest, and the side count
+  // control stays absent because the name carries its own.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(POLYGON_EXTENT),
+    session.controlAction("selectedLayer.maskShape", async () => {
+      await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
+    }),
+    {
+      controlValue: { shape: "Triangle", sides: "absent", size: 0.3 },
+      outputSignature: "apex=field base=ground left=ground right=ground",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskShape", target: "selectedLayer.maskShape" },
+  );
+});
+
+/**
+ * How far a polygon form reaches along each axis of its own extent.
+ *
+ * A regular polygon is inscribed in the extent (R65), so the reading that tells
+ * one form from another is which of the four axis directions the shape still
+ * reaches. A point-up triangle keeps its apex and gives up the two sides and
+ * the base; a twelve-sided one keeps all four and reads like the ellipse it is
+ * approaching. Corners are not read at all here — every polygon loses them, so
+ * they would say nothing about the side count.
+ *
+ * The vertical points are named for the shape rather than for the buffer:
+ * `readPixels` measures from the bottom of the backing while the field measures
+ * from the centre upward, so the apex sits at the *larger* fraction.
+ *
+ * Sample points sit at nine tenths of each half-extent, matching REGION_EXTENT
+ * so the two readings are directly comparable. Measured before the expectations
+ * were written: at three sides the apex reads field and the other three read
+ * ground; at twelve, all four read field.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const POLYGON_EXTENT = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number, fy: number): string => {
+      const width = 40;
+      const height = 6;
+      const x = Math.min(
+        Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const y = Math.min(
+        Math.max(Math.round(canvas.height * fy) - height / 2, 0),
+        canvas.height - height,
+      );
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const colours = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        colours.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      return colours.size > 1 ? "field" : "ground";
+    };
+
+    outputSignature = [
+      `apex=${at(0.5, 0.5 + 0.27)}`,
+      `base=${at(0.5, 0.5 - 0.27)}`,
+      `left=${at(0.5 - 0.152, 0.5)}`,
+      `right=${at(0.5 + 0.152, 0.5)}`,
+    ].join(" ");
+  }
+
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.maskShape"]')
+    ?.querySelector('[role="combobox"]');
+
+  // Reported as "absent" rather than as a number when the control is not
+  // rendered, so a named form's reading says out loud that it carries its own
+  // side count instead of reading a stale one off a hidden slider.
+  const sidesControl = root.querySelector('input[aria-label="Region sides"]');
+
+  return {
+    controlValue: {
+      shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+      sides: sidesControl
+        ? Number(sidesControl.getAttribute("aria-valuenow"))
+        : "absent",
+      size: sliderValue("Region size"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio region sides reshape the polygon", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Region size", 0.3);
+  await setStudioSelectValue(page, "selectedLayer.maskShape", "Polygon");
+  await setStudioSlider(page, "Region sides", 12);
+
+  // Twelve sides is as close to the ellipse as this control reaches, so the
+  // shape holds all four directions. Cutting it to three leaves the apex alone,
+  // which is what separates a side count from a size: a smaller polygon would
+  // have lost the apex with everything else.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(POLYGON_EXTENT),
+    session.controlAction("selectedLayer.maskSides", async () => {
+      await setStudioSlider(page, "Region sides", 3);
+    }),
+    {
+      controlValue: { shape: "Polygon", sides: 3, size: 0.3 },
+      outputSignature: "apex=field base=ground left=ground right=ground",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.maskSides", target: "selectedLayer.maskSides" },
+  );
 });
 
 test("browser: studio region rotation turns the region about its own centre", async ({
@@ -1621,6 +1781,10 @@ async function openStudioTreatmentLens(
   await setStudioColorHex(page, "First colour", "#FF0000");
   await setStudioColorHex(page, "Second colour", "#0000FF");
   await setStudioSlider(page, "Band count", 8);
+  // The field beneath has to cover the frame for "outside the lens" to have
+  // anything in it. A layer arrives as a shape now (R65), so the one playing
+  // the ground is released to the whole frame.
+  await setStudioSlider(page, "Region size", 0);
 
   await selectStudioLayer(page, fixture.gradientLayerId);
   await setStudioSlider(page, "Opacity", 0);
