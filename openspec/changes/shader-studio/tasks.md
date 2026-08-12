@@ -226,7 +226,7 @@ Each gated control then needs applicability requirements with their own browser 
 
 Supersedes group 13's shape items. Ordered so each is usable before the next exists, and so the thing blocking the handles goes first.
 
-- [ ] 14.1 **Retire the Layer Region section.** Its four sliders go; placement, size, aspect and rotation stay as the shape's geometry, driven by the canvas handles. This unblocks the 12.3 merge and is what the user asked for
+- [ ] 14.1 (blocked on 14.2 — see the note below) **Retire the Layer Region section.** Its four sliders go; placement, size, aspect and rotation stay as the shape's geometry, driven by the canvas handles. This unblocks the 12.3 merge and is what the user asked for
 - [ ] 14.2 **Shape vocabulary on the layer**: ellipse, regular polygon with a side count, and free vertex list — presented as named forms (triangle, square, rectangle, circle, ellipse, diamond, polygon) rather than as three constructions. Chosen when the layer is created
 - [ ] 14.3 **Handle layer renders a list** rather than a fixed eight nodes (this is 13.2), which every non-rectangular shape needs
 - [ ] 14.4 **Pen tool**: a canvas mode that places vertices and closes the path, producing a free-form shape. Second canvas-owned operation, so it needs its own interactionOwnership entry and canvas-handle rows
@@ -234,3 +234,17 @@ Supersedes group 13's shape items. Ordered so each is usable before the next exi
 - [ ] 14.6 **Cursor as a uniform**: pointer position and proximity reach the shader, and each engine decides its response. Croix10's proximity-push chunk is the prior art
 - [ ] 14.7 **Decide what the cursor resolves to at export**, for both the image artifact and R53's baked source. The preview is interactive; the artifact and the delivered source must stay deterministic. This is a decision to record, not a default to inherit
 - [ ] 14.8 Workload envelope and pipeline registration for the two new dimensions — polygon vertex count and per-engine cost — folded into the revisit 12.7 already asks for
+
+### 14.1 is blocked on 14.2, found on starting it
+
+Retiring the four sliders leaves no way to bring a region into existence. A layer's `maskSize` defaults to zero, which means unmasked, and the handles for an unmasked layer are drawn around the whole frame. So the only route to a region becomes "grab a corner of the frame and drag inward".
+
+In the running app that is fine: the canvas is zoomed to fit, so at 70 per cent the frame's south-east corner sits at roughly (1495, 802) inside a 1920x869 window, well within reach.
+
+In the proof viewport it is not. Playwright runs 1280x720 with the canvas laid out at 1920x1080 and offset to (-320, -180), so the frame's corners fall at (1600, 900) and (-320, -180) — every one of them outside the window. `openStudioHandleFixture` currently calls `setStudioSlider(page, "Region size", 0.2)` to get a grabbable region, and once that slider is gone there is nothing to replace it with: the handles that would create the region cannot be reached.
+
+**So 14.2 comes first.** Its premise — a layer is created *as* a shape, with a form and a real default size — removes the problem at the root rather than working around it. A new layer then has a grabbable shape from the moment it exists, the fixture becomes "add a layer", and the size-zero-means-unmasked special case stops being load-bearing.
+
+Do not solve this by widening the proof viewport. That would hide a real question the product should answer: what a freshly created layer *is*. The answer R64 already gives is "a shape", and 14.2 is where that gets built.
+
+**Revised order for group 14:** 14.2 (shape vocabulary with real defaults) → 14.1 (retire the sliders) → 14.3 (handle list) → 14.4 (pen) → 14.5 (engines) → 14.6/14.7 (cursor) → 14.8 (envelope).
