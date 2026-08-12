@@ -114,7 +114,7 @@ Croix10's surface is the floor, not the ceiling. Each control carried across sti
 - [ ] 5.1 Implement the gallery as a `select` over the preset library, applied through runtime commands so undo and reset behave normally
 - [ ] 5.2 Port Croix10's eleven presets as the first collection, each expressed as a layer stack rather than an engine id
 - [ ] 5.3 Prove selection sets a starting state and leaves every control live — the scenario the spec exists to pin down
-- [ ] 5.4 Resolve open question 4: whether the gallery needs its own persistence, and record the answer in `design.md`
+- [x] 5.4 Resolve open question 4: whether the gallery needs its own persistence, and record the answer in `design.md`
 - [ ] 5.5 Acceptance rows and browser proofs; run `npm run verify:delivery`
 
 ## 6. Per-layer animation

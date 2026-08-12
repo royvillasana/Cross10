@@ -130,3 +130,19 @@ The spec fixes two properties either way: the source compiles without referencin
 **Reason.** Toolcraft's export contract is typed over image and video, and the runtime owns that pipeline end to end. `core/setup-export.md` permits an additional product action provided it never substitutes for artifact intent, which is exactly the shape of a copy-source button. The MCP sits outside the app entirely and carries no integrity obligation at all.
 
 **Consequence.** Task 8.2 asserts `exportIntent` is unchanged after delivery is exercised — the spec's own scenario, written as a test so the declaration cannot drift toward describing the shader.
+
+## R58 — the gallery needs no persistence of its own
+
+Resolves proposal open question 4: *does the gallery need its own persistence, or is a delivered shader stateless once assembled?*
+
+**Decision.** The gallery persists nothing. Selecting an entry applies a starting state through runtime commands, and what survives a reload is the resulting stack — the control values and `stack.layerRecord` the runtime already persists — not the fact that a preset was chosen.
+
+**Reason.** Two halves of the question, and they answer each other.
+
+The delivered shader is stateless by construction. R53 bakes every parameter into the source as an initialised `const`, so the artifact carries no reference to the studio, no uniform to wire beyond `uResolution`, and nothing to restore. Once assembled it is a file, not a session.
+
+Inside the app, a persisted "active entry" would be a claim that goes stale on the first edit. The gallery sets a starting point and leaves every control live — that is the scenario task 5.3 exists to pin down — so a stored selection would keep naming a preset that no longer describes the stack. Croix10 persists `presets.active` because its presets and its engine share one control surface; here the stack *is* the state, and it already persists.
+
+**Consequence.** The gallery is an applicator, not a mode. It contributes no `additionalValueTargets`, and 5.1's runtime commands give it undo and reset for free — selecting an entry is an ordinary edit, so undo steps back through it like any other.
+
+**Blocked work, recorded here so the ordering is not rediscovered.** Task 5.2 asks for Croix10's eleven presets expressed as layer stacks. They cannot be ported until group 4 lands: their distinguishing targets are `engine.active`, `interference.*`, `induction.*`, `immersion.*`, `transchromie.*`, `palette.slots`, `bands.separatorWidth` and `viewer.angle`, and this product's layer types expose angle, count, width ratio, phase, two colours and a ramp type. Six of the eleven — Induced Third, Physichromie 500, Induction Grid, Interference Beat, Moiré Wedge, Transchromie Sheets — are named for engines that do not exist here yet, and would collapse into near-identical stripe stacks. Group 4 carries those surfaces onto the layer types; group 5.1–5.3 and 5.5 follow it.
