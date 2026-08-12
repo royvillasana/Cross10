@@ -353,3 +353,43 @@ The default half-extent is 0.35 of the frame height rather than zero. This is th
 Zero still means unmasked. It is no longer where a layer starts, but it is the only way to say "the whole frame", and a size that made the layer vanish instead would leave that unsayable. What changed is that it stopped being load-bearing: nothing has to pass through it to get a shape any more.
 
 **Consequence for the proofs.** Every browser proof that read the frame's corner to find the selected layer was reading a layer that covered the frame because nothing confined it. Those readings move to the shape the layer now has. That is not proof churn to be minimised -- it is the proofs catching up with what a layer is.
+
+## R66 -- the geometry stops being controls, and one entry owns the gesture
+
+Settled while landing 14.1. Retiring the four Layer Region sliders is not a deletion; it is a transfer, and the framework had three things to say about where the geometry lands.
+
+### It is still a value target, just not a control
+
+`selectedLayer.maskSize`, `maskAspect`, `maskCenterX` and `maskCenterY` keep existing. The handles dispatch `controls.setValue` against exactly those names and `collectStudioSelectedLayerEdit` reads them out of the same value map it always did -- what they stop being is *controls*.
+
+That makes them uncontrolled product targets, the same category as `stack.layerRecord`, so they are declared in `persistence.additionalValueTargets`. Without that a reload throws away every shape the author placed, and it fails silently: the shapes come back at their defaults, which looks like a rendering bug rather than a persistence one.
+
+### One ownership entry, because one dispatch
+
+The three gestures write three different targets, and an `interactionOwnership` entry names exactly one. The first attempt split them into three entries -- move, resize, widen -- which typechecked and read badly: they are one operation with one surface and one alternative, described three times.
+
+The truthful single target is `controls.setValue`, which is literally what all three dispatch. So one entry, `shape-shaping`, whose declared alternative is the panel it just left.
+
+### The default size is bounded by the smallest window, not by taste
+
+14.2 set the default half-extent to 0.35 of the frame height. That is wrong for a reason only the handles could reveal: at 0.35 a shape is 756 pixels tall, and in a window shorter than the frame its corner nodes fall outside the view entirely. Handles that cannot be reached are handles that do not exist -- the same failure 14.2 was written to fix, one level up.
+
+**0.25**, half the frame's height, leaves the shape and every one of its nodes inside the view even when the window is smaller than the frame.
+
+### What it cost the proofs, and what that revealed
+
+Re-grounding the proofs on a confined layer turned up three readings that were passing for the wrong reason, all of them latent long before this change:
+
+- A patch 24 pixels wide judged "is the layer here" against a field whose bands repeat every ninety. It was right only while the fixture happened to straddle an edge.
+- A row read across a window of the frame divided its ink shares by the *frame's* width, putting every ink within a hair of the threshold. A four-ink palette read as three.
+- A mirror reading indexed a full-width row into a buffer holding a window of it, comparing undefined against undefined.
+
+None was caused by retiring the sliders; all three were found by it.
+
+### Inside the shape the drag belongs to the shape
+
+The merge surfaced one interaction the two halves disagreed about. The infinity canvas pans on a plain drag, and the handle body claims the pointer over the whole of the selected shape — so a pan started at the middle of the canvas moved the shape instead of the view.
+
+Resolved the way every design tool resolves it: **inside a selected shape a drag moves the shape; outside it a drag pans the view.** Nothing in the product changed for this; the proof that panned from dead centre now pans from bare canvas, which is what an author does anyway.
+
+Worth naming because it is the first place where the canvas has two owners at once, and 14.4's pen will be the second. A mode that wants the whole canvas — the pen does — has to say so rather than assume it.

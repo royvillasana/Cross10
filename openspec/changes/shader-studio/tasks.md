@@ -226,7 +226,12 @@ Each gated control then needs applicability requirements with their own browser 
 
 Supersedes group 13's shape items. Ordered so each is usable before the next exists, and so the thing blocking the handles goes first.
 
-- [ ] 14.1 (blocked on 14.2 — see the note below) **Retire the Layer Region section.** Its four sliders go; placement, size, aspect and rotation stay as the shape's geometry, driven by the canvas handles. This unblocks the 12.3 merge and is what the user asked for
+- [x] 14.1 **Retired the Layer Region section's four sliders** — size, aspect, across and down — and merged the canvas handles (12.3) onto the same branch. The section is now `Layer Shape` and keeps the form, its side count, its rotation and its sense; placement, size and proportion are handle-driven only. **R66** records the three decisions this forced:
+  - The four targets survive as *uncontrolled* value targets in `persistence.additionalValueTargets`, because the handles dispatch `controls.setValue` against them. Without that a reload silently resets every shape
+  - One `interactionOwnership` entry, `shape-shaping`, on `controls.setValue` — the single target all three gestures actually write. Three entries, one per written target, was tried first and describes one operation three times
+  - The default half-extent drops from 0.35 to **0.25**: at 0.35 a shape's corner nodes fall outside a window shorter than the frame, which is the unreachable-handle problem 14.2 existed to fix, one level up
+  - The handle proofs no longer size anything first — the fixture is "add a layer", exactly as the 14.2 note predicted — and they witness the drag through the handle box in the DOM rather than through the sliders that used to follow it
+  - Three latent proof bugs surfaced and were fixed: a 24px patch judging coverage against 90px bands, ink shares divided by the frame width while reading a window of it, and a mirror reading indexing a full-width row into a windowed buffer
 - [x] 14.2 **Shape vocabulary on the layer**, delivered as seven named forms over two constructions — Rectangle, Ellipse, Triangle, Diamond, Pentagon, Hexagon, and Polygon with a side count (3–12) — plus a real default size of 0.35, which is what unblocks 14.1. **R65** records the three decisions this needed:
   - Square and circle get no entry of their own. They are Rectangle and Ellipse at equal extents, the extents are handle-driven, and a form naming itself a square would stop being one on the first drag. The default aspect is one, so choosing Rectangle draws a square and choosing Ellipse draws a circle
   - Polygons are inscribed in the extent, so no form spills past a corner a handle is drawn on
