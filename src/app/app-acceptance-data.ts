@@ -57,6 +57,24 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       surface: "panel",
       target: "selectedLayer.type",
     },
+    {
+      alternative: {
+        reason:
+          "The Layer Region sliders stay because a gesture is quick and never exact: reproducing a zone at a stated size, or nudging one by a hundredth, is a thing a number does well and a drag does badly.",
+        surface: "panel",
+      },
+      capability: "direct-spatial-edit",
+      evidence: {
+        detail:
+          "Placing and sizing a rectangle is a spatial judgement made against the picture it sits on. Driving it through four numbers means reading a value, moving a slider, looking back at the canvas, and repeating -- the author is editing coordinates rather than shaping a region.",
+        source: "usability-analysis",
+      },
+      id: "region-shaping",
+      reason:
+        "The region is a rectangle drawn over the output, so the canvas is where its position and size are judged; dragging its body and its nodes puts the edit in the same place as the evidence for it.",
+      surface: "canvas",
+      target: "selectedLayer.maskSize",
+    },
   ],
   mode: "product",
   productName: "Shader Studio",

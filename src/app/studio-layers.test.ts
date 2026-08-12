@@ -45,8 +45,8 @@ describe("per-layer uniform mangling", () => {
 
   it("declares each type's own uniforms plus the common set", () => {
     // The common set carries what belongs to a layer whatever it draws: how
-    // much of it reaches the composite, whether it is shown, and the region it
-    // is confined to.
+    // much of it reaches the composite, whether it is shown, the region it is
+    // confined to, and what it does to the picture beneath it.
     const uniforms = studioLayerUniforms("gradient").map((entry) => entry.name);
 
     expect(uniforms).toEqual([
@@ -57,7 +57,13 @@ describe("per-layer uniform mangling", () => {
       "maskAspect",
       "maskCenterX",
       "maskCenterY",
+      "maskShape",
+      "maskRotation",
       "maskInvert",
+      "hue",
+      "saturation",
+      "contrast",
+      "blendMode",
     ]);
   });
 
@@ -98,7 +104,11 @@ describe("stack assembly", () => {
   it("folds visibility into the composite weight rather than branching", () => {
     const source = studioAssembleStackFragmentShader([stripes]);
 
-    expect(source).toContain("uLayer0_opacity * uLayer0_visible");
+    // Reach and opacity are separate since treatment landed: reach carries the
+    // lens, opacity carries only the paint. Visibility still folds into the
+    // weight rather than branching, which is what this asserts.
+    expect(source).toContain("uLayer0_visible * maskCoverage");
+    expect(source).toContain("uLayer0_opacity * layerReach");
   });
 
   it("still assembles a compilable main for an empty stack", () => {

@@ -38,7 +38,12 @@ async function readRegionReach(page: Page): Promise<string> {
     const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
     if (!canvas || !gl) return "absent";
 
-    const at = (fx: number, fy: number): string => {
+    // fy is a fraction from the top of the frame, as a reader would mean it.
+    // `readPixels` counts from the bottom, so it is flipped here rather than in
+    // every call site -- a reader whose "top" samples the bottom is invisible in
+    // any fixture that happens to be symmetric, and wrong in every other.
+    const at = (fx: number, fyFromTop: number): string => {
+      const fy = 1 - fyFromTop;
       const width = 24;
       const height = 4;
       const x = Math.min(
@@ -61,11 +66,11 @@ async function readRegionReach(page: Page): Promise<string> {
     };
 
     return [
-      `L=${at(0.15, 0.5)}`,
+      `L=${at(0.35, 0.5)}`,
       `C=${at(0.5, 0.5)}`,
-      `R=${at(0.85, 0.5)}`,
-      `T=${at(0.5, 0.15)}`,
-      `B=${at(0.5, 0.85)}`,
+      `R=${at(0.65, 0.5)}`,
+      `T=${at(0.5, 0.25)}`,
+      `B=${at(0.5, 0.75)}`,
     ].join(" ");
   });
 }
@@ -104,13 +109,14 @@ test("browser: studio region body drags the layer across the canvas", async ({ p
   test.setTimeout(120_000);
 
   await openStudioHandleFixture(page);
-  const canvas = await page.locator("[data-toolcraft-product-output]").boundingBox();
-  if (!canvas) throw new Error("Could not measure the product canvas.");
 
+  // 288px is a little over a quarter of the frame's height, which is what it
+  // takes to carry a region of this size clear of the centre and onto the left
+  // sample without leaving the window.
   await dragCanvasHandle(
     page,
     "studio-region-move",
-    { x: -canvas.width * 0.35, y: 0 },
+    { x: -288, y: 0 },
     {
       requirementId: "selectedLayer.regionHandle.move",
       target: "selectedLayer.maskCenterX",
@@ -135,13 +141,11 @@ test("browser: studio region corner node resizes the layer on the canvas", async
   test.setTimeout(120_000);
 
   await openStudioHandleFixture(page);
-  const canvas = await page.locator("[data-toolcraft-product-output]").boundingBox();
-  if (!canvas) throw new Error("Could not measure the product canvas.");
 
   await dragCanvasHandle(
     page,
     "studio-region-node-southEast",
-    { x: canvas.width * 0.3, y: canvas.height * 0.3 },
+    { x: 120, y: 120 },
     {
       requirementId: "selectedLayer.regionHandle.corner",
       target: "selectedLayer.maskSize",
@@ -163,13 +167,11 @@ test("browser: studio region side node widens the layer without heightening it",
   test.setTimeout(120_000);
 
   await openStudioHandleFixture(page);
-  const canvas = await page.locator("[data-toolcraft-product-output]").boundingBox();
-  if (!canvas) throw new Error("Could not measure the product canvas.");
 
   await dragCanvasHandle(
     page,
     "studio-region-node-east",
-    { x: canvas.width * 0.3, y: 0 },
+    { x: 150, y: 0 },
     {
       requirementId: "selectedLayer.regionHandle.side",
       target: "selectedLayer.maskAspect",

@@ -24,7 +24,7 @@
   cursor: move;
   padding: 0;
   pointer-events: auto;
-  position: fixed;
+  position: absolute;
 }
 
 .body:focus-visible,
@@ -42,6 +42,6 @@
   margin: -6px 0 0 -6px;
   padding: 0;
   pointer-events: auto;
-  position: fixed;
+  position: absolute;
   width: 12px;
 }

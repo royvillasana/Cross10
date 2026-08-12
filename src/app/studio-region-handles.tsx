@@ -76,8 +76,20 @@ export function StudioRegionHandles({
   const values = state.values as Readonly<Record<string, unknown>>;
   const selectedLayerId = state.selectedLayerId ?? null;
 
+  const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const [canvasRect, setCanvasRect] = React.useState<StudioCanvasRect | null>(null);
-  const measureRef = React.useRef<(() => void) | null>(null);
+  /**
+   * Where the overlay itself sits, so the handles can be placed inside it.
+   *
+   * `position: fixed` resolves against the viewport only while no ancestor is
+   * transformed, and one of the shell's wrappers is. Under a transformed
+   * ancestor the overlay becomes the containing block and the canvas offset is
+   * applied twice, which put every handle three hundred pixels from the pixels
+   * it claimed to control. Placing the handles relative to the overlay's own
+   * box is correct either way, and does not depend on knowing what the shell
+   * does above this component.
+   */
+  const [overlayOrigin, setOverlayOrigin] = React.useState({ left: 0, top: 0 });
   const dragRef = React.useRef<DragState | null>(null);
   // Only to toggle the overlay's pointer-events. The gesture itself lives in a
   // ref, because re-rendering on every pointer move would make the drag depend
@@ -87,37 +99,56 @@ export function StudioRegionHandles({
   // of one per pointer event.
   const gestureRef = React.useRef(0);
 
-  // The canvas moves with the panel and the window, and the overlay has to
-  // follow it. Observed rather than measured once, because a resize that left
-  // the handles behind would put them over the wrong pixels while still
-  // reporting the right values.
+  /**
+   * The canvas's box on screen, kept current.
+   *
+   * One measurement, used by both the drawing and the dragging. They were
+   * briefly allowed to differ -- the gesture measured fresh at pointer-down
+   * while the handles were drawn from an older rect -- and the result was a
+   * drag whose arithmetic was right and whose starting point was three hundred
+   * pixels from where the user had grabbed. The canvas is laid out larger than
+   * the viewport and offset into it, so an early measurement is not merely
+   * imprecise, it is somewhere else entirely.
+   *
+   * A ResizeObserver alone is not enough: it reports size, and this box moves
+   * without resizing whenever the shell scrolls or a panel opens. Measuring
+   * after every render covers that, and the equality check is what stops a
+   * layout effect that sets state from looping on itself.
+   */
+  const measure = React.useCallback((): void => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const overlay = overlayRef.current?.getBoundingClientRect();
+    if (overlay) {
+      setOverlayOrigin((previous) =>
+        previous.left === overlay.left && previous.top === overlay.top
+          ? previous
+          : { left: overlay.left, top: overlay.top },
+      );
+    }
+    setCanvasRect((previous) =>
+      previous &&
+      previous.height === rect.height &&
+      previous.left === rect.left &&
+      previous.top === rect.top &&
+      previous.width === rect.width
+        ? previous
+        : {
+            height: rect.height,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+          },
+    );
+  }, [canvasRef]);
+
+  React.useLayoutEffect(measure);
+
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || typeof ResizeObserver === "undefined") return undefined;
 
-    const measure = (): void => {
-      const rect = canvas.getBoundingClientRect();
-      // Only when it actually moved. Setting state unconditionally from a
-      // layout effect that runs after every render is a loop, not a
-      // measurement.
-      setCanvasRect((previous) =>
-        previous &&
-        previous.height === rect.height &&
-        previous.left === rect.left &&
-        previous.top === rect.top &&
-        previous.width === rect.width
-          ? previous
-          : {
-              height: rect.height,
-              left: rect.left,
-              top: rect.top,
-              width: rect.width,
-            },
-      );
-    };
-
-    measure();
-    measureRef.current = measure;
     const observer = new ResizeObserver(measure);
     observer.observe(canvas);
     window.addEventListener("scroll", measure, true);
@@ -128,11 +159,8 @@ export function StudioRegionHandles({
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
     };
-  }, [canvasRef]);
+  }, [canvasRef, measure]);
 
-  React.useLayoutEffect(() => {
-    measureRef.current?.();
-  });
 
   const current: StudioRegionValues = {
     aspect: readNumber(values, REGION_TARGETS.aspect),
@@ -176,9 +204,7 @@ export function StudioRegionHandles({
    * one was still settling.
    */
   const applyDrag = React.useCallback(
-    (drag: DragState, event: React.PointerEvent<HTMLDivElement>): void => {
-      const pointer = { x: event.clientX, y: event.clientY };
-
+    (drag: DragState, pointer: { readonly x: number; readonly y: number }): void => {
       if (drag.kind === "move") {
         commit(
           studioMoveRegion({
@@ -205,15 +231,35 @@ export function StudioRegionHandles({
     [commit],
   );
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
-    const drag = dragRef.current;
-    if (drag) applyDrag(drag, event);
-  };
+  const applyDragRef = React.useRef(applyDrag);
+  applyDragRef.current = applyDrag;
 
-  const onPointerUp = (): void => {
-    dragRef.current = null;
-    setDragging(false);
-  };
+  React.useEffect(() => {
+    const onMove = (event: PointerEvent): void => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      // The gesture is driven by where the pointer is, so a move outside the
+      // canvas is still a move: clamping happens against the control's domain,
+      // not against the window.
+      event.preventDefault();
+      applyDragRef.current(drag, { x: event.clientX, y: event.clientY });
+    };
+
+    const onUp = (): void => {
+      dragRef.current = null;
+      setDragging(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, []);
 
   if (!selectedLayerId || !canvasRect || canvasRect.width === 0) return null;
 
@@ -267,8 +313,7 @@ export function StudioRegionHandles({
     <div
       className={dragging ? `${styles.overlay} ${styles.dragging}` : styles.overlay}
       data-studio-region-handles=""
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
+      ref={overlayRef}
     >
       <button
         aria-label="Move region"
@@ -278,8 +323,8 @@ export function StudioRegionHandles({
         onPointerDown={beginMove}
         style={{
           height: `${rect.height}px`,
-          left: `${rect.left}px`,
-          top: `${rect.top}px`,
+          left: `${rect.left - overlayOrigin.left}px`,
+          top: `${rect.top - overlayOrigin.top}px`,
           width: `${rect.width}px`,
         }}
         type="button"
@@ -295,8 +340,8 @@ export function StudioRegionHandles({
             key={handle}
             onPointerDown={beginResize(handle)}
             style={{
-              left: `${rect.left + ((anchor.x + 1) / 2) * rect.width}px`,
-              top: `${rect.top + ((anchor.y + 1) / 2) * rect.height}px`,
+              left: `${rect.left - overlayOrigin.left + ((anchor.x + 1) / 2) * rect.width}px`,
+              top: `${rect.top - overlayOrigin.top + ((anchor.y + 1) / 2) * rect.height}px`,
             }}
             type="button"
           />

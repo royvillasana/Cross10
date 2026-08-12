@@ -47,6 +47,8 @@ describe("appSchema", () => {
       // Where the layer is allowed to draw, independent of what it draws, so it
       // needs neither the kind gate nor a place beside it.
       "Layer Region",
+      "Layer Palette",
+      "Layer Treatment",
       "Image Export",
       "Export",
     ]);
