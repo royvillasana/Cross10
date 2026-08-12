@@ -144,6 +144,17 @@ export const STUDIO_LAYER_SECTIONS = [
         // the whole-number steps the value actually takes.
         type: "slider",
       },
+      mirror: {
+        semanticGroup: "pattern",
+        applicability: STRIPES_APPLICABILITY,
+        defaultValue: false,
+        label: "Mirror",
+        performanceReason:
+          "Folding the coordinate costs the same whether the switch is on or off; there is no branch.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.mirror",
+        type: "switch",
+      },
       widthRatio: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,

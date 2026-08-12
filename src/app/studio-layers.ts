@@ -44,6 +44,15 @@ export interface StudioLayerUniform {
    * 0 is the first branch — so it must match the body's own ordering.
    */
   readonly optionValues?: readonly string[];
+  /**
+   * Whether this float uniform is driven by a `switch`.
+   *
+   * A switch's value is a boolean and the shader branches on a float, so
+   * without this the edit is dropped for not already being a number -- the same
+   * gap `optionValues` closes for selects, and with the same symptom: the
+   * control moves and the render does not.
+   */
+  readonly booleanControl?: boolean;
   readonly type: StudioLayerUniformType;
 }
 
@@ -101,6 +110,7 @@ vec4 studioStripesBody(
   float count,
   float widthRatio,
   float phase,
+  float mirror,
   vec3 colorA,
   vec3 colorB
 ) {
@@ -108,6 +118,10 @@ vec4 studioStripesBody(
   vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
   float radians = angle * 0.017453292519943295;
   float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
+  // Reflected about the field's own axis, so the two halves read as mirrored
+  // rather than merely repeated. Folding the coordinate rather than branching
+  // keeps the cost identical whether the switch is on or off.
+  coordinate = mix(coordinate, abs(coordinate), step(0.5, mirror));
   float position = fract(coordinate * max(count, 1.0) + phase);
 
   // Analytic edge from the screen-space derivative rather than supersampling:
@@ -176,6 +190,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 24, name: "count", type: "float" },
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
       ],

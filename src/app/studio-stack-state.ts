@@ -146,11 +146,16 @@ export function studioSelectedLayerTarget(uniformName: string): string {
 export function projectStudioLayerEntry(
   entry: StudioLayerRecordEntry,
 ): ReadonlyArray<
-  Readonly<{ target: string; value: number | readonly [number, number, number] | string }>
+  Readonly<{
+    target: string;
+    // Boolean included because a switch-driven float projects back as one: the
+    // record stores the shader's number, the control wants the checkbox state.
+    value: boolean | number | readonly [number, number, number] | string;
+  }>
 > {
   const assignments: Array<{
     target: string;
-    value: number | readonly [number, number, number] | string;
+    value: boolean | number | readonly [number, number, number] | string;
   }> = [{ target: STUDIO_LAYER_TYPE_TARGET, value: entry.typeId }];
 
   for (const uniform of studioLayerUniforms(entry.typeId)) {
@@ -166,7 +171,9 @@ export function projectStudioLayerEntry(
           ? studioLinearToHex(stored)
           : uniform.optionValues && typeof stored === "number"
             ? (uniform.optionValues[stored] ?? uniform.optionValues[0] ?? stored)
-            : stored,
+            : uniform.booleanControl && typeof stored === "number"
+              ? stored > 0.5
+              : stored,
     });
   }
   return assignments;
@@ -185,6 +192,10 @@ export function collectStudioSelectedLayerEdit(
     const raw = values[studioSelectedLayerTarget(uniform.name)];
     if (uniform.type === "float" && typeof raw === "number") {
       next[uniform.name] = raw;
+    } else if (uniform.type === "float" && typeof raw === "boolean") {
+      // A switch-driven float: the control carries a boolean and the shader
+      // branches on a number.
+      next[uniform.name] = raw ? 1 : 0;
     } else if (uniform.type === "float" && typeof raw === "string") {
       // A float uniform driven by a select: the control carries the option's
       // string and the shader branches on its index. Without this the edit is

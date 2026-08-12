@@ -5,6 +5,7 @@ import {
   setStudioLayerKind,
   setStudioSelectValue,
   setStudioSlider,
+  toggleStudioSwitch,
 } from "./studio-product-helpers";
 import { test } from "./toolcraft-product-test";
 
@@ -502,5 +503,97 @@ test("browser: studio transition shape redistributes the gradient", async ({
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.rampType", target: "selectedLayer.rampType" },
+  );
+});
+
+/**
+ * Whether the field reads as a reflection of itself.
+ *
+ * Mirror is the one stripe control whose effect is a relationship rather than a
+ * quantity: it changes neither how many bands there are nor how light the field
+ * is, so frequency and tone both hold and would report nothing moved. What it
+ * changes is symmetry about the centre, so that is what this samples — the left
+ * half against the right half reversed.
+ */
+const FIELD_SYMMETRY = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const pixels = new Uint8Array(canvas.width * 4);
+    gl.readPixels(
+      0,
+      Math.floor(canvas.height / 2),
+      canvas.width,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    const isLight = (index: number) =>
+      pixels[index] + pixels[index + 1] + pixels[index + 2] > 382;
+    const samples = 64;
+    let matched = 0;
+    for (let step = 0; step < samples; step += 1) {
+      const fraction = (step + 0.5) / (samples * 2);
+      const left = Math.floor(canvas.width * fraction) * 4;
+      const right = Math.floor(canvas.width * (1 - fraction)) * 4;
+      if (isLight(left) === isLight(right)) matched += 1;
+    }
+
+    // A reflected field agrees at nearly every mirrored pair; an unreflected one
+    // agrees only where the bands happen to line up.
+    outputSignature = matched >= samples - 4 ? "mirrored" : "repeated";
+  }
+
+  const toggle = root.querySelector(
+    '[data-toolcraft-control-target="selectedLayer.mirror"] [role="switch"]',
+  );
+
+  return {
+    controlValue: toggle?.getAttribute("aria-checked") ?? "absent",
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio mirror reflects the selected layer about its axis", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  // Few, wide bands at the default offset. Two choices, both load-bearing:
+  // at the default band count the bands are fine enough that mirrored and
+  // unmirrored pairs agree by coincidence about as often as they disagree, and
+  // at an offset of a quarter cycle the field is symmetric about its own axis
+  // already, so mirroring it is a genuine no-op and the proof would be asserting
+  // nothing. Measured across offsets before this fixture was chosen.
+  await setStudioSlider(page, "Band count", 3);
+
+  await expectToolcraftSelectedLayerControl(
+    session.observe(FIELD_SYMMETRY),
+    session.controlAction("selectedLayer.mirror", async () => {
+      await toggleStudioSwitch(page, "selectedLayer.mirror");
+    }),
+    {
+      controlValue: "true",
+      outputSignature: "mirrored",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.mirror", target: "selectedLayer.mirror" },
   );
 });

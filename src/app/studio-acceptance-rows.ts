@@ -191,6 +191,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares mirror reflects the selected layer about its axis",
+    browser: true,
+    browserTestName: "browser: studio mirror reflects the selected layer about its axis",
+    componentType: "switch",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Enabling Mirror renders the two halves of the selected layer's field as reflections of one another, and leaves every other layer untouched.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.mirror",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.mirror",
+    userAction: "Toggle the Mirror switch.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares band width changes the light-to-dark balance",
     browser: true,
     browserTestName: "browser: studio band width changes the selected layer's balance",

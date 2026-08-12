@@ -128,6 +128,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.colorA",
         "selectedLayer.colorB",
         "selectedLayer.count",
+        "selectedLayer.mirror",
         "selectedLayer.widthRatio",
         "selectedLayer.phase",
         "selectedLayer.rampType",
