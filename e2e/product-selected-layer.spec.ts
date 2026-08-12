@@ -941,10 +941,12 @@ const LAYER_REGION = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    // A tall strip rather than a pixel or a square. A square small enough to sit
-    // inside one band reports a striped field as bare ground, which is how this
-    // reading first lied in both directions at once: the corner looked empty
-    // whether the layer covered it or not.
+    // A tall strip, read against a field whose bands run across it. Both halves
+    // of that matter: a strip that lies along a band rather than across it sits
+    // inside a single colour, and then a covered corner and a bare one both
+    // report one colour and the reading cannot tell them apart. That is exactly
+    // how this first lied -- the corner was white when covered and black when
+    // masked, and counting colours saw one either way.
     const patch = (fx: number, fy: number) => {
       const width = 16;
       const height = Math.min(Math.floor(canvas.height / 3), canvas.height);
@@ -979,6 +981,12 @@ const LAYER_REGION = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       region: sliderValue("Region size"),
+      regionInverted:
+        root
+          .querySelector(
+            '[data-toolcraft-control-target="selectedLayer.maskInvert"] [role="switch"]',
+          )
+          ?.getAttribute("aria-checked") ?? "absent",
       separator: sliderValue("Band separator"),
       taper: sliderValue("Taper"),
     },
@@ -994,6 +1002,8 @@ test("browser: studio region confines the layer to a rectangle", async ({ page }
   test.setTimeout(120_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
+  // Bands across the frame, so a vertical sampling strip always crosses them.
+  await setStudioSlider(page, "Angle", 90);
 
   // Unmasked the layer covers the frame, so centre and corner both carry the
   // field. Confining it leaves the corner on bare ground.
@@ -1003,7 +1013,12 @@ test("browser: studio region confines the layer to a rectangle", async ({ page }
       await setStudioSlider(page, "Region size", 0.35);
     }),
     {
-      controlValue: { ...DEFAULT_SLIDERS, region: 0.35 },
+      controlValue: {
+        ...DEFAULT_SLIDERS,
+        angle: 90,
+        region: 0.35,
+        regionInverted: "false",
+      },
       outputSignature: "centre=field corner=ground",
       selectedLayerId: layerId,
     },
@@ -1017,6 +1032,7 @@ test("browser: studio region sense swaps which side the layer draws on", async (
   test.setTimeout(120_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Angle", 90);
   await setStudioSlider(page, "Region size", 0.35);
 
   // The region becomes a hole rather than the whole of the layer: the field and
@@ -1027,7 +1043,12 @@ test("browser: studio region sense swaps which side the layer draws on", async (
       await toggleStudioSwitch(page, "selectedLayer.maskInvert");
     }),
     {
-      controlValue: { ...DEFAULT_SLIDERS, region: 0.35 },
+      controlValue: {
+        ...DEFAULT_SLIDERS,
+        angle: 90,
+        region: 0.35,
+        regionInverted: "true",
+      },
       outputSignature: "centre=ground corner=field",
       selectedLayerId: layerId,
     },
