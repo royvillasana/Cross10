@@ -4,9 +4,9 @@ This file records product decisions and the evidence behind them. Keep it short,
 
 ## Status
 
-Mode: starter
+Mode: product
 
-The neutral starter has no product renderer, timeline, layers, export behavior, or performance workload yet. Replace this status with `Mode: product` when the folder becomes a real app.
+Shader Studio composes an ordered stack of procedural shader layers into one WebGL2 field and delivers the assembled GLSL as a readable artifact. The runtime owns the layer list, its selection, ordering, and visibility; product code owns per-layer values, the assembled program, and the composite.
 
 ## Automatic Delivery Lifecycle
 
@@ -31,160 +31,78 @@ The quoted evidence must be an exact nontrivial raw substring of `Request` with 
 
 ## Decision Trail
 
-### Iteration 1 — Model appearance and presentation runtime contract
+### Iteration 1 — Layer stack canvas, renderer pipeline, and workload envelope
 
-- Request: Preserve authored model materials and textures from folders or ZIP packages, use a Blender-like fallback only when authored appearance is absent, render the result on the canvas, and keep direct orbit synchronized with the orientation gizmo.
-- Task type: Runtime, starter, contract, CLI, and generated-app delivery.
-- User-visible result: GLB/glTF/OBJ/FBX/PLY/STL imports now retain the supported authored appearance subset, folder and ZIP resources remain durable, missing appearance resources surface typed warnings, and materialless geometry uses the canonical fallback. Runtime preview keeps one presentation lease and one camera pose for canvas rendering, direct model drag, gizmo snap, history, reset, and export.
-- Source/reference checked: `/Users/kusnizza/Projects/toolcraft-apps/rain-drops`, the production model adapters, canonical document codecs, binary repository reachability, runtime canvas/model presentation, and generated-app browser evidence.
-- Reference inputs: The user selected preservation for both folder and ZIP imports, fallback only when authored material is absent, and the current Toolcraft application contract as the source of truth.
-- Docs/contracts read: `core/runtime-boundary.md`, `core/media-upload.md`, `core/performance.md`, `renderer-technique.md`, `acceptance-testing.md`, and the runtime decision/component contracts.
-- Contract rules applied: `canvas-surface-preserved`, `interaction-surface-ownership`, `renderer-view-interaction`, `renderer-technique-inventory`, `acceptance-product-observable`, `performance-coverage-levels`, and `persistence-policy-explicit`.
-- View interaction intent: A visible editable model uses `orbit`; runtime canvas drag and `orientationGizmo` consume the same orientation target without mutating canonical source data.
-- Interaction ownership: Canvas owns direct spatial orbit and gizmo snap. The panel owns source package selection, status, warning, repair, and removal actions.
-- Decision: Preserve immutable source packages and canonical appearance data; build a disposable Three.js projection with bounded batching/deduplication only for pixel-equivalent opaque geometry. Retain the renderer prewarm resource across remove/reimport and dispose it with the owning presentation host.
-- Alternatives rejected: Product-owned model loaders, remote texture fallback, storing Three.js objects in state, appearance-driven topology repair, duplicate standard/custom presentation owners, and metadata-only browser evidence.
-- State/output mapping: Durable package refs and canonical document refs live in runtime media state; resolved appearance resources feed a shared presentation lease; evaluated orientation state feeds preview, hit testing, gizmo, history/reset, and export.
+- Request: Continue the canvas and composition block: declare the workload envelope dimensions, register the renderer pipeline, build the scene from runtime state, mount the WebGL2 surface, and wire the composition.
+- Task type: Renderer, canvas output, and performance modelling for a product app.
+- User-visible result: The stack now draws. An author sees every visible layer composited in panel order into the product canvas, edits re-resolve the field while pan and zoom do not, and image export produces the same frame through the same renderer as the preview.
+- Source/reference checked: The Croix10 generative art studio in the sibling repository, specifically its pipeline registration, canvas component, scene reader, and export frame; and this product's own layer registry, stack state, and stack renderer.
+- Reference inputs: Croix10 supplied the proven shape for the pipeline, canvas, and export frame. Where this product differs it differs deliberately, and each difference is recorded as a decision below rather than carried over silently.
+- Docs/contracts read: `workflow.md`, `core/runtime-boundary.md`, `core/performance.md`, `renderer-technique.md`, and `performance.md`, in the routed Plan-then-Implementation order for the renderer and canvas route.
+- Contract rules applied: Workload roles are explicit rather than inferred; a runtime-state dimension declares its maximum-workload value directly; a workload dimension appears only on passes whose cost changes with it; the draw runs through the declared pipeline pass rather than a loose effect; renderer resources are created outside React render and released on unmount; backing pixels are CSS size times device pixel ratio times selected scale; and product output stays inside `canvasContent`.
+- View interaction intent: Non-spatial, unchanged. Output is a two-dimensional shader field with no geometry, model, or camera, and layer order is a compositing sequence rather than depth, so there is nothing an orbit gesture would move around.
+- Interaction ownership: Layer selection stays on the panel. Picking a layer by clicking its contribution on the canvas would be ambiguous wherever layers overlap, which in a composited stack is most of the field, and the topmost layer at a point is often not the one the author means. The complementary canvas operations are pan and zoom, which move the viewport and own no layer state.
+- Decision: One `composite` pass covering the whole stack, with cost declared `linear` against a new `stack-depth` workload dimension sourced from runtime state, and a single renderer shared by preview and export.
+- Alternatives rejected: One pass per layer, which would describe work the renderer does not do separately, since R52 assembles the stack into a single program. A `constant` cost relationship, which would have avoided a kernel benchmark requirement by encoding a false cost model. A schema-backed source for stack depth, which does not exist because the runtime owns the layer list. A product-enforced depth cap, which R52 rejected and which product code could not implement without rebuilding a runtime surface. A separate export renderer, which would be a second chance for export to disagree with preview.
+- State/output mapping: The runtime `layers` array supplies order and visibility; `stack.layerRecord` supplies per-layer values, projected into the `selectedLayer.*` controls for whichever layer is selected and folded back on edit; `appearance.background` and `canvas.renderScale` supply the background colour and backing scale. `buildStudioSceneParameters` prunes the record against the live layer array and converts sRGB hex to linear light, and the result is both the pass cache input and the renderer's argument, so preview and export read one scene.
 - Performance intent: ordinary-product-work
 - Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: The canonical contract intentionally covers static geometry and the documented PBR subset; unsupported skins, morph targets, animation clips, texture transforms, or missing resources remain nonfatal diagnostics when possible. Synthetic browser fixtures prove contract behavior but cannot guarantee every malformed third-party exporter file.
-
-### Iteration 2 — Infinity canvas runtime and scene-cropped export
-
-- Request: Add an `Infinity canvas` toggle to the first Project Settings section; when enabled, remove canvas size controls and artboard limits, use the whole workspace, and export a crop around scene elements.
-- Task type: Runtime, canvas, export, acceptance, starter contract, documentation, CLI, and generated-app delivery.
-- User-visible result: Project Settings now starts with `Infinity canvas`. Enabling it removes aspect ratio, width, and height controls plus the finite artboard boundary; disabling it restores the exact previous finite dimensions. Image export remains full-artboard in finite mode and crops to visible scene bounds in infinite mode.
-- Source/reference checked: Current Toolcraft canvas state, canvas viewport, image/model presentation, panel action boundary, generated product fixture, export pipeline, and the user-approved crop behavior.
-- Reference inputs: The user explicitly selected an unrestricted infinite workspace, preservation of the current finite size, and export by the outer scene-element bounds.
-- Docs/contracts read: `core/setup-export.md`, `core/runtime-boundary.md`, `acceptance-testing.md`, `schema-reference.md`, and the runtime decision/component contracts.
-- Contract rules applied: `canvas-surface-preserved`, `controls-product-coverage`, `output-export-required`, `acceptance-product-observable`, and `infinity-canvas-scene-bounds`.
-- View interaction intent: Infinity mode changes the canvas extent only; existing product `viewInteraction` and model orbit/gizmo ownership remain unchanged.
-- Interaction ownership: Project Settings owns the finite/infinite mode. The canvas owns navigation across the unbounded workspace. Export actions consume canonical scene bounds without adding a second editing surface.
-- Decision: Store the mode in canonical runtime state and history; retain finite dimensions while infinite; give runtime images and models explicit world frames; accept product bounds through the signed composition boundary; union only visible exportable entities; and reject empty, unavailable, or oversized scene exports with typed visible feedback.
-- Alternatives rejected: Encoding Infinity as a sentinel width/height, deriving bounds from DOM pixels, always calling product bounds in finite mode, exporting the current viewport, retaining hidden/editor-only entities, and an implicit global bounds registry.
-- State/output mapping: `canvas.setMode` drives settings visibility and artboard layout. Runtime image/model frames and `sceneBoundsProvider` feed one canonical resolver. Image and model compositors render the resolved scene frame at export scale; video exporters must resolve a bound over their explicit time range.
-- Performance intent: ordinary-product-work
-- Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: Product-owned visual entities must provide truthful bounds through `sceneBoundsProvider`; the runtime fails closed with `scene-bounds-unavailable` instead of silently cropping them out.
-
-### Iteration 3 — Grass controls-panel section navigation parity
-
-- Request: "возьми механику навигации по секциям панели из этого проекта. перенеси полностью дизайн и поведение в стартер. панель появляется когда секции не влезают в высоту одного экрана"
-- Task type: Shared runtime, controls-panel interaction, generated browser evidence, starter documentation, and standalone generation.
-- User-visible result: Generated Toolcraft apps use the Grass section-navigation popup only while the controls body overflows its available viewport. A fitting panel cannot reveal the popup; losing overflow clears pending hover intent, and restoring overflow requires a fresh 300ms dwell.
-- Source/reference checked: `/Users/kusnizza/Projects/toolcraft-apps/grass`, its generated runtime copy, the live app at `http://127.0.0.1:3003/`, canonical runtime/UI sources, and computed popup geometry and typography.
-- Reference inputs: The user selected full Grass design and behavior, with navigation eligibility determined by sections not fitting within one screen height.
-- Docs/contracts read: `component-rules.md`, `workflow.md`, `acceptance-testing.md`, and the runtime panel component contract.
-- Contract rules applied: `panel-host-behavior`, `controls-component-layout-invariants`, `controls-layout-heuristics`, and `acceptance-product-observable`.
-- Interaction ownership: The runtime controls panel owns overflow measurement, hover intent, section scroll-spy, and popup navigation. Product code supplies sections only and cannot render a duplicate navigation surface.
-- Decision: Keep one runtime implementation, retain the complete Grass surface, spacing, type, scrolling, pointer corridor, timing, click, and keyboard behavior, and reset every pending popup timer when overflow disappears.
-- Alternatives rejected: Copying the component into starter product code, retaining navigation state after overflow disappears, showing navigation persistently, and editing the exported Grass folder instead of the source runtime.
-- State/output mapping: `scrollHeight > clientHeight + 1` makes navigation eligible; a 300ms dwell in the inner-left 12px strip mounts the runtime popup; its items map visible non-sticky sections to immediate viewport scroll positions.
-- Performance intent: ordinary-product-work
-- Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: Already-exported applications retain their copied runtime until regenerated; the Grass reference remains unchanged.
-
-### Iteration 4 — Runtime history keyboard shortcuts from focused controls
-
-- Request: Make Undo and Redo work through standard keyboard shortcuts in generated apps.
-- Task type: Shared runtime, generated keyboard interaction, contract, and standalone browser evidence.
-- User-visible result: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, and Ctrl+Y operate Toolcraft history while focus remains on sliders, switches, checkboxes, and other non-text controls; active text editors keep native text undo.
-- Source/reference checked: The runtime ToolcraftRoot shortcut listener, its unit tests, and a built standalone app where the focused Blur slider input reproduced the failure.
-- Contract rules applied: `runtime-shell-required`, `interaction-surface-ownership`, `acceptance-product-observable`, and `workflow-required`.
-- Interaction ownership: ToolcraftRoot owns one document-level history shortcut listener; product apps do not register duplicates.
-- Decision: Classify input targets by native text-editing capability instead of treating every input as a text editor.
-- Alternatives rejected: Always stealing text undo, per-control marker attributes, and app-local shortcut listeners.
-- State/output mapping: Recognized shortcuts dispatch `history.undo`/`history.redo` through the runtime command bus; native text editors return before dispatch.
-- Performance intent: ordinary-product-work
-- Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: Previously exported apps retain their copied runtime until regenerated; newly generated apps receive the fix through the CLI copy path.
-
-### Iteration 5 — Blender-compatible orientation gizmo interaction
-
-- Request: Make the orientation gizmo behave "все как в блендере": click signed points to return to axes and drag the gizmo with Blender-equivalent rotation.
-- Task type: Shared runtime interaction, generated browser evidence, starter contract, and website documentation.
-- User-visible result: The existing 70px Toolcraft gizmo keeps its size, colors, hover treatment, and 16px placement. Users can now drag anywhere inside its circular surface; gizmo and direct model drag share Blender factory Turntable sensitivity and pole recovery; signed-axis clicks use Blender Smooth View timing.
-- Source/reference checked: Blender 4.5.2 LTS factory preferences plus the official navigation gizmo, view rotate, axis view, and smooth-view source. Factory Turntable sensitivity is 0.4 degrees per CSS pixel and Smooth View is 200ms maximum, scaled by quaternion angle.
-- Contract rules applied: `canvas-handle-placement`, `interaction-surface-ownership`, `renderer-view-interaction`, `acceptance-product-observable`, `performance-coverage-levels`, and `workflow-required`.
-- View interaction intent: A visible editable spatial model remains `orbit`; the runtime gizmo and visible-model hit surface consume one canonical `{ position, up }` target.
-- Interaction ownership: An unmodified primary press inside the gizmo circle owns Turntable drag; a signed endpoint also owns click-to-axis; blank click is inert; outside-circle and model-miss presses remain canvas pan.
-- Decision: Map Blender Z-up behavior to Toolcraft Y-up, use fixed world-up yaw plus screen-horizontal pitch with Blender's pole horizon blend, keep a 3px click/drag threshold, and use cubic smoothstep quaternion slerp with `200ms * angle / pi` duration.
-- Alternatives rejected: Keeping endpoint-only sphere projection, changing only gizmo math while direct model drag remains viewport-scaled, and adopting a Three.js helper that owns a separate camera/controller.
-- Licensing: This is an independent behavioral and mathematical reimplementation from documented behavior and observed source structure; no Blender GPL source code is copied.
-- State/output mapping: Every drag or snap writes the canonical runtime pose under one history group and target-scoped interaction lease. Preview, hit testing, gizmo projection, reset/undo/redo, persistence, and export continue to consume that pose; stale gestures cannot write after a newer owner.
-- Performance intent: ordinary-product-work
-- Verification: One bare `npm run verify:delivery` will derive and run the protected proof.
-- Risks: Already-exported applications retain their copied runtime until regenerated. Browser proof relies on the runtime gizmo's canonical pose/target attributes and intentionally fails closed if the real handle is absent or ambiguous.
-
-### Iteration 6 — Executable product-control applicability
-
-- Request: Fix starter contracts so generated products show only settings that apply to the selected type and cannot pass delivery with a visible control that the renderer ignores.
-- Task type: Shared runtime schema, controls-panel visibility, starter acceptance, protected browser evidence, generated fixtures, CLI, and documentation.
-- User-visible result: Every generated product control explicitly declares `always` or `conditional` applicability. Non-matching controls disappear without losing their values, while every visible finite sibling branch must prove the control's real accepted product outcome.
-- Source/reference checked: Badge behavior was used only as failure evidence; implementation scope remained the Toolcraft runtime and starter contracts. The legacy `visibleWhen` runtime path, control-section inventory, acceptance requirement derivation, reporter, and generated image/video/material fixtures were inspected.
-- Contract rules applied: `controls-product-coverage`, `controls-section-inventory-required`, `controls-component-layout-invariants`, `acceptance-product-observable`, and `workflow-required`.
-- Interaction ownership: The runtime owns applicability normalization and panel presence. Product schemas own explicit applicability claims. Existing product acceptance owns actions and outcomes; the applicability layer only derives the branch cases in which those outcomes must be reproved.
-- Decision: Normalize explicit applicability, legacy `visibleWhen`, and omitted low-level input into one resolved model with origin metadata; reject legacy/implicit origins for product controls; combine conditional predicates with AND; derive pairwise cases from semantic section peers; preserve the authored `Background` inventory ownership after runtime relocates its product controls into `Setup`; attach case-scoped evidence only after exact presence/absence and real outcome assertions pass.
-- Alternatives rejected: Extending optional `visibleWhen`, selector-owned target lists, renderer dependency inference, acceptance prose heuristics, Cartesian branch enumeration, and Badge-specific logic.
-- State/output mapping: Applicability reads canonical runtime target values and changes only panel presence. Hidden values remain in runtime state, persistence, transfer, and history. Matching cases reuse the control's existing preview, rendered-pixel, artifact, command, or semantic proof.
-- Performance intent: ordinary-product-work
-- Verification: One bare `npm run verify:delivery` remains the generated-app delivery authority; this runtime/template contract delivery also runs the monorepo checks required by the repository entry contract.
-- Risks: Pairwise proof depends on truthful Control Section Inventory grouping; unsupported selector domains fail acceptance instead of silently skipping cases. Legacy low-level consumers remain readable but cannot satisfy generated product acceptance.
+- Risks: The colour controls carry hex strings while `collectStudioSelectedLayerEdit` accepts only numeric triples, so a colour edit does not currently reach the record; the representation has to be settled before colour editing can be proved. The `stack-depth` maximum is a declared proof ceiling chosen as a plausible authoring depth rather than derived from measurement. The non-constant composite pass leaves a kernel benchmark requirement pending, which functional delivery defers.
 
 ## Decisions
 
 ### Renderer
 
-- Decision: No product renderer yet.
-- Reason: The starter is intentionally neutral.
-- Evidence: No `canvasContent` product renderer is declared. The neutral composition still declares `modelPresentation: { mode: "runtime" }` so future model uploads have one standard owner until a product explicitly declares checked custom consumers.
+- Decision: One WebGL2 `composite` pass assembling the visible stack into a single fragment program, shared by preview and export.
+- Reason: The output is a per-pixel field and the product's subject is the composite of several, which neither Canvas 2D nor SVG can express; a shared renderer keeps what an author sees and what they export from drifting.
+- Evidence: `studio-pipeline.ts` registers the pass, `studio-canvas.tsx` draws it through `useToolcraftPipelinePass`, and `app-composition.tsx` builds the export frame from the same `createStudioStackRenderer` and `buildStudioSceneParameters`.
 
 ### Timeline
 
 - Decision: No timeline yet.
-- Reason: The starter has no product animation behavior.
+- Reason: Per-layer animation is a later group, and declaring the panel early would oblige playback coverage in a batch with no playback to prove.
 - Evidence: `panels.timeline` is omitted.
 
 ### Layers
 
-- Decision: No layers yet.
-- Reason: The starter has no layer workflow.
-- Evidence: `panels.layers` is omitted.
+- Decision: The runtime owns the layer list, selection, ordering, and visibility; product code owns only per-layer values.
+- Reason: The product's subject is an ordered stack of editable objects, which is exactly what the runtime layers panel provides. The runtime has no per-layer value store, so that one gap is what product code fills.
+- Evidence: `panels.layers` is enabled, and `stack.layerRecord` is a product target kept in step with the `selectedLayer.*` controls by `useStudioLayerSync`.
 
 ### Controls
 
-- Decision: No product controls yet.
-- Reason: Controls are added only after the requested product behavior is known.
-- Evidence: The starter schema exposes no product control sections.
+- Decision: One `selected-layer` section whose controls edit whichever layer is selected, gated by layer kind.
+- Reason: One control set per layer slot would grow the control count with stack depth and collide with the section budget as soon as a stack has more than a couple of layers.
+- Evidence: `studio-layer-sections.ts` declares nine controls in a single section with `selectedLayer.type` as the gate.
 
 ### View Interaction
 
-- Decision: No spatial product view yet.
-- Reason: The neutral starter has no visible three-dimensional scene or model.
-- Evidence: Product readiness remains in starter mode; product apps must declare typed `viewInteraction` before controls or renderer code.
+- Decision: Non-spatial.
+- Reason: The output is a two-dimensional field with no geometry, model, or camera, and layer order is compositing sequence rather than depth.
+- Evidence: `viewInteraction: { mode: "non-spatial" }` in `app-acceptance-data.ts`.
 
 ### Interaction Ownership
 
-- Decision: No product interaction surfaces yet.
-- Reason: The neutral starter has no canvas handles or product controls to compare.
-- Evidence: Product apps must declare typed `interactionOwnership` before implementing controls or canvas interactions.
+- Decision: Layer selection belongs to the panel.
+- Reason: Canvas picking is ambiguous wherever layers overlap, which in a composited stack is most of the field.
+- Evidence: The `layer-selection` ownership row, linked to its proof by `interactionId` on the `selectedLayer.type` row.
 
 ### Export
 
-- Decision: No product export yet.
-- Reason: Export actions are added when the app has product output.
-- Evidence: No sticky product `panelActions` are declared.
+- Decision: Runtime-owned image export drawing the product frame through the preview renderer, with the background composited by the runtime.
+- Reason: Runtime owns typed image actions end to end, and letting it own the artifact background is what keeps the transparent-image coverage claim true.
+- Evidence: `exportRenderer` in `app-composition.tsx` draws the stack alone; `studio-export-sections.ts` declares the Image Export section and its actions.
 
 ### Performance
 
-- Decision: No product performance workload yet.
-- Reason: Performance scenarios depend on renderer and control workload.
-- Evidence: The starter performance matrix is a neutral baseline.
+- Decision: Two workload dimensions — `stack-depth` from runtime state and `band-count` from the schema — with the composite pass declared `linear`.
+- Reason: Every visible layer adds a body call and a composite step to every pixel, so cost grows with the length of the stack; band count sets the field's frequency rather than the work per pixel.
+- Evidence: `workloadEnvelope` and `rendererPipeline` in `app-performance.ts` and `studio-pipeline.ts`.
 
 ## Evidence
 
-- Source reviewed: neutral starter schema and local Toolcraft docs.
-- Contract applied: starter baseline remains neutral until product behavior exists; `model-appearance-presentation` keeps package import, appearance leases, model canvas output, gizmo pose, and export ownership explicit.
+- Source reviewed: the Croix10 pipeline, canvas, scene, and export frame as the reference implementation; this product's layer registry, stack state, and stack renderer.
+- Contract applied: the renderer and canvas route's Plan and Implementation documents, the workload envelope and render plan rules, and the runtime boundary for product output.
 
 ## Verification
 
@@ -192,5 +110,6 @@ Protected receipts own changed files, the derived plan, commands, selectors, rep
 
 ## Risks
 
-- Risk: This template must be replaced with product-specific decisions before final delivery.
-- Risk: A product that selects custom model presentation must mount every declared checked consumer; otherwise runtime reports typed retryable presentation feedback and suppresses only that declared target.
+- Risk: Colour edits do not currently reach the layer record, because the controls carry hex strings and the collector accepts only numeric triples. Colour editing cannot be proved end to end until that representation is settled.
+- Risk: The declared `stack-depth` maximum is a proof ceiling rather than a measured one, and a measurement could move it.
+- Risk: The composite pass is non-constant, so a kernel benchmark requirement stays pending until an authorized performance run resolves it.
