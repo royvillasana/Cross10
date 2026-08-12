@@ -4,6 +4,7 @@ import {
 } from "@/toolcraft/runtime";
 
 import { STUDIO_BAND_COUNT } from "./studio-layer-sections";
+import { studioPipelineRegistration } from "./studio-pipeline";
 
 /**
  * Shader Studio performance model.
@@ -89,6 +90,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         },
       },
     },
+    rendererPipeline: studioPipelineRegistration,
     rendererStrategy: "webgl",
     rendererTechnique: {
       exportRenderer: "webgl",
