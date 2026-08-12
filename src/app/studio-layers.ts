@@ -1,0 +1,290 @@
+/**
+ * Layer-type registry.
+ *
+ * This is the divergence from the engine model the chunk registry was built for.
+ * There, one shader variant per engine had its components fixed at authoring
+ * time and a single `uEngine` branch chose between them. Here the program is
+ * assembled from an ordered stack the user builds, so a layer's uniforms cannot
+ * be named ahead of time.
+ *
+ * Per-layer uniforms are name-mangled at assembly (`uLayer0_angle`), which is
+ * R52. Indexed arrays would cap stack depth and pay for slots nobody filled; a
+ * packed uniform block would decouple program identity from stack contents but
+ * emit source no one can read, and readable source is the artifact this product
+ * exists to produce. The cost of mangling is that every stack edit compiles a new
+ * program — but the variant cache already keys on the stack signature (R54), so
+ * a stack edit invalidates the cached program either way. The churn is inherent
+ * to the feature rather than added by the choice.
+ *
+ * Bodies are shared and parameterised; only the thin per-layer wrapper is
+ * emitted per instance. So a stack of six stripe layers compiles one
+ * `studioStripesBody` and six calls to it, not six copies of the field code.
+ *
+ * The helpers this module emits are deliberately self-contained: the assembled
+ * program declares its own colour-space conversion and compositing rather than
+ * reaching into the engine chunk registry, which is what lets delivered source
+ * compile without carrying the studio with it.
+ */
+
+/** A GLSL scalar or vector a per-layer uniform can hold. */
+export type StudioLayerUniformType = "float" | "vec3";
+
+export interface StudioLayerUniform {
+  /** Default in the same units the control exposes. */
+  readonly defaultValue: number | readonly [number, number, number];
+  /** Suffix after the mangled layer prefix, e.g. `angle` in `uLayer0_angle`. */
+  readonly name: string;
+  readonly type: StudioLayerUniformType;
+}
+
+export interface StudioLayerType {
+  /**
+   * Parameterised GLSL body, shared across every instance of this type. It must
+   * declare exactly one function named by `entryPoint` and read nothing from
+   * global uniform state, so the same compiled body serves every layer.
+   */
+  readonly chunk: string;
+  /** Function the per-layer wrapper calls. */
+  readonly entryPoint: string;
+  readonly id: StudioLayerTypeId;
+  readonly label: string;
+  /** Ordered — the wrapper passes them positionally, so order is load-bearing. */
+  readonly uniforms: readonly StudioLayerUniform[];
+}
+
+export type StudioLayerTypeId = "gradient" | "stripes";
+
+/**
+ * Carried by every layer regardless of type.
+ *
+ * Visibility is a float rather than a bool because it multiplies into the
+ * composite weight, which keeps a hidden layer from needing a branch. The
+ * runtime owns the value — `panels.layers` writes it — but the program still has
+ * to receive it.
+ */
+export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
+  { defaultValue: 1, name: "opacity", type: "float" },
+  { defaultValue: 1, name: "visible", type: "float" },
+];
+
+const CHUNK_LAYER_SUPPORT = `
+vec3 studioLinearToSrgb(vec3 linear) {
+  vec3 clamped = clamp(linear, 0.0, 1.0);
+  vec3 low = clamped * 12.92;
+  vec3 high = 1.055 * pow(clamped, vec3(1.0 / 2.4)) - 0.055;
+  return mix(high, low, step(clamped, vec3(0.0031308)));
+}
+
+// Source-over in linear light. Weight folds opacity and visibility together so a
+// hidden layer contributes exactly nothing without costing a branch.
+vec4 studioComposite(vec4 below, vec4 above, float weight) {
+  float alpha = above.a * clamp(weight, 0.0, 1.0);
+  return vec4(mix(below.rgb, above.rgb, alpha), max(below.a, alpha));
+}
+`;
+
+const CHUNK_STRIPES_BODY = `
+vec4 studioStripesBody(
+  vec2 fragmentPosition,
+  vec2 resolution,
+  float angle,
+  float count,
+  float widthRatio,
+  float phase,
+  vec3 colorA,
+  vec3 colorB
+) {
+  // Normalised against height so the field does not stretch with aspect ratio.
+  vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
+  float radians = angle * 0.017453292519943295;
+  float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
+  float position = fract(coordinate * max(count, 1.0) + phase);
+
+  // Analytic edge from the screen-space derivative rather than supersampling:
+  // per-pixel cost stays constant with respect to band count, which is what lets
+  // the pipeline declare a constant relationship for the stripe dimensions.
+  float edge = max(fwidth(position) * 1.5, 1e-5);
+  float band = smoothstep(widthRatio - edge, widthRatio + edge, position);
+
+  return vec4(mix(colorA, colorB, band), 1.0);
+}
+`;
+
+const CHUNK_GRADIENT_BODY = `
+vec4 studioGradientBody(
+  vec2 fragmentPosition,
+  vec2 resolution,
+  float angle,
+  float rampType,
+  vec3 colorA,
+  vec3 colorB
+) {
+  vec2 uv = fragmentPosition / max(resolution, vec2(1.0));
+  vec2 centered = uv - 0.5;
+  float radians = angle * 0.017453292519943295;
+
+  float position;
+  if (rampType < 0.5) {
+    position = dot(centered, vec2(cos(radians), sin(radians))) + 0.5;
+  } else if (rampType < 1.5) {
+    position = length(centered) * 2.0;
+  } else {
+    position = fract((atan(centered.y, centered.x) - radians) * 0.15915494309189535 + 1.0);
+  }
+
+  return vec4(mix(colorA, colorB, clamp(position, 0.0, 1.0)), 1.0);
+}
+`;
+
+export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerType>> =
+  {
+    gradient: {
+      chunk: CHUNK_GRADIENT_BODY,
+      entryPoint: "studioGradientBody",
+      id: "gradient",
+      label: "Gradient",
+      uniforms: [
+        { defaultValue: 0, name: "angle", type: "float" },
+        { defaultValue: 0, name: "rampType", type: "float" },
+        { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
+      ],
+    },
+    stripes: {
+      chunk: CHUNK_STRIPES_BODY,
+      entryPoint: "studioStripesBody",
+      id: "stripes",
+      label: "Stripes",
+      uniforms: [
+        { defaultValue: 0, name: "angle", type: "float" },
+        { defaultValue: 24, name: "count", type: "float" },
+        { defaultValue: 0.5, name: "widthRatio", type: "float" },
+        { defaultValue: 0, name: "phase", type: "float" },
+        { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
+        { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
+      ],
+    },
+  };
+
+export const STUDIO_LAYER_TYPE_IDS: readonly StudioLayerTypeId[] = [
+  "stripes",
+  "gradient",
+];
+
+/** One entry in the ordered stack. Index 0 composites first, so it sits lowest. */
+export interface StudioStackEntry {
+  readonly typeId: StudioLayerTypeId;
+}
+
+/** Mangled uniform name for a layer's parameter. R52. */
+export function studioLayerUniformName(index: number, suffix: string): string {
+  return `uLayer${index}_${suffix}`;
+}
+
+/** Every uniform the assembled program declares for one layer, in wrapper order. */
+export function studioLayerUniforms(
+  typeId: StudioLayerTypeId,
+): readonly StudioLayerUniform[] {
+  return [...STUDIO_LAYER_TYPES[typeId].uniforms, ...STUDIO_LAYER_COMMON_UNIFORMS];
+}
+
+/**
+ * Cache key for the assembled program (R54).
+ *
+ * Two stacks with the same types in a different order are different programs, so
+ * order is part of the key. An engine-shaped key would collide across both.
+ */
+export function studioStackSignature(stack: readonly StudioStackEntry[]): string {
+  return stack.map((entry) => entry.typeId).join(">") || "empty";
+}
+
+const VERTEX_SHADER = `#version 300 es
+precision highp float;
+
+out vec2 vUv;
+
+void main() {
+  vec2 positions[3] = vec2[3](
+    vec2(-1.0, -1.0),
+    vec2(3.0, -1.0),
+    vec2(-1.0, 3.0)
+  );
+  vec2 position = positions[gl_VertexID];
+  vUv = (position + 1.0) * 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+export function studioStackVertexShader(): string {
+  return VERTEX_SHADER;
+}
+
+function declareLayerUniforms(stack: readonly StudioStackEntry[]): string {
+  return stack
+    .flatMap((entry, index) =>
+      studioLayerUniforms(entry.typeId).map(
+        (uniform) =>
+          `uniform ${uniform.type} ${studioLayerUniformName(index, uniform.name)};`,
+      ),
+    )
+    .join("\n");
+}
+
+function compositeLayer(entry: StudioStackEntry, index: number): string {
+  const type = STUDIO_LAYER_TYPES[entry.typeId];
+  const args = type.uniforms
+    .map((uniform) => studioLayerUniformName(index, uniform.name))
+    .join(", ");
+  const weight = `${studioLayerUniformName(index, "opacity")} * ${studioLayerUniformName(index, "visible")}`;
+
+  return `  {
+    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution${args ? `, ${args}` : ""});
+    composite = studioComposite(composite, layer, ${weight});
+  }`;
+}
+
+/**
+ * Assembles one fragment shader for the whole stack.
+ *
+ * A type absent from the stack contributes no code at all, so an unused layer
+ * type costs nothing per frame — the same property the engine variants had, held
+ * across a dynamic stack rather than a fixed pair.
+ */
+export function studioAssembleStackFragmentShader(
+  stack: readonly StudioStackEntry[],
+): string {
+  const usedTypes = STUDIO_LAYER_TYPE_IDS.filter((typeId) =>
+    stack.some((entry) => entry.typeId === typeId),
+  );
+
+  const preamble = `#version 300 es
+precision highp float;
+
+uniform vec2 uResolution;
+uniform vec3 uBackgroundColor;
+uniform float uIncludeBackground;
+
+${declareLayerUniforms(stack)}
+
+in vec2 vUv;
+out vec4 fragColor;
+`;
+
+  const main = `
+void main() {
+  vec2 fragmentPosition = vUv * uResolution;
+  vec4 composite = vec4(uBackgroundColor, uIncludeBackground);
+
+${stack.map((entry, index) => compositeLayer(entry, index)).join("\n")}
+
+  fragColor = vec4(studioLinearToSrgb(composite.rgb), composite.a);
+}
+`;
+
+  return [
+    preamble,
+    CHUNK_LAYER_SUPPORT,
+    ...usedTypes.map((typeId) => STUDIO_LAYER_TYPES[typeId].chunk),
+    main,
+  ].join("\n");
+}
