@@ -165,3 +165,39 @@ In one reference the drift reverses at a vertical seam, and the reversal is what
 **Status.** Taper was implemented once and reverted. The shader, control, acceptance row and inventory entry were all in place and the suite stayed green, but a measurement showed it changing the field symmetrically — the light share moved from 0.51 to 0.32 to 0 as the amount rose, while the two ends of a band stayed identical to three decimal places. That is a uniform width shift, not a drift along the band, so the geometry is wrong somewhere between the along-axis derivation and the split. A control whose proof cannot show a wedge is not worth having, so it comes back when the geometry is demonstrated rather than assumed.
 
 The observable is already known and is the one to build against: sample a column near each end of a band and compare the light share. A wedge separates them; a width change moves them together.
+
+## R60 — the component model: shapes, treatments, shadows, and presets
+
+Raised by a set of twenty-two reference works supplied by the user, with the request: *a complete background, then a component on top that can be plain or striped, draggable and resizable by node handles, on its own layer, with hue, saturation, contrast and blending mode — and shadows that taper. Plus presets for each, keeping the Cruz-Diez techniques already planned.*
+
+### What the references actually need
+
+Sorting them by mechanism rather than by appearance gives five groups, and the groups are what the work should follow.
+
+**A — Wedge zones.** Horizontal or vertical stripe fields with rectangular zones where the bands taper, the zones differing in lean and often in colour. Most of the set. **Reachable today**: taper (R59) plus the region mask and its placement land this, and the session already reproduced one. What is missing is only colour: each zone wants three or four inks, and a layer carries two.
+
+**B — Chromointerference.** A circle or ellipse over a fine vertical colour field, the shape shifting hue and brightness of everything beneath it rather than painting over it. Needs an **ellipse region**, a **per-layer colour treatment**, and a **blend mode** — the shape is a lens, not a sticker.
+
+**C — Scattered patches.** Rotated rectangles of striped fill on a plain ground, each at its own angle. Needs **shape rotation** and many independent instances.
+
+**D — Wedge prints.** Parallelogram bands in three or four colours. Reachable today except for the ink count, same as group A.
+
+**E — Fluted glass.** Photographs seen through a ribbed surface: a striped *displacement* of an underlying image, not a striped overlay. Needs the **image layer type** (3.1) plus a refraction effect. Furthest from what exists, and the only group whose subject is imported media.
+
+### Decision
+
+Five capabilities, in this order, because each is useful before the next exists.
+
+1. **Shape layer type.** A layer whose fill is plain or striped and whose extent is a rectangle or ellipse with position, size and rotation. This is the "component". It generalises the region mask rather than duplicating it: a region is already a rectangle with a centre and an aspect, so the shape kind and rotation land there and the shape layer is a layer that *draws* its region rather than merely being clipped to it.
+2. **Canvas handles.** Drag to move, node handles to resize. The runtime carries this as a first-class extension point with its own acceptance kind, so the handles write to runtime state, stay textless, and are proved to be absent from export — that last part is why this is not a free-floating overlay.
+3. **Layer treatment.** Hue, saturation, contrast, and blend mode, applied to a layer as it composites. Treatment is what makes group B possible at all: the shape must change what is beneath it, and a layer that can only paint cannot.
+4. **Tapered shadow.** A shadow attached to a shape, offset from it, drawn as a band whose thickness varies along its length — the same construction as the taper that already exists, applied to the shape's edge rather than to a stripe. The reference shadows are wedges, not blurs, which is why this belongs to the taper family rather than to a filter.
+5. **Presets.** Each reference expressed as a named stack. This is the gallery (group 5), and it stays blocked behind the ink count and these capabilities rather than being a separate problem.
+
+### Consequence
+
+**The two-ink limit is the binding constraint.** Groups A and D are otherwise reachable now, and both are held back by a layer carrying two colours where the works carry three or four. Group 4.4's palette surface is therefore not a late nicety — it is the thing standing between the current product and half the references. It should move ahead of 4.2 and 4.3.
+
+**Treatment changes what a layer is.** Until now every layer paints and composites. A layer with hue, saturation, contrast or a blend mode reads what is beneath it, which makes the stack order meaningful in a way it has not been, and makes the composite pass genuinely a composite rather than a series of paints. The pass declaration and its workload envelope should be revisited when it lands.
+
+**Handles oblige export proof.** A product editing handle must be provably absent from the exported artifact. That is a browser proof of the same shape as the background-transparency one, and it should be written with the handle rather than after it.

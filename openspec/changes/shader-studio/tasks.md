@@ -155,6 +155,22 @@ Deferred here deliberately — neither the selection model nor the control surfa
 - [ ] 10.1 Review all eleven ported presets against the gallery bar and list what each needs
 - [ ] 10.2 Correct them, re-proving only the presets whose acceptance coverage changed
 
+## 12. Component shapes, layer treatment, and shadows
+
+Raised from the user's reference set and decomposed in R60. Ordered so each item is useful before the next exists. Group 4.4's palette moves ahead of 4.2 and 4.3, because the two-ink limit is what holds back half the references and nothing here removes it.
+
+- [ ] 12.0 Carry the palette surface first (this is 4.4, pulled forward). A layer carries two colours and the works carry three or four; wedge zones and wedge prints are otherwise reachable today
+- [ ] 12.1 Extend the region with **shape kind** — rectangle or ellipse — and **rotation**. The region is already a placed, sized rectangle, so the shape lives there rather than in a parallel construct. Ellipse is what group B needs; rotation is what group C needs
+- [ ] 12.2 Register the **shape layer type**: a layer that draws its region rather than being clipped to it, with a plain or striped fill. This is the "component", and it is the first layer type with an extent of its own — which is also what re-arms the `scene-bounds-image-export` requirement deferred in R58, so that row returns with it
+- [ ] 12.3 **Canvas handles** for the shape: drag to move, node handles to resize. Runtime extension point with acceptance `kind: "canvas-handle"`; handles write runtime state, carry no text, and are proved absent from the exported artifact in the same batch
+- [ ] 12.4 **Layer treatment** — hue, saturation, contrast. Applied as the layer composites, so a layer can change what is beneath it rather than only painting over it
+- [ ] 12.5 **Blend mode** per layer. With 12.4 this is what makes a shape read as a lens, which is the whole of group B
+- [ ] 12.6 **Tapered shadow** attached to a shape: an offset band whose thickness varies along its length. The reference shadows are wedges rather than blurs, so this reuses the taper construction rather than adding a filter
+- [ ] 12.7 Revisit `rendererPipelineRegistration` and the workload envelope once treatment lands. A layer that reads beneath itself changes what the composite pass does, and the declaration should say so rather than being inherited from when every layer only painted
+- [ ] 12.8 Acceptance rows and browser proofs for every control and handle above, batched per item
+- [ ] 12.9 Presets for the reference set, as gallery entries (group 5). Blocked until 12.0–12.6, because the entries are exactly these capabilities in combination
+- [ ] 12.10 **Fluted glass** — striped displacement of an imported image. Needs the image layer type (3.1) first, and is the only reference group whose subject is imported media rather than generated field
+
 ## 11. Final delivery gate
 
 - [ ] 11.1 Full `npm run verify:delivery` with a valid receipt
