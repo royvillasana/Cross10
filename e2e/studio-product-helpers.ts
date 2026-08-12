@@ -230,6 +230,35 @@ export async function readStudioColorCount(page: Page): Promise<number> {
   });
 }
 
+/**
+ * One stripes layer, selected.
+ *
+ * The fixture for `selectedLayer.*` proofs: with a single layer every edit is
+ * directly visible in the composite. A layer under an opaque one would be edited
+ * without changing a pixel, and the proof would fail for the wrong reason.
+ */
+export async function openStudioSingleLayer(
+  page: Page,
+): Promise<{
+  layerId: string;
+  session: Awaited<ReturnType<typeof createToolcraftBrowserProofSession>>;
+}> {
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+
+  await addStudioLayer(page);
+  const layerId = (await readStudioLayerIds(page))[0] ?? "";
+
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 5000 })
+    .toBe("stripes");
+  await expect
+    .poll(async () => readStudioColorCount(page), { timeout: 15000 })
+    .toBeGreaterThan(1);
+
+  return { layerId, session: await createToolcraftBrowserProofSession(page) };
+}
+
 export type StudioGroupedFixture = {
   /** The gradient layer, inside the group. */
   groupedLayerId: string;
