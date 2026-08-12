@@ -57,6 +57,24 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       surface: "panel",
       target: "selectedLayer.type",
     },
+    {
+      alternative: {
+        reason:
+          "The four Layer Region sliders, which owned this until 14.1 and are now retired. A number is exact but blind, and the judgement being made -- where this shape sits on this picture, and how big -- is one a number cannot show. Keeping them beside the handles would have made one operation answer to two surfaces, which is the rule that forced the choice rather than merely suggesting it.",
+        surface: "panel",
+      },
+      capability: "direct-spatial-edit",
+      evidence: {
+        detail:
+          "Placing, sizing and proportioning a shape are spatial judgements made against the picture the shape sits on. Driving them through four sliders means reading a value, moving it, looking back at the canvas, and repeating -- the author edits coordinates rather than shaping anything. The user asked for the sliders to go and for the forms to be shaped on the canvas instead.",
+        source: "user-request",
+      },
+      id: "shape-shaping",
+      reason:
+        "A shape is moved, resized and proportioned by dragging it, so the canvas both makes the edit and shows the evidence for it. One entry rather than three because all three gestures end in the same dispatch: `controls.setValue` against the geometry the handles own.",
+      surface: "canvas",
+      target: "controls.setValue",
+    },
   ],
   mode: "product",
   productName: "Shader Studio",
@@ -154,19 +172,15 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer-region",
       groupingReason:
-        "Where the selected layer is allowed to draw. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages.",
+        "What form the selected layer takes, and how that form is turned and read. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages. Where the form sits and how big it is left this section with 14.1: the canvas handles own that, and a slider beside them would make one operation answer to two surfaces.",
       id: "selected-layer-region",
       targets: [
-        "selectedLayer.maskSize",
-        "selectedLayer.maskAspect",
-        "selectedLayer.maskCenterX",
-        "selectedLayer.maskCenterY",
         "selectedLayer.maskShape",
         "selectedLayer.maskSides",
         "selectedLayer.maskRotation",
         "selectedLayer.maskInvert",
       ],
-      title: "Layer Region",
+      title: "Layer Shape",
       workflowStage: "confine",
     },
     {

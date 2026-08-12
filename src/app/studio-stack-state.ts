@@ -34,6 +34,23 @@ import {
 /** Uncontrolled product target. Needs `persistence.additionalValueTargets`. */
 export const STUDIO_LAYER_RECORD_TARGET = "stack.layerRecord";
 
+/**
+ * The shape's geometry: uncontrolled since 14.1, because the canvas handles own
+ * it and a slider beside them would make one operation answer to two surfaces.
+ *
+ * They are still value targets -- the handles dispatch `controls.setValue`
+ * against exactly these names, and `collectStudioSelectedLayerEdit` reads them
+ * back out of the same value map it always did. What they stopped being is
+ * *controls*, so they have to be declared here or persistence drops them and a
+ * reload throws away every shape the author placed.
+ */
+export const STUDIO_SHAPE_GEOMETRY_TARGETS = [
+  "selectedLayer.maskSize",
+  "selectedLayer.maskAspect",
+  "selectedLayer.maskCenterX",
+  "selectedLayer.maskCenterY",
+] as const;
+
 /** Control target carrying the product layer type the runtime has no field for. */
 export const STUDIO_LAYER_TYPE_TARGET = "selectedLayer.type";
 

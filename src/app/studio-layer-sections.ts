@@ -5,20 +5,25 @@
  * file is the schema assembly, and it holds its line budget only while section
  * bodies live beside the entities they describe.
  *
- * One section, not two. An entity with ten or fewer controls must stay in a
- * single section — splitting `selected-layer` across two was rejected outright,
- * and the same rule forbids the workflow-shaped split that was tried first.
+ * Five sections over one entity, because an entity above ten controls must
+ * divide into explicit workflow stages. It began as one — at nine controls that
+ * was obligatory rather than chosen — and each stage since has been forced by
+ * the same rule as the surface grew.
  *
- * That also settles where the gate goes. `selectedLayer.type` has to sit beside
- * the controls it gates (R34, which is scoped to the section rather than the
- * entity), and with one section there is nowhere else for it to be.
+ * That settles where the gate goes. `selectedLayer.type` has to sit beside the
+ * controls it gates (R34, which is scoped to the section rather than the
+ * entity), so it lives in `Layer Pattern` with them.
  *
- * Nine controls oblige a declared `semanticGroup` on every one of them, so
- * cohesion is checked from typed intent rather than guessed from labels. Three
- * clusters: what the layer is and how it sits in the composite, its two colours,
- * and how its kind draws.
+ * Every control declares a `semanticGroup`, so cohesion is checked from typed
+ * intent rather than guessed from labels: composition, colour, pattern, region,
+ * treatment.
  *
- * Titles name the entity, never the branch. Neither equals, contains, nor is
+ * What is *not* here is as deliberate as what is. A shape's placement, size and
+ * proportion were four sliders until 14.1 and are now driven only by the canvas
+ * handles — one operation, one owning surface — leaving `Layer Shape` with the
+ * form itself, how it is turned, and which side of it the layer draws on.
+ *
+ * Titles name the entity, never the branch. None equals, contains, nor is
  * contained by "Stripes" or "Gradient", which are the gate's option labels (R33).
  */
 
@@ -258,68 +263,11 @@ widthRatio: {
   },
   {
     controls: {
-      maskSize: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        defaultValue: 0.35,
-        label: "Region size",
-        max: 0.8,
-        min: 0,
-        performanceReason:
-          "Two steps against a coordinate the composite already has; the layer costs the same masked or not.",
-        performanceRole: "responsiveness",
-        sliderValueKind: "continuous",
-        step: 0.01,
-        target: "selectedLayer.maskSize",
-        type: "slider",
-      },
-      maskAspect: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        defaultValue: 1,
-        label: "Region aspect",
-        max: 4,
-        min: 0.25,
-        performanceReason: "Scales one of the two comparisons already made.",
-        performanceRole: "responsiveness",
-        sliderValueKind: "continuous",
-        step: 0.05,
-        target: "selectedLayer.maskAspect",
-        type: "slider",
-      },
-      maskCenterX: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        defaultValue: 0,
-        label: "Region across",
-        max: 1,
-        min: -1,
-        performanceReason: "Shifts a coordinate before the comparison.",
-        performanceRole: "responsiveness",
-        sliderValueKind: "continuous",
-        step: 0.01,
-        target: "selectedLayer.maskCenterX",
-        type: "slider",
-      },
-      maskCenterY: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        defaultValue: 0,
-        label: "Region down",
-        max: 1,
-        min: -1,
-        performanceReason: "Shifts a coordinate before the comparison.",
-        performanceRole: "responsiveness",
-        sliderValueKind: "continuous",
-        step: 0.01,
-        target: "selectedLayer.maskCenterY",
-        type: "slider",
-      },
       maskShape: {
         semanticGroup: "region",
         applicability: { mode: "always" },
         defaultValue: "rectangle",
-        label: "Region shape",
+        label: "Shape",
         // The vocabulary R64 asks for, as named forms rather than as the two
         // constructions underneath them. A square is Rectangle at equal
         // extents and a circle is Ellipse at equal extents, so neither is its
@@ -350,7 +298,7 @@ widthRatio: {
           mode: "conditional",
         },
         defaultValue: 8,
-        label: "Region sides",
+        label: "Sides",
         max: 12,
         min: 3,
         performanceReason:
@@ -368,7 +316,7 @@ widthRatio: {
         semanticGroup: "region",
         applicability: { mode: "always" },
         defaultValue: 0,
-        label: "Region rotation",
+        label: "Rotation",
         max: 180,
         min: -180,
         performanceReason:
@@ -383,7 +331,7 @@ widthRatio: {
         semanticGroup: "region",
         applicability: { mode: "always" },
         defaultValue: false,
-        label: "Outside the region",
+        label: "Outside the shape",
         performanceReason: "Selects between two coverage values already computed.",
         performanceRole: "responsiveness",
         target: "selectedLayer.maskInvert",
@@ -391,7 +339,7 @@ widthRatio: {
       },
     },
     id: "selected-layer-region",
-    title: "Layer Region",
+    title: "Layer Shape",
   },
   {
     controls: {

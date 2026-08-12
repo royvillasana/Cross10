@@ -89,7 +89,10 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
    * the field is: normalised against height, from the centre of the frame.
    *
    * The default is a real size rather than nothing (R64): a layer *is* a shape,
-   * so it arrives with one already drawn and already grabbable. A layer that
+   * so it arrives with one already drawn and already grabbable. Half the frame's
+   * height, which leaves the shape and every one of its handles inside the view
+   * even in a window smaller than the frame -- a shape whose corners fall off
+   * the visible canvas is one whose handles cannot be reached at all. A layer that
    * started at zero would have to be given an extent before its canvas handles
    * could be reached at all, which is what left the handles depending on a
    * sidebar slider to bring the shape into existence.
@@ -98,7 +101,7 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
    * starts, but it is the only way to say "the whole frame", and a size that
    * made the layer vanish instead would leave that unsayable.
    */
-  { defaultValue: 0.35, name: "maskSize", type: "float" },
+  { defaultValue: 0.25, name: "maskSize", type: "float" },
   /**
    * Width of the region relative to its height. One is square; larger is a wide
    * band, smaller a tall column. Aspect rather than a second size, so resizing

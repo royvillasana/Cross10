@@ -44,9 +44,11 @@ describe("appSchema", () => {
       // into explicit workflow stages, and the kind gate moves with the
       // controls it reveals because R34 scopes gating to the section.
       "Layer Pattern",
-      // Where the layer is allowed to draw, independent of what it draws, so it
-      // needs neither the kind gate nor a place beside it.
-      "Layer Region",
+      // What form the layer takes, independent of what it draws, so it needs
+      // neither the kind gate nor a place beside it. Its placement, size and
+      // proportion left with 14.1 -- the canvas handles own those -- so what
+      // remains is the form itself and how it is turned and read.
+      "Layer Shape",
       "Layer Palette",
       "Layer Treatment",
       "Image Export",

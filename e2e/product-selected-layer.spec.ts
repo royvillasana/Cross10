@@ -26,26 +26,6 @@ import { test } from "./toolcraft-product-test";
  * reports.
  */
 
-/**
- * The single-layer fixture with its shape released to the whole frame.
- *
- * Every proof about the *field* -- what the layer draws -- releases the layer
- * first, because a layer now arrives confined to a shape (R65) and a statistic
- * taken across the frame would otherwise be measuring the shape as much as the
- * field. Zero still means unmasked, so this is one slider rather than a
- * different fixture.
- *
- * The proofs about the shape itself keep the layer confined and use
- * `openStudioSingleLayer` directly.
- */
-async function openStudioFieldLayer(
-  page: Parameters<typeof openStudioSingleLayer>[0],
-) {
-  const fixture = await openStudioSingleLayer(page);
-  await setStudioSlider(page, "Region size", 0);
-  return fixture;
-}
-
 test("browser: studio layer kind switches the layer between stripes and gradient", async ({
   page,
 }) => {
@@ -53,7 +33,7 @@ test("browser: studio layer kind switches the layer between stripes and gradient
   // per-test budget when the whole suite runs on one worker.
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   await expectToolcraftSelectedLayerControl(
     session.observe((root: HTMLElement) => {
@@ -94,7 +74,7 @@ test("browser: studio layer colours recolour only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // White to red: the bands keep their geometry, so the dominant pair moves from
   // black-and-white to black-and-red and nothing else about the frame changes.
@@ -115,10 +95,16 @@ test("browser: studio layer colours recolour only the selected layer", async ({
       let outputSignature = "absent";
 
       if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-        const width = Math.min(canvas.width, 512);
+        // Centred: the layer is a shape confined to the middle of the frame
+        // (R65), so a row starting at the left edge would count bare ground as
+        // the layer's own colour.
+        // Wide enough for several cycles of the ink rhythm and still inside the
+        // shape: at eight bands a 512-pixel window holds barely one cycle, and
+        // a palette of four reads as a palette of three.
+        const width = Math.min(canvas.width, Math.floor(canvas.height * 0.4));
         const pixels = new Uint8Array(width * 4);
         gl.readPixels(
-          0,
+          Math.floor((canvas.width - width) / 2),
           Math.floor(canvas.height / 2),
           width,
           1,
@@ -206,11 +192,18 @@ const LAYER_FIELD = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -228,7 +221,11 @@ const LAYER_FIELD = (
     }
 
     const share = light / (pixels.length / 4);
-    const frequency = transitions > 40 ? "fine" : transitions > 4 ? "coarse" : "flat";
+    // Measured against the span above rather than against the frame: inside the
+    // shape the default 24 bands cross the row about 19 times and 4 bands cross it 3,
+    // so the boundaries sit either side of those readings rather than either
+    // side of the counts a full-width row used to see.
+    const frequency = transitions > 15 ? "fine" : transitions > 2 ? "coarse" : "flat";
     const tone = share > 0.9 ? "light" : share < 0.1 ? "dark" : "mixed";
     outputSignature = `${frequency}:${tone}`;
   }
@@ -242,7 +239,6 @@ const LAYER_FIELD = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
-      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -255,7 +251,6 @@ const LAYER_FIELD = (
 
 const DEFAULT_SLIDERS = {
   angle: 0,
-  region: 0,
   taper: 0,
   jitter: 0,
   bandWidth: 0.5,
@@ -270,7 +265,7 @@ test("browser: studio band count changes the selected layer's frequency", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // 24 bands to 4: the field keeps its balance of light and dark and only its
   // frequency drops, which is exactly what the control claims to do.
@@ -293,7 +288,7 @@ test("browser: studio layer angle rotates only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // A quarter turn puts the bands parallel to the sampled row, so the row that
   // crossed every band now sits inside one of them.
@@ -316,7 +311,7 @@ test("browser: studio band width changes the selected layer's balance", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // Widening the band keeps every boundary where it was and moves the balance
   // between the two colours -- frequency holds, tone does not.
@@ -339,7 +334,7 @@ test("browser: studio layer opacity fades only the selected layer", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // At zero the layer contributes nothing and the background is all that is
   // left, which is the composite weight doing its job rather than a branch.
@@ -385,11 +380,18 @@ const LAYER_PHASE = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -403,8 +405,16 @@ const LAYER_PHASE = (
       if (isLight(index) !== isLight(index - 4)) transitions += 1;
     }
 
-    const frequency = transitions > 40 ? "fine" : transitions > 4 ? "coarse" : "flat";
-    outputSignature = `${frequency}:${isLight(0) ? "light" : "dark"}`;
+    // Measured against the span above rather than against the frame: inside the
+    // shape the default 24 bands cross the row about 19 times and 4 bands cross it 3,
+    // so the boundaries sit either side of those readings rather than either
+    // side of the counts a full-width row used to see.
+    const frequency = transitions > 15 ? "fine" : transitions > 2 ? "coarse" : "flat";
+    // A little inside the span: its first pixel falls exactly on a band seam at
+    // half a cycle, where the colour is the average of the two and the reading
+    // says nothing about which band the row opens in.
+    const opening = Math.floor(span * 0.02) * 4;
+    outputSignature = `${frequency}:${isLight(opening) ? "light" : "dark"}`;
   }
 
   return {
@@ -416,7 +426,6 @@ const LAYER_PHASE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
-      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -430,7 +439,7 @@ const LAYER_PHASE = (
 test("browser: studio offset slides the selected layer's bands", async ({ page }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // Half a cycle swaps which colour the row opens in while leaving the band
   // count untouched -- the bands slide rather than change.
@@ -441,7 +450,7 @@ test("browser: studio offset slides the selected layer's bands", async ({ page }
     }),
     {
       controlValue: { ...DEFAULT_SLIDERS, offset: 0.5 },
-      outputSignature: "fine:light",
+      outputSignature: "fine:dark",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.phase", target: "selectedLayer.phase" },
@@ -486,9 +495,9 @@ const GRADIENT_SHAPE = (
       return pixel[0] + pixel[1] + pixel[2];
     };
 
-    const left = luma(0.1);
+    const left = luma(0.5 - 0.125);
     const middle = luma(0.5);
-    const right = luma(0.9);
+    const right = luma(0.5 + 0.125);
     const margin = 40;
 
     outputSignature =
@@ -520,7 +529,7 @@ test("browser: studio transition shape redistributes the gradient", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
   await setStudioLayerKind(page, "Gradient");
 
   // Linear runs across the row; radial is symmetric about a bright centre. The
@@ -563,11 +572,18 @@ const FIELD_SYMMETRY = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -580,8 +596,11 @@ const FIELD_SYMMETRY = (
     let matched = 0;
     for (let step = 0; step < samples; step += 1) {
       const fraction = (step + 0.5) / (samples * 2);
-      const left = Math.floor(canvas.width * fraction) * 4;
-      const right = Math.floor(canvas.width * (1 - fraction)) * 4;
+      // Against the span, not the canvas: the row read above is a centred
+      // window now, and indexing it by frame fractions would run off the end
+      // of the buffer and compare undefined against undefined.
+      const left = Math.floor(span * fraction) * 4;
+      const right = Math.floor(span * (1 - fraction)) * 4;
       if (isLight(left) === isLight(right)) matched += 1;
     }
 
@@ -609,7 +628,7 @@ test("browser: studio mirror reflects the selected layer about its axis", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
   // Few, wide bands at the default offset. Two choices, both load-bearing:
   // at the default band count the bands are fine enough that mirrored and
   // unmirrored pairs agree by coincidence about as often as they disagree, and
@@ -663,11 +682,18 @@ const BAND_COVERAGE = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -685,7 +711,11 @@ const BAND_COVERAGE = (
     }
 
     const share = light / (pixels.length / 4);
-    const frequency = transitions > 40 ? "fine" : transitions > 4 ? "coarse" : "flat";
+    // Measured against the span above rather than against the frame: inside the
+    // shape the default 24 bands cross the row about 19 times and 4 bands cross it 3,
+    // so the boundaries sit either side of those readings rather than either
+    // side of the counts a full-width row used to see.
+    const frequency = transitions > 15 ? "fine" : transitions > 2 ? "coarse" : "flat";
     const coverage = share > 0.4 ? "half" : share < 0.2 ? "sparse" : "reduced";
     outputSignature = `${frequency}:${coverage}`;
   }
@@ -699,7 +729,6 @@ const BAND_COVERAGE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
-      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -715,7 +744,7 @@ test("browser: studio band separator opens a gap to what sits beneath", async ({
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // The bands keep their count and their positions; each one is simply painted
   // over less of its own cycle, and the ground shows through the rest.
@@ -766,11 +795,18 @@ const BAND_REGULARITY = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -807,7 +843,6 @@ const BAND_REGULARITY = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
-      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -823,7 +858,7 @@ test("browser: studio jitter displaces each band from its even position", async 
 }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
 
   // The count holds and the light-to-dark balance holds; only the evenness of
   // the spacing gives way, which is what distinguishes a displacement from a
@@ -878,10 +913,15 @@ const BAND_WEDGE = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    // Over the shape's own height rather than the frame's: the ground above and
+    // below the shape is neither light nor wedged, and counting it into both
+    // columns equally would shrink the difference the control is judged by.
+    const columnHeight = Math.floor(canvas.height * 0.6);
+    const columnTop = Math.floor((canvas.height - columnHeight) / 2);
     const share = (fraction: number) => {
       const x = Math.min(Math.floor(canvas.width * fraction), canvas.width - 1);
-      const pixels = new Uint8Array(canvas.height * 4);
-      gl.readPixels(x, 0, 1, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const pixels = new Uint8Array(columnHeight * 4);
+      gl.readPixels(x, columnTop, 1, columnHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
       let light = 0;
       for (let index = 0; index < pixels.length; index += 4) {
         if (pixels[index] + pixels[index + 1] + pixels[index + 2] > 382) light += 1;
@@ -889,7 +929,9 @@ const BAND_WEDGE = (
       return light / (pixels.length / 4);
     };
 
-    const delta = Math.abs(share(0.08) - share(0.92));
+    // Columns just inside the shape's own width rather than at the frame's
+    // edges, which the layer no longer reaches (R65).
+    const delta = Math.abs(share(0.5 - 0.125) - share(0.5 + 0.125));
     outputSignature = delta < 0.05 ? "even" : delta > 0.3 ? "wedged" : "leaning";
   }
 
@@ -902,7 +944,6 @@ const BAND_WEDGE = (
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
       separator: sliderValue("Band separator"),
-      region: sliderValue("Region size"),
       taper: sliderValue("Taper"),
     },
     outputSignature,
@@ -916,7 +957,7 @@ const BAND_WEDGE = (
 test("browser: studio taper turns each band into a wedge", async ({ page }) => {
   test.setTimeout(120_000);
 
-  const { layerId, session } = await openStudioFieldLayer(page);
+  const { layerId, session } = await openStudioSingleLayer(page);
   // Few bands running across the frame, so each band's length is the horizontal
   // axis and a wedge shows as a thickness difference between its two ends.
   await setStudioSlider(page, "Band count", 6);
@@ -925,10 +966,10 @@ test("browser: studio taper turns each band into a wedge", async ({ page }) => {
   await expectToolcraftSelectedLayerControl(
     session.observe(BAND_WEDGE),
     session.controlAction("selectedLayer.taper", async () => {
-      await setStudioSlider(page, "Taper", 0.6);
+      await setStudioSlider(page, "Taper", 1);
     }),
     {
-      controlValue: { ...DEFAULT_SLIDERS, angle: 90, count: 6, taper: 0.6 },
+      controlValue: { ...DEFAULT_SLIDERS, angle: 90, count: 6, taper: 1 },
       outputSignature: "wedged",
       selectedLayerId: layerId,
     },
@@ -1002,7 +1043,6 @@ const LAYER_REGION = (
       jitter: sliderValue("Jitter"),
       offset: sliderValue("Offset"),
       opacity: sliderValue("Opacity"),
-      region: sliderValue("Region size"),
       regionInverted:
         root
           .querySelector(
@@ -1020,38 +1060,6 @@ const LAYER_REGION = (
   };
 };
 
-test("browser: studio region confines the layer to a rectangle", async ({ page }) => {
-  test.setTimeout(120_000);
-
-  const { layerId, session } = await openStudioSingleLayer(page);
-  // Bands across the frame, so a vertical sampling strip always crosses them.
-  await setStudioSlider(page, "Angle", 90);
-  // Released to the whole frame first. A layer now arrives already confined
-  // (R65), so the transition this control is proved by has to start from the
-  // one state where it is not: zero, which still means unmasked.
-  await setStudioSlider(page, "Region size", 0);
-
-  // Unmasked the layer covers the frame, so centre and corner both carry the
-  // field. Confining it leaves the corner on bare ground.
-  await expectToolcraftSelectedLayerControl(
-    session.observe(LAYER_REGION),
-    session.controlAction("selectedLayer.maskSize", async () => {
-      await setStudioSlider(page, "Region size", 0.35);
-    }),
-    {
-      controlValue: {
-        ...DEFAULT_SLIDERS,
-        angle: 90,
-        region: 0.35,
-        regionInverted: "false",
-      },
-      outputSignature: "centre=field corner=ground",
-      selectedLayerId: layerId,
-    },
-    { requirementId: "selectedLayer.maskSize", target: "selectedLayer.maskSize" },
-  );
-});
-
 test("browser: studio region sense swaps which side the layer draws on", async ({
   page,
 }) => {
@@ -1059,7 +1067,6 @@ test("browser: studio region sense swaps which side the layer draws on", async (
 
   const { layerId, session } = await openStudioSingleLayer(page);
   await setStudioSlider(page, "Angle", 90);
-  await setStudioSlider(page, "Region size", 0.35);
 
   // The region becomes a hole rather than the whole of the layer: the field and
   // the bare ground trade places.
@@ -1072,158 +1079,12 @@ test("browser: studio region sense swaps which side the layer draws on", async (
       controlValue: {
         ...DEFAULT_SLIDERS,
         angle: 90,
-        region: 0.35,
         regionInverted: "true",
       },
       outputSignature: "centre=ground corner=field",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.maskInvert", target: "selectedLayer.maskInvert" },
-  );
-});
-
-/**
- * Which edges of the frame the layer reaches.
- *
- * Placement is about where the region sits, so the reading asks the frame's four
- * edges whether the layer got there. Widening it reaches left and right without
- * reaching further up or down; moving it across trades one side for the other;
- * moving it down trades top for bottom. One reading names all three because each
- * changes a different pair.
- *
- * Reports only the controls this fixture touches, so an expectation stays
- * legible rather than restating every slider on the layer.
- */
-const REGION_PLACEMENT = (
-  root: HTMLElement,
-): {
-  controlValue: unknown;
-  outputSignature: string;
-  selectedLayerId: string;
-} => {
-  const sliderValue = (label: string): number => {
-    const slider = root.querySelector(`input[aria-label="${label}"]`);
-    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
-  };
-
-  const canvas = root.querySelector(
-    "[data-toolcraft-product-output]",
-  ) as HTMLCanvasElement | null;
-  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
-  let outputSignature = "absent";
-
-  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const at = (fx: number, fy: number) => {
-      const width = 16;
-      const height = Math.min(Math.floor(canvas.height / 4), canvas.height);
-      const x = Math.min(
-        Math.max(Math.floor(canvas.width * fx) - width / 2, 0),
-        canvas.width - width,
-      );
-      const y = Math.min(
-        Math.max(Math.floor(canvas.height * fy) - height / 2, 0),
-        canvas.height - height,
-      );
-      const pixels = new Uint8Array(width * height * 4);
-      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-      const seen = new Set<string>();
-      for (let index = 0; index < pixels.length; index += 4) {
-        seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
-      }
-      // Bands run across the frame in this fixture, so a strip always crosses
-      // them where the layer draws and sees one flat colour where it does not.
-      return seen.size > 1 ? "field" : "ground";
-    };
-
-    outputSignature = `L=${at(0.08, 0.5)} R=${at(0.92, 0.5)} T=${at(0.5, 0.12)} B=${at(0.5, 0.88)}`;
-  }
-
-  return {
-    controlValue: {
-      across: sliderValue("Region across"),
-      angle: sliderValue("Angle"),
-      aspect: sliderValue("Region aspect"),
-      down: sliderValue("Region down"),
-      region: sliderValue("Region size"),
-    },
-    outputSignature,
-    selectedLayerId:
-      root
-        .querySelector('[data-layer-id][aria-selected="true"]')
-        ?.getAttribute("data-layer-id") ?? "",
-  };
-};
-
-/** A centred region, small enough to leave all four edges uncovered. */
-async function openStudioPlacedRegion(page: Parameters<typeof openStudioSingleLayer>[0]) {
-  const fixture = await openStudioSingleLayer(page);
-  await setStudioSlider(page, "Angle", 90);
-  await setStudioSlider(page, "Region size", 0.3);
-  return fixture;
-}
-
-const PLACEMENT_DEFAULTS = { across: 0, angle: 90, aspect: 1, down: 0, region: 0.3 };
-
-test("browser: studio region aspect reshapes the rectangle", async ({ page }) => {
-  test.setTimeout(120_000);
-
-  const { layerId, session } = await openStudioPlacedRegion(page);
-
-  // Wider without being taller: the sides come within reach while the top and
-  // bottom stay exactly as they were.
-  await expectToolcraftSelectedLayerControl(
-    session.observe(REGION_PLACEMENT),
-    session.controlAction("selectedLayer.maskAspect", async () => {
-      await setStudioSlider(page, "Region aspect", 4);
-    }),
-    {
-      controlValue: { ...PLACEMENT_DEFAULTS, aspect: 4 },
-      outputSignature: "L=field R=field T=field B=field",
-      selectedLayerId: layerId,
-    },
-    { requirementId: "selectedLayer.maskAspect", target: "selectedLayer.maskAspect" },
-  );
-});
-
-test("browser: studio region moves across the frame", async ({ page }) => {
-  test.setTimeout(120_000);
-
-  const { layerId, session } = await openStudioPlacedRegion(page);
-
-  // One side for the other: the region leaves the centre and the left edge is
-  // covered while the right is not.
-  await expectToolcraftSelectedLayerControl(
-    session.observe(REGION_PLACEMENT),
-    session.controlAction("selectedLayer.maskCenterX", async () => {
-      await setStudioSlider(page, "Region across", -0.6);
-    }),
-    {
-      controlValue: { ...PLACEMENT_DEFAULTS, across: -0.6 },
-      outputSignature: "L=field R=ground T=ground B=ground",
-      selectedLayerId: layerId,
-    },
-    { requirementId: "selectedLayer.maskCenterX", target: "selectedLayer.maskCenterX" },
-  );
-});
-
-test("browser: studio region moves down the frame", async ({ page }) => {
-  test.setTimeout(120_000);
-
-  const { layerId, session } = await openStudioPlacedRegion(page);
-
-  // Top for bottom, and the sides untouched, which is what separates a vertical
-  // move from a horizontal one.
-  await expectToolcraftSelectedLayerControl(
-    session.observe(REGION_PLACEMENT),
-    session.controlAction("selectedLayer.maskCenterY", async () => {
-      await setStudioSlider(page, "Region down", -0.4);
-    }),
-    {
-      controlValue: { ...PLACEMENT_DEFAULTS, down: -0.4 },
-      outputSignature: "L=ground R=ground T=field B=ground",
-      selectedLayerId: layerId,
-    },
-    { requirementId: "selectedLayer.maskCenterY", target: "selectedLayer.maskCenterY" },
   );
 });
 
@@ -1257,11 +1118,18 @@ const PALETTE_INKS = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const pixels = new Uint8Array(canvas.width * 4);
+    // Read across the middle of the layer's own shape rather than the whole
+    // frame. A layer is a shape (R65) and the sliders that could release it to
+    // the frame are gone with 14.1, so a full-width row would spend most of its
+    // length on bare ground. Half the frame height is the widest span that
+    // stays inside a shape at its default size, and it is measured against
+    // height because that is the unit the field and the shape share.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
     gl.readPixels(
-      0,
+      Math.floor((canvas.width - span) / 2),
       Math.floor(canvas.height / 2),
-      canvas.width,
+      span,
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -1277,7 +1145,10 @@ const PALETTE_INKS = (
       counts.set(hex, (counts.get(hex) ?? 0) + 1);
     }
 
-    const total = canvas.width;
+    // The share is of the row actually read, not of the frame. Dividing by the
+    // frame width while reading a window of it put every ink near the threshold
+    // and dropped whichever fell under -- a four-ink palette read as three.
+    const total = span;
     outputSignature =
       [...counts.entries()]
         .filter(([, count]) => count / total > 0.05)
@@ -1314,8 +1185,11 @@ const PALETTE_INKS = (
 async function openStudioPaletteLayer(
   page: Parameters<typeof openStudioSingleLayer>[0],
 ) {
-  const fixture = await openStudioFieldLayer(page);
-  await setStudioSlider(page, "Band count", 8);
+  const fixture = await openStudioSingleLayer(page);
+  // Twelve rather than eight: the sampled row is the shape's width now, and at
+  // eight bands it holds barely three of them -- a four-ink cycle that never
+  // completes reads as a three-ink palette.
+  await setStudioSlider(page, "Band count", 12);
   return fixture;
 }
 
@@ -1454,13 +1328,13 @@ const REGION_EXTENT = (
       places.every((place) => place === places[0]) ? places[0] : "mixed";
 
     const corners = agree([
-      at(0.5 - 0.152, 0.5 - 0.27),
-      at(0.5 + 0.152, 0.5 - 0.27),
-      at(0.5 - 0.152, 0.5 + 0.27),
-      at(0.5 + 0.152, 0.5 + 0.27),
+      at(0.5 - 0.127, 0.5 - 0.225),
+      at(0.5 + 0.127, 0.5 - 0.225),
+      at(0.5 - 0.127, 0.5 + 0.225),
+      at(0.5 + 0.127, 0.5 + 0.225),
     ]);
-    const sides = agree([at(0.5 - 0.152, 0.5), at(0.5 + 0.152, 0.5)]);
-    const caps = agree([at(0.5, 0.5 - 0.27), at(0.5, 0.5 + 0.27)]);
+    const sides = agree([at(0.5 - 0.127, 0.5), at(0.5 + 0.127, 0.5)]);
+    const caps = agree([at(0.5, 0.5 - 0.225), at(0.5, 0.5 + 0.225)]);
 
     outputSignature = `corners=${corners} sides=${sides} caps=${caps}`;
   }
@@ -1476,10 +1350,8 @@ const REGION_EXTENT = (
 
   return {
     controlValue: {
-      aspect: sliderValue("Region aspect"),
-      rotation: sliderValue("Region rotation"),
+      rotation: sliderValue("Rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
-      size: sliderValue("Region size"),
     },
     outputSignature,
     selectedLayerId:
@@ -1495,7 +1367,6 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
   test.setTimeout(120_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
-  await setStudioSlider(page, "Region size", 0.3);
 
   // The corners go and nothing else does: the ellipse is inscribed in the
   // rectangle it replaces rather than being a smaller region of the same kind.
@@ -1505,7 +1376,7 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
       await setStudioSelectValue(page, "selectedLayer.maskShape", "Ellipse");
     }),
     {
-      controlValue: { aspect: 1, rotation: 0, shape: "Ellipse", size: 0.3 },
+      controlValue: { rotation: 0, shape: "Ellipse" },
       outputSignature: "corners=ground sides=field caps=field",
       selectedLayerId: layerId,
     },
@@ -1521,7 +1392,7 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
       await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
     }),
     {
-      controlValue: { shape: "Triangle", sides: "absent", size: 0.3 },
+      controlValue: { rotation: 0, shape: "Triangle", sides: "absent" },
       outputSignature: "apex=field base=ground left=ground right=ground",
       selectedLayerId: layerId,
     },
@@ -1586,10 +1457,10 @@ const POLYGON_EXTENT = (
     };
 
     outputSignature = [
-      `apex=${at(0.5, 0.5 + 0.27)}`,
-      `base=${at(0.5, 0.5 - 0.27)}`,
-      `left=${at(0.5 - 0.152, 0.5)}`,
-      `right=${at(0.5 + 0.152, 0.5)}`,
+      `apex=${at(0.5, 0.5 + 0.225)}`,
+      `base=${at(0.5, 0.5 - 0.225)}`,
+      `left=${at(0.5 - 0.127, 0.5)}`,
+      `right=${at(0.5 + 0.127, 0.5)}`,
     ].join(" ");
   }
 
@@ -1605,15 +1476,15 @@ const POLYGON_EXTENT = (
   // Reported as "absent" rather than as a number when the control is not
   // rendered, so a named form's reading says out loud that it carries its own
   // side count instead of reading a stale one off a hidden slider.
-  const sidesControl = root.querySelector('input[aria-label="Region sides"]');
+  const sidesControl = root.querySelector('input[aria-label="Sides"]');
 
   return {
     controlValue: {
+      rotation: sliderValue("Rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
       sides: sidesControl
         ? Number(sidesControl.getAttribute("aria-valuenow"))
         : "absent",
-      size: sliderValue("Region size"),
     },
     outputSignature,
     selectedLayerId:
@@ -1627,9 +1498,8 @@ test("browser: studio region sides reshape the polygon", async ({ page }) => {
   test.setTimeout(120_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
-  await setStudioSlider(page, "Region size", 0.3);
   await setStudioSelectValue(page, "selectedLayer.maskShape", "Polygon");
-  await setStudioSlider(page, "Region sides", 12);
+  await setStudioSlider(page, "Sides", 12);
 
   // Twelve sides is as close to the ellipse as this control reaches, so the
   // shape holds all four directions. Cutting it to three leaves the apex alone,
@@ -1638,10 +1508,10 @@ test("browser: studio region sides reshape the polygon", async ({ page }) => {
   await expectToolcraftSelectedLayerControl(
     session.observe(POLYGON_EXTENT),
     session.controlAction("selectedLayer.maskSides", async () => {
-      await setStudioSlider(page, "Region sides", 3);
+      await setStudioSlider(page, "Sides", 3);
     }),
     {
-      controlValue: { shape: "Polygon", sides: 3, size: 0.3 },
+      controlValue: { rotation: 0, shape: "Polygon", sides: 3 },
       outputSignature: "apex=field base=ground left=ground right=ground",
       selectedLayerId: layerId,
     },
@@ -1655,20 +1525,21 @@ test("browser: studio region rotation turns the region about its own centre", as
   test.setTimeout(120_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
-  await setStudioSlider(page, "Region size", 0.15);
-  await setStudioSlider(page, "Region aspect", 4);
+  await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
 
-  // A wide region that reached its sides and not its caps reaches its caps and
-  // not its sides. Trading one pair for the other is what separates a turn from
-  // a resize, which would have lost both or gained both.
+  // Proved on a triangle rather than on a wide rectangle. The aspect slider
+  // retired with 14.1, so the only shape available without a handle drag is one
+  // at equal extents -- and a quarter turn leaves a square exactly where it was.
+  // A triangle carries its own orientation, so the turn is visible in the shape
+  // itself: the apex leaves the top and the reach appears on one side.
   await expectToolcraftSelectedLayerControl(
-    session.observe(REGION_EXTENT),
+    session.observe(POLYGON_EXTENT),
     session.controlAction("selectedLayer.maskRotation", async () => {
-      await setStudioSlider(page, "Region rotation", 90);
+      await setStudioSlider(page, "Rotation", 90);
     }),
     {
-      controlValue: { aspect: 4, rotation: 90, shape: "Rectangle", size: 0.15 },
-      outputSignature: "corners=ground sides=ground caps=field",
+      controlValue: { rotation: 90, shape: "Triangle", sides: "absent" },
+      outputSignature: "apex=ground base=ground left=field right=ground",
       selectedLayerId: layerId,
     },
     {
@@ -1709,13 +1580,13 @@ const TREATED_FIELD = (
   let outputSignature = "absent";
 
   if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
-    const at = (fx: number): string => {
+    const at = (fx: number, fy = 0.5): string => {
       const width = 32;
       const height = 4;
       const pixels = new Uint8Array(width * height * 4);
       gl.readPixels(
         Math.round(canvas.width * fx),
-        Math.round(canvas.height * 0.5),
+        Math.round(canvas.height * fy),
         width,
         height,
         gl.RGBA,
@@ -1737,7 +1608,12 @@ const TREATED_FIELD = (
       }`;
     };
 
-    outputSignature = `inside=${at(0.5)} outside=${at(0.05)}`;
+    // Inside is the middle of the triangle; outside is below its base, where the
+    // rectangle beneath still reaches and the triangle does not. Below rather
+    // than beside because that is where the gap between the two forms is widest
+    // -- a point beside the apex sits within a few thousandths of the edge, and
+    // a patch there straddles it.
+    outputSignature = `inside=${at(0.5)} outside=${at(0.5, 0.31)}`;
   }
 
   const sliderValue = (label: string): number => {
@@ -1781,14 +1657,15 @@ async function openStudioTreatmentLens(
   await setStudioColorHex(page, "First colour", "#FF0000");
   await setStudioColorHex(page, "Second colour", "#0000FF");
   await setStudioSlider(page, "Band count", 8);
-  // The field beneath has to cover the frame for "outside the lens" to have
-  // anything in it. A layer arrives as a shape now (R65), so the one playing
-  // the ground is released to the whole frame.
-  await setStudioSlider(page, "Region size", 0);
 
   await selectStudioLayer(page, fixture.gradientLayerId);
   await setStudioSlider(page, "Opacity", 0);
-  await setStudioSlider(page, "Region size", 0.3);
+  // The lens is a triangle over a rectangle of the same extent. Both layers are
+  // shapes now (R65) and the sliders that could have made one bigger than the
+  // other retired with 14.1, so the difference is made with the form instead:
+  // the triangle leaves the sides of the rectangle uncovered, and those are the
+  // "outside" the reading needs.
+  await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
 
   return { layerId: fixture.gradientLayerId, session };
 }
@@ -1810,7 +1687,7 @@ test("browser: studio hue shift turns the colours beneath the layer", async ({
     }),
     {
       controlValue: { ...LENS_DEFAULTS, hue: 120 },
-      outputSignature: "inside=#00b000 outside=#0000ff",
+      outputSignature: "inside=#00b000 outside=#ff0000",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.hue", target: "selectedLayer.hue" },
@@ -1833,7 +1710,7 @@ test("browser: studio saturation drains the colour beneath the layer", async ({
     }),
     {
       controlValue: { ...LENS_DEFAULTS, saturation: 0 },
-      outputSignature: "inside=#808080 outside=#0000ff",
+      outputSignature: "inside=#808080 outside=#ff0000",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.saturation", target: "selectedLayer.saturation" },
@@ -1854,7 +1731,7 @@ test("browser: studio contrast flattens what the layer covers", async ({ page })
     }),
     {
       controlValue: { ...LENS_DEFAULTS, contrast: 0 },
-      outputSignature: "inside=#c0c0c0 outside=#0000ff",
+      outputSignature: "inside=#c0c0c0 outside=#ff0000",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.contrast", target: "selectedLayer.contrast" },
@@ -1882,7 +1759,7 @@ test("browser: studio blend mode changes how the layer meets what it sits on", a
     }),
     {
       controlValue: { ...LENS_DEFAULTS, blend: "Multiply" },
-      outputSignature: "inside=#800000 outside=#0000ff",
+      outputSignature: "inside=#800000 outside=#ff0000",
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.blendMode", target: "selectedLayer.blendMode" },

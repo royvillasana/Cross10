@@ -4,7 +4,10 @@ import { appIdentity } from "./app-identity";
 import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
-import { STUDIO_LAYER_RECORD_TARGET } from "./studio-stack-state";
+import {
+  STUDIO_LAYER_RECORD_TARGET,
+  STUDIO_SHAPE_GEOMETRY_TARGETS,
+} from "./studio-stack-state";
 
 /**
  * Shader Studio product schema.
@@ -44,7 +47,10 @@ export const appSchema = defineToolcraft({
     // control, and an uncontrolled target is not persisted without being named
     // here — the same gap Croix10's cursor hotspot hit. Without it a reload
     // would restore the layer list and lose everything each layer looked like.
-    additionalValueTargets: [STUDIO_LAYER_RECORD_TARGET],
+    additionalValueTargets: [
+      STUDIO_LAYER_RECORD_TARGET,
+      ...STUDIO_SHAPE_GEOMETRY_TARGETS,
+    ],
     include: ["canvas", "layers", "panels", "values"],
     key: `toolcraft:${appIdentity.id}:state:v1`,
     storage: "localStorage",

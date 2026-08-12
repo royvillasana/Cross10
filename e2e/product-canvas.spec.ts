@@ -87,12 +87,19 @@ test("browser: studio enters infinity canvas and restores the exact finite artbo
   // Panning only moves the viewport. The artboard the product renders into is
   // not a function of where the workspace happens to be scrolled, which is what
   // makes the restored comparison meaningful rather than incidental.
+  //
+  // Taken from bare canvas rather than from the middle of it. The selected
+  // layer's shape sits at the centre and its handles own that area (R66), so a
+  // drag started there moves the shape -- which is the design-tool reading of
+  // the gesture, and the reason the pan grabs somewhere the shape is not.
   const viewport = page.getByRole("application", { name: "Canvas viewport" });
   const box = await viewport.boundingBox();
   if (!box) throw new Error("Canvas viewport has no bounding box.");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const panFromX = box.x + box.width * 0.12;
+  const panFromY = box.y + box.height / 2;
+  await page.mouse.move(panFromX, panFromY);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2 + 80);
+  await page.mouse.move(panFromX + 120, panFromY + 80);
   await page.mouse.up();
   const afterPan = await observeInfinityCanvas(page);
 
