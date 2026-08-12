@@ -146,3 +146,22 @@ Inside the app, a persisted "active entry" would be a claim that goes stale on t
 **Consequence.** The gallery is an applicator, not a mode. It contributes no `additionalValueTargets`, and 5.1's runtime commands give it undo and reset for free — selecting an entry is an ordinary edit, so undo steps back through it like any other.
 
 **Blocked work, recorded here so the ordering is not rediscovered.** Task 5.2 asks for Croix10's eleven presets expressed as layer stacks. They cannot be ported until group 4 lands: their distinguishing targets are `engine.active`, `interference.*`, `induction.*`, `immersion.*`, `transchromie.*`, `palette.slots`, `bands.separatorWidth` and `viewer.angle`, and this product's layer types expose angle, count, width ratio, phase, two colours and a ramp type. Six of the eleven — Induced Third, Physichromie 500, Induction Grid, Interference Beat, Moiré Wedge, Transchromie Sheets — are named for engines that do not exist here yet, and would collapse into near-identical stripe stacks. Group 4 carries those surfaces onto the layer types; group 5.1–5.3 and 5.5 follow it.
+
+## R59 — the wedge is two capabilities, not one control
+
+Raised by reference images of Cruz-Diez and Soto works supplied by the user, and by the request: *bend the stripes inside or outside a shape, and turn the shadow into a stripe with gradients that can change angle.*
+
+**What the references actually do.** The bands stay horizontal and evenly spaced. What moves is the boundary *inside* each band: the split between its two colours drifts along the band's length, so the band reads as a wedge — full thickness at one end, tapering to nothing at the other. The dark band stops being a line of constant width and becomes a triangle, which is what the request calls turning the shadow into a stripe with an angle.
+
+In one reference the drift reverses at a vertical seam, and the reversal is what makes a chevron column emerge from a field that never stops being parallel. In two others the drift is confined to rectangular regions with plain stripes outside them. In the prints every band is a parallelogram and the slant changes between column regions.
+
+**Decision.** This is two independent capabilities and they should land as two, in this order.
+
+1. **Taper** — a per-layer control that moves the colour split along the band's own length. This is the wedge itself, and it is useful on its own: a full-field taper already reproduces the parallelogram prints.
+2. **Region mask** — a per-layer shape that selects where the layer draws, with an inside/outside sense. This is what confines the bend to a shape and leaves the surrounding field parallel, and it is what makes the emergent-shape references reachable.
+
+**Reason for the order.** Taper needs no new architecture: it is one more uniform on the stripes type, in a section with room. The mask is architectural — every layer type would carry it, it interacts with the layer record, and it is close enough to the shape layer type in group 3.2 that the two should be designed together rather than one retrofitted onto the other. Building taper first also means the mask has something worth masking on the day it lands.
+
+**Status.** Taper was implemented once and reverted. The shader, control, acceptance row and inventory entry were all in place and the suite stayed green, but a measurement showed it changing the field symmetrically — the light share moved from 0.51 to 0.32 to 0 as the amount rose, while the two ends of a band stayed identical to three decimal places. That is a uniform width shift, not a drift along the band, so the geometry is wrong somewhere between the along-axis derivation and the split. A control whose proof cannot show a wedge is not worth having, so it comes back when the geometry is demonstrated rather than assumed.
+
+The observable is already known and is the one to build against: sample a column near each end of a band and compare the light share. A wedge separates them; a width change moves them together.

@@ -100,6 +100,8 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 
 ## 4. Control surface parity with Croix10
 
+> **Beyond parity — the wedge (R59).** The reference works the product is aiming at need two capabilities Croix10 does not have: a per-layer **taper**, which moves the colour split along a band's length so the band reads as a wedge rather than a line, and a per-layer **region mask** with an inside/outside sense, which confines that bend to a shape while the surrounding field stays parallel. Taper is self-contained and lands here; the mask is architectural and should be designed with the shape layer type in 3.2 rather than retrofitted. Taper was attempted once and reverted — see R59 for the measurement that rejected it and the observable to build against.
+
 Croix10's surface is the floor, not the ceiling. Each control carried across still obliges its own acceptance row and browser proof here — a proof passing in Croix10 proves nothing about this app.
 
 - [ ] 4.1 Carry the stripe field controls onto the stripes layer type. **Mirror is done**; jitter amount, jitter frequency and band separator are not, and they are blocked on the section budget rather than on the shader. Mirror took `selected-layer` to exactly ten controls, and an eleventh fails with *"owns 11 controls in section Selected Layer. Split entities above 10 controls into explicit workflow stages"*. So the entity must be split into workflow stages before any further per-layer control lands — and the split has to keep R34 (the `selectedLayer.type` gate sits in the section it gates) and R33 (section titles cannot collide with the gate's option labels), which is what made the earlier single-section arrangement the right one at nine controls
