@@ -3,6 +3,7 @@ import {
   openStudioSingleLayer,
   setStudioColorHex,
   setStudioLayerKind,
+  setStudioSelectValue,
   setStudioSlider,
 } from "./studio-product-helpers";
 import { test } from "./toolcraft-product-test";
@@ -409,5 +410,97 @@ test("browser: studio offset slides the selected layer's bands", async ({ page }
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.phase", target: "selectedLayer.phase" },
+  );
+});
+
+/**
+ * The shape of the gradient across the middle row.
+ *
+ * Read as a shape rather than as pixels because that is what the control names.
+ * A linear ramp runs one way across the row; a radial ramp is symmetric about
+ * the centre, which is bright while both ends are dark; an angular ramp sweeps
+ * around the centre. Comparing three samples names which of those the frame is,
+ * without depending on the exact colours or the backing size.
+ */
+const GRADIENT_SHAPE = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const y = Math.floor(canvas.height / 2);
+    const luma = (fraction: number) => {
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.min(Math.floor(canvas.width * fraction), canvas.width - 1),
+        y,
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      return pixel[0] + pixel[1] + pixel[2];
+    };
+
+    const left = luma(0.1);
+    const middle = luma(0.5);
+    const right = luma(0.9);
+    const margin = 40;
+
+    outputSignature =
+      middle > left + margin && middle > right + margin
+        ? "centre-bright"
+        : left > middle + margin && middle > right + margin
+          ? "descending"
+          : right > middle + margin && middle > left + margin
+            ? "ascending"
+            : "even";
+  }
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.rampType"]')
+    ?.querySelector('[role="combobox"]');
+
+  return {
+    controlValue: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio transition shape redistributes the gradient", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioLayerKind(page, "Gradient");
+
+  // Linear runs across the row; radial is symmetric about a bright centre. The
+  // ramp is redistributed rather than recoloured, which is what the control
+  // claims and what a colour-based reading would have missed.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(GRADIENT_SHAPE),
+    session.controlAction("selectedLayer.rampType", async () => {
+      await setStudioSelectValue(page, "selectedLayer.rampType", "Radial");
+    }),
+    {
+      controlValue: "Radial",
+      outputSignature: "centre-bright",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.rampType", target: "selectedLayer.rampType" },
   );
 });

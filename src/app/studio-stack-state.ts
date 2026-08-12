@@ -157,13 +157,16 @@ export function projectStudioLayerEntry(
     const stored = entry.values[uniform.name] ?? uniform.defaultValue;
     assignments.push({
       target: studioSelectedLayerTarget(uniform.name),
-      // The record holds linear triples; a colour control holds hex. Projecting
-      // the triple unconverted would push an array into a picker, which is how
-      // the value silently failed to round-trip before.
+      // The record holds a uniform's own representation; a control holds its
+      // own. Projecting one unconverted is how a value silently fails to
+      // round-trip: a triple pushed into a colour picker, or an index pushed
+      // into a select that has no option named "1".
       value:
         uniform.type === "vec3" && isStudioLinearColor(stored)
           ? studioLinearToHex(stored)
-          : stored,
+          : uniform.optionValues && typeof stored === "number"
+            ? (uniform.optionValues[stored] ?? uniform.optionValues[0] ?? stored)
+            : stored,
     });
   }
   return assignments;
@@ -182,6 +185,13 @@ export function collectStudioSelectedLayerEdit(
     const raw = values[studioSelectedLayerTarget(uniform.name)];
     if (uniform.type === "float" && typeof raw === "number") {
       next[uniform.name] = raw;
+    } else if (uniform.type === "float" && typeof raw === "string") {
+      // A float uniform driven by a select: the control carries the option's
+      // string and the shader branches on its index. Without this the edit is
+      // dropped for not already being a number, and the control moves while the
+      // render stays exactly where it was.
+      const index = uniform.optionValues?.indexOf(raw) ?? -1;
+      if (index >= 0) next[uniform.name] = index;
     } else if (uniform.type === "vec3") {
       // A colour control holds sRGB hex, so the edit decodes here rather than
       // being dropped for not already being a triple. Accepting a triple too

@@ -156,7 +156,22 @@ export async function setStudioLayerKind(
   page: Page,
   kind: "Gradient" | "Stripes",
 ): Promise<void> {
-  const field = await getToolcraftControlFieldByTarget(page, "selectedLayer.type");
+  await setStudioSelectValue(page, "selectedLayer.type", kind);
+}
+
+/**
+ * Chooses an option on any schema select, located by target.
+ *
+ * By target rather than by accessible name: a runtime select exposes its current
+ * value as its own name, so a name-based query matches whichever option happens
+ * to be selected rather than the control being driven.
+ */
+export async function setStudioSelectValue(
+  page: Page,
+  target: string,
+  optionLabel: string,
+): Promise<void> {
+  const field = await getToolcraftControlFieldByTarget(page, target);
   await field.getByRole("combobox").first().click();
 
   // The select's items are not exposed as options — the popup content sits under
@@ -165,7 +180,7 @@ export async function setStudioLayerKind(
   // matters: once the value changes, the closed trigger carries that same text.
   await page
     .locator("[data-open]")
-    .getByText(kind, { exact: true })
+    .getByText(optionLabel, { exact: true })
     .first()
     .click();
 }

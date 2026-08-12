@@ -34,6 +34,16 @@ export interface StudioLayerUniform {
   readonly defaultValue: number | readonly [number, number, number];
   /** Suffix after the mangled layer prefix, e.g. `angle` in `uLayer0_angle`. */
   readonly name: string;
+  /**
+   * Option values, in the order the shader's branches read them, for a float
+   * uniform whose control is a `select`.
+   *
+   * Without this the control's string value never becomes the uniform's number:
+   * the collector sees a string where it wants a number, drops the edit, and the
+   * control moves while the render stays put. The order is the contract — index
+   * 0 is the first branch — so it must match the body's own ordering.
+   */
+  readonly optionValues?: readonly string[];
   readonly type: StudioLayerUniformType;
 }
 
@@ -145,7 +155,13 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
       label: "Gradient",
       uniforms: [
         { defaultValue: 0, name: "angle", type: "float" },
-        { defaultValue: 0, name: "rampType", type: "float" },
+        {
+          defaultValue: 0,
+          name: "rampType",
+          // Order matches the branch order in `CHUNK_GRADIENT_BODY`.
+          optionValues: ["linear", "radial", "angular"],
+          type: "float",
+        },
         { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
       ],

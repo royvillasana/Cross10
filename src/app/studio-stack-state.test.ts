@@ -225,6 +225,39 @@ describe("stack construction", () => {
     expect(stack[0].values.visible).toBe(0);
   });
 
+  it("folds a select-driven float uniform into the record as its index", () => {
+    // The transition shape is a select whose value is a string, while its
+    // uniform is a float the shader branches on. Without the mapping the edit is
+    // dropped for not already being a number, and the control moves while the
+    // render stays exactly where it was.
+    const entry = collectStudioSelectedLayerEdit(
+      { typeId: "gradient", values: {} },
+      { "selectedLayer.rampType": "radial" },
+    );
+
+    expect(entry.values.rampType).toBe(1);
+  });
+
+  it("projects a select-driven float back as its option value", () => {
+    const assignments = projectStudioLayerEntry({
+      typeId: "gradient",
+      values: { rampType: 2 },
+    });
+
+    expect(
+      assignments.find((entry) => entry.target === "selectedLayer.rampType")?.value,
+    ).toBe("angular");
+  });
+
+  it("ignores an option value the uniform does not declare", () => {
+    const entry = collectStudioSelectedLayerEdit(
+      { typeId: "gradient", values: { rampType: 1 } },
+      { "selectedLayer.rampType": "spiral" },
+    );
+
+    expect(entry.values.rampType).toBe(1);
+  });
+
   it("folds a colour control's hex edit into the record", () => {
     // The colour controls hold hex, and this collector used to accept only a
     // numeric triple — so a colour edit was silently dropped and every layer
