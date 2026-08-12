@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildStudioSceneParameters, studioColorToLinear } from "./studio-scene";
+import {
+  buildStudioSceneParameters,
+  readStudioRenderScale,
+  studioColorToLinear,
+} from "./studio-scene";
 import { STUDIO_LAYER_RECORD_TARGET } from "./studio-stack-state";
 
 const layer = (id: string, overrides: Partial<{ kind: string; visible: boolean }> = {}) => ({
@@ -50,7 +54,7 @@ describe("studio scene parameters", () => {
           keep: { typeId: "stripes", values: { count: 8 } },
         },
       },
-    });
+    }, true);
 
     expect(scene.layers).toHaveLength(1);
     expect(scene.layers[0]?.typeId).toBe("stripes");
@@ -66,7 +70,7 @@ describe("studio scene parameters", () => {
           b: { typeId: "gradient", values: {} },
         },
       },
-    });
+    }, true);
 
     expect(scene.layers.map((entry) => entry.typeId)).toEqual(["stripes", "gradient"]);
   });
@@ -79,7 +83,7 @@ describe("studio scene parameters", () => {
           a: { typeId: "stripes", values: { visible: 1 } },
         },
       },
-    });
+    }, true);
 
     expect(scene.layers[0]?.values.visible).toBe(0);
   });
@@ -92,29 +96,42 @@ describe("studio scene parameters", () => {
           a: { typeId: "stripes", values: { colorA: "#ffffff" } },
         },
       },
-    });
+    }, true);
 
     expect(scene.layers[0]?.values.colorA).toEqual([1, 1, 1]);
   });
 
-  it("reads the background colour and its include switch", () => {
-    const scene = buildStudioSceneParameters({
-      layers: [],
-      values: {
-        "appearance.background": "#000000",
-        "export.includeBackground": false,
-      },
-    });
+  it("reads the background colour from state", () => {
+    const scene = buildStudioSceneParameters(
+      { layers: [], values: { "appearance.background": "#000000" } },
+      true,
+    );
 
     expect(scene.backgroundColor).toEqual([0, 0, 0]);
-    expect(scene.includeBackground).toBe(false);
   });
 
-  it("treats an unset background switch as included", () => {
-    // The switch defaults on in the schema, and an absent value must not read as
-    // "excluded" — that would silently drop the background on a fresh state.
-    const scene = buildStudioSceneParameters({ layers: [], values: {} });
+  it("takes background inclusion from its caller, not the export switch", () => {
+    // Preview and export ask different questions. `export.includeBackground`
+    // says whether an exported artifact carries the background; whether the
+    // preview shows it is the runtime's call. Reading the switch here would tie
+    // them together and make `backgroundOutputCoverage: "preview-hidden"` false.
+    const hidden = buildStudioSceneParameters(
+      { layers: [], values: { "export.includeBackground": true } },
+      false,
+    );
 
-    expect(scene.includeBackground).toBe(true);
+    expect(hidden.includeBackground).toBe(false);
+  });
+
+  it("falls back to a render scale of 1", () => {
+    expect(readStudioRenderScale({ layers: [], values: {} })).toBe(1);
+    expect(
+      readStudioRenderScale({ layers: [], values: { "canvas.renderScale": 2 } }),
+    ).toBe(2);
+    // A zero or negative scale would produce a zero-sized backing and a failed
+    // draw, so it degrades rather than reaching the renderer.
+    expect(
+      readStudioRenderScale({ layers: [], values: { "canvas.renderScale": 0 } }),
+    ).toBe(1);
   });
 });

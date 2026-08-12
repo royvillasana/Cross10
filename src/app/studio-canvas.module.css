@@ -1,0 +1,19 @@
+.canvas {
+  display: block;
+  block-size: 100%;
+  inline-size: 100%;
+}
+
+.unsupported {
+  display: grid;
+  place-content: center;
+  block-size: 100%;
+  inline-size: 100%;
+  margin: 0;
+  padding: 24px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: balance;
+}

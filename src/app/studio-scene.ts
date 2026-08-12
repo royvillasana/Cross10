@@ -40,8 +40,13 @@ export type StudioSceneStateSlice = Readonly<{
   values: Readonly<Record<string, unknown>>;
 }>;
 
+/** The slice the scene rectangle reads. Separate: bounds need no layer values. */
+export type StudioCanvasStateSlice = Readonly<{
+  canvas: Readonly<{ size: Readonly<{ height: number; width: number }> }>;
+}>;
+
 const BACKGROUND_COLOR_TARGET = "appearance.background";
-const INCLUDE_BACKGROUND_TARGET = "export.includeBackground";
+const RENDER_SCALE_TARGET = "canvas.renderScale";
 
 /** Opaque black, used when a colour cannot be read rather than failing the draw. */
 const FALLBACK_COLOR: readonly [number, number, number] = [0, 0, 0];
@@ -138,6 +143,7 @@ function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
  */
 export function buildStudioSceneParameters(
   state: StudioSceneStateSlice,
+  includeBackground: boolean,
 ): StudioStackSceneParameters {
   const record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
   const pruned = pruneStudioLayerRecord(
@@ -148,7 +154,45 @@ export function buildStudioSceneParameters(
   return {
     backgroundColor:
       studioColorToLinear(state.values[BACKGROUND_COLOR_TARGET]) ?? FALLBACK_COLOR,
-    includeBackground: state.values[INCLUDE_BACKGROUND_TARGET] !== false,
+    // Passed in rather than read from `export.includeBackground`, because the
+    // two are different questions. The switch says whether an exported artifact
+    // carries the background; whether the *preview* shows it is the runtime's
+    // call, which is what `backgroundOutputCoverage: "preview-hidden"` declares.
+    // Reading the export switch here would tie them together and make one of the
+    // two coverage claims false.
+    includeBackground,
     layers: buildStudioStack(pruned, state.layers).map(toLinearLayerValues),
   };
+}
+
+/**
+ * The product's world-space rectangle.
+ *
+ * Derived from `canvas.size` rather than a constant, because this product's
+ * sizing mode is `editable-output`: the author sets the output dimensions, so
+ * the scene is whatever they chose. Croix10 can hold a fixed rect because its
+ * output size is not an authored property; here a constant would detach the
+ * infinite-canvas frame and the exported artifact from the size control.
+ *
+ * Centred on the origin so the scene sits at the world centre in Infinity mode.
+ */
+export function studioSceneRect(
+  state: StudioCanvasStateSlice,
+): Readonly<{ height: number; width: number; x: number; y: number }> {
+  const width = Math.max(1, Math.round(state.canvas.size.width));
+  const height = Math.max(1, Math.round(state.canvas.size.height));
+
+  return { height, width, x: -width / 2, y: -height / 2 };
+}
+
+/**
+ * Selected render scale, defaulting to 1.
+ *
+ * Runtime-owned, and read here because the backing size is part of the pass
+ * cache key: a scale change alters backing pixels and must re-resolve the stack.
+ */
+export function readStudioRenderScale(state: StudioSceneStateSlice): number {
+  const value = state.values[RENDER_SCALE_TARGET];
+
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
 }
