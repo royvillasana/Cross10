@@ -200,3 +200,24 @@ Raised by the user: layers that are shapes -- the geometric ones and free-form -
 - [ ] 13.5 **Raster image layer** (this is 3.1): PNG and JPEG decoded to a texture, through the runtime's `mediaLifecycleCoverage` rather than a plain control
 - [ ] 13.6 **SVG import as conversion**, not rasterisation: each path becomes a free-form shape layer, so an imported figure can be recoloured, tapered and treated like a drawn one. Curves flatten to segments -- the tolerance is a decision to record, not a constant to guess -- and every unsupported feature (gradients, strokes, clip paths, text) is reported at import rather than silently dropped
 - [ ] 13.7 Retire the four Layer Region sliders in favour of the handles, which the acceptance model requires before 12.3 can merge: one operation, one owning surface
+
+### 13.1 starting brief
+
+Everything below is known, not guessed. Written at the end of the session that designed R63 so the next one can start editing rather than re-deriving.
+
+**Where the work goes.** The app is `../shader-studio`, branch `task-2-8a-workload-envelope`. The canvas handles live unmerged on `region-handles-wip`; 13.1 does not depend on them and should branch from the main branch, not from the handles.
+
+**The type.** `src/app/studio-layers.ts`, alongside `stripes` and `gradient`. A flat fill taking `colorA` only. Its GLSL body signature order **must** match its `uniforms` array order -- that trap cost this project three wrong diagnoses when `taper` was declared after `separator` and the body silently received the wrong value. Check the two lists against each other before running anything.
+
+**The gating bill, in full.** Registering a type with no second colour and no palette turns four always-applicable controls conditional. In `src/app/studio-layer-sections.ts`, gate these to stripes and gradient only, following the shape of the existing `STRIPES_APPLICABILITY` / `GRADIENT_APPLICABILITY` constants:
+
+- `selectedLayer.colorB` (section `selected-layer`)
+- `selectedLayer.paletteSlots`, `selectedLayer.colorC`, `selectedLayer.colorD` (section `selected-layer-palette`)
+
+Each gated control then needs applicability requirements with their own browser evidence. The existing `export.image-format` rows are the worked example of that shape -- read them before writing new ones.
+
+**Verify both suites, every time.** `npm test` runs `node --test scripts/*.test.mjs` and then `vitest run src`. Grepping only the first one is how nine failures were reported green in this project. Check `# fail` from the node run *and* the `Tests` line from vitest. For the browser suite use `npm run test:browser:stable`, never a bare `playwright test` -- the bare form pulls in the perf and kernel specs, which need `TOOLCRAFT_PERFORMANCE_FIXTURE_RESOLUTION_MODE` and fail without it.
+
+**Known-failing before you start**, so they are not mistaken for new breakage: `finds built-in controls through every module form` (a checker self-test running against a temp fixture, unrelated to product code), and `app-performance.gates.test.ts` (shells out to Playwright, needs the perf environment). The stable browser suite fails five framework specs -- three orientation, one runtime-requirements, one media upload -- all present at the branch point.
+
+**Measure before writing any expectation.** Every proof in this project that was written from intuition failed; every one written after dumping what the renderer actually produced passed first or second try. Write a throwaway probe spec, print the real pixels, then write the expectation. Delete the probe.
