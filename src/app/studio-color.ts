@@ -101,5 +101,23 @@ export function studioLinearToHex(value: StudioLinearColor): string {
 export function studioColorToLinear(value: unknown): StudioLinearColor | undefined {
   if (typeof value === "string") return studioHexToLinear(value);
   if (isStudioLinearColor(value)) return value;
+
+  // A colour control holds a bare hex string until it is edited, and an
+  // `{ hex, opacity? }` object afterwards. Handling only the string reads as a
+  // renderer that ignores colour: the control shows the new value, the record
+  // never receives it, and the composite keeps the old one.
+  //
+  // `opacity` is deliberately not consumed here. These uniforms are vec3, and
+  // the layer carries its own opacity control that already folds into the
+  // composite weight; taking a second opacity from the colour would apply it
+  // twice.
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { hex?: unknown }).hex === "string"
+  ) {
+    return studioHexToLinear((value as { hex: string }).hex);
+  }
+
   return undefined;
 }

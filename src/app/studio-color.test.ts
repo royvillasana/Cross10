@@ -27,6 +27,20 @@ describe("studio colour representation", () => {
     expect(studioColorToLinear(42)).toBeUndefined();
   });
 
+  it("reads the runtime colour control's object form", () => {
+    // A colour control holds a bare hex string until it is edited and an
+    // `{ hex, opacity? }` object afterwards. Handling only the string is
+    // indistinguishable from a renderer that ignores colour: the control shows
+    // the new value and the composite keeps the old one.
+    expect(studioColorToLinear({ hex: "#ff0000" })).toEqual([1, 0, 0]);
+    expect(studioColorToLinear({ hex: "#ffffff", opacity: 0.5 })).toEqual([1, 1, 1]);
+  });
+
+  it("rejects a colour object without a usable hex", () => {
+    expect(studioColorToLinear({ hex: "nope" })).toBeUndefined();
+    expect(studioColorToLinear({ opacity: 1 })).toBeUndefined();
+  });
+
   it("passes a linear triple through untouched", () => {
     expect(studioColorToLinear([0.25, 0.5, 0.75])).toEqual([0.25, 0.5, 0.75]);
   });

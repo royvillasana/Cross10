@@ -170,6 +170,52 @@ export async function setStudioLayerKind(
     .click();
 }
 
+/**
+ * Sets a colour through its hex field.
+ *
+ * The colour controls expose a labelled hex text input directly, so the value
+ * can be typed rather than chased around a picker surface. `label` is the
+ * control's own label, e.g. "First colour".
+ */
+export async function setStudioColorHex(
+  page: Page,
+  label: string,
+  hex: string,
+): Promise<void> {
+  // The hex field lives inside the picker. It is present in the DOM either way,
+  // so filling it without opening the picker updates the input and commits
+  // nothing — the control value moves while the render stays put, which reads
+  // exactly like a broken renderer rather than a test driving the wrong surface.
+  await page.getByRole("button", { name: `Pick ${label}` }).first().click();
+
+  const field = page.getByRole("textbox", { name: `${label} hex` });
+  await field.fill(hex);
+  await field.press("Enter");
+  await page.keyboard.press("Escape");
+}
+
+/**
+ * Sets a slider through its range input.
+ *
+ * Dispatching input and change together is what commits the edit: input alone
+ * reads as a drag in progress, which is a different interaction with a different
+ * invalidation path.
+ */
+export async function setStudioSlider(
+  page: Page,
+  label: string,
+  value: number,
+): Promise<void> {
+  const slider = page.getByRole("slider", { name: label });
+  await slider.first().focus();
+  await slider.first().evaluate((element, next) => {
+    const input = element as HTMLInputElement;
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+}
+
 /** The assembled stack the renderer drew, in draw order, lowest first. */
 export async function readStudioStackSignature(page: Page): Promise<string> {
   return (
