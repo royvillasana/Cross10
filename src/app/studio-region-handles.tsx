@@ -89,7 +89,11 @@ export function StudioRegionHandles({
    * box is correct either way, and does not depend on knowing what the shell
    * does above this component.
    */
-  const [overlayOrigin, setOverlayOrigin] = React.useState({ left: 0, top: 0 });
+  const [overlayFrame, setOverlayFrame] = React.useState({
+    left: 0,
+    scale: 1,
+    top: 0,
+  });
   const dragRef = React.useRef<DragState | null>(null);
   // Only to toggle the overlay's pointer-events. The gesture itself lives in a
   // ref, because re-rendering on every pointer move would make the drag depend
@@ -119,12 +123,22 @@ export function StudioRegionHandles({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const overlay = overlayRef.current?.getBoundingClientRect();
-    if (overlay) {
-      setOverlayOrigin((previous) =>
-        previous.left === overlay.left && previous.top === overlay.top
+    const overlayElement = overlayRef.current;
+    const overlay = overlayElement?.getBoundingClientRect();
+    if (overlayElement && overlay) {
+      // The app zooms the canvas with a transform on an ancestor, so a length
+      // written into a style here is drawn at length x zoom. Reading the
+      // overlay's own scale -- what it measures on screen against what it
+      // measures in its own layout -- is what lets the two be told apart
+      // without knowing how the shell implements its zoom.
+      const scale =
+        overlayElement.offsetWidth > 0 ? overlay.width / overlayElement.offsetWidth : 1;
+      setOverlayFrame((previous) =>
+        previous.left === overlay.left &&
+        previous.top === overlay.top &&
+        previous.scale === scale
           ? previous
-          : { left: overlay.left, top: overlay.top },
+          : { left: overlay.left, scale, top: overlay.top },
       );
     }
     setCanvasRect((previous) =>
@@ -266,6 +280,14 @@ export function StudioRegionHandles({
   const shown = studioRegionDisplayValues(current, canvasRect);
   const rect = studioRegionScreenRect(shown, canvasRect);
 
+  const scale = overlayFrame.scale === 0 ? 1 : overlayFrame.scale;
+  const local = {
+    height: rect.height / scale,
+    left: (rect.left - overlayFrame.left) / scale,
+    top: (rect.top - overlayFrame.top) / scale,
+    width: rect.width / scale,
+  };
+
   const beginResize =
     (handle: StudioRegionHandleId) =>
     (event: React.PointerEvent<HTMLButtonElement>): void => {
@@ -322,10 +344,10 @@ export function StudioRegionHandles({
         data-toolcraft-canvas-handle=""
         onPointerDown={beginMove}
         style={{
-          height: `${rect.height}px`,
-          left: `${rect.left - overlayOrigin.left}px`,
-          top: `${rect.top - overlayOrigin.top}px`,
-          width: `${rect.width}px`,
+          height: `${local.height}px`,
+          left: `${local.left}px`,
+          top: `${local.top}px`,
+          width: `${local.width}px`,
         }}
         type="button"
       />
@@ -340,8 +362,8 @@ export function StudioRegionHandles({
             key={handle}
             onPointerDown={beginResize(handle)}
             style={{
-              left: `${rect.left - overlayOrigin.left + ((anchor.x + 1) / 2) * rect.width}px`,
-              top: `${rect.top - overlayOrigin.top + ((anchor.y + 1) / 2) * rect.height}px`,
+              left: `${local.left + ((anchor.x + 1) / 2) * local.width}px`,
+              top: `${local.top + ((anchor.y + 1) / 2) * local.height}px`,
             }}
             type="button"
           />
