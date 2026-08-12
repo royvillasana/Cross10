@@ -321,3 +321,35 @@ That kills the Layer Region section as a control surface. Its targets survive as
 **Cursor input changes the frame contract.** Every control so far has been static: the same stack renders the same frame anywhere. A cursor uniform makes the preview interactive while the exported artifact and the delivered source must stay deterministic -- the export has no cursor. What the cursor resolves to at export time is a decision that must be made explicitly, not inherited, and R53's baked-source deliverable has the same question.
 
 **The workload envelope takes two new dimensions**, not one: polygon vertex count (R63) and whichever engines cost more per pixel than the plain ramp. Both land in the revisit 12.7 already asks for.
+
+## R65 -- the vocabulary is named forms over two constructions, and a layer arrives with a size
+
+Settled while building 14.2, which R64 left as "ellipse, regular polygon with a side count, and free vertex list, presented as named forms". Three questions came up that R64 did not answer, and each was decided against the shape the code actually took.
+
+### Square and circle are not forms
+
+R64's list of names includes square and rectangle, and circle and ellipse. In the geometry they are the same construction at different extents: a square is a rectangle whose two half-extents are equal, and a circle is that reading of an ellipse.
+
+Naming them separately would create a control that lies. The extents are handle-driven (12.3), so the moment an author grabs a corner of their "square" and pulls it wide, the select still says Square while the canvas shows a rectangle. A form the product cannot keep true is worse than a form it does not offer, particularly when the true one is one drag away and starts there: the default aspect is one, so choosing Rectangle draws a square and choosing Ellipse draws a circle.
+
+So the vocabulary is **Rectangle, Ellipse, Triangle, Diamond, Pentagon, Hexagon, Polygon** -- seven names over two constructions, with the side count exposed only for the general case.
+
+### The polygons are inscribed in the extent, not circumscribed about it
+
+A regular polygon can be measured to its vertex or to its side, and the two differ by a factor that grows as the side count falls -- at three sides, a polygon measured to its side reaches twice as far as the box that describes it.
+
+The extent belongs to the handles, so the polygon is measured to its vertex: whatever the form, the shape sits inside the box its size and aspect describe and never spills past a corner a handle is drawn on. The cost is that a triangle covers less of its box than a rectangle does, which is what a triangle is.
+
+Aspect stretches the coordinate rather than the polygon, so a widened diamond is still a diamond and not a lozenge whose angles have drifted.
+
+### The free vertex list arrives with the pen, not here
+
+R64 counts three constructions. Only two land in 14.2. A vertex list is not authorable until the pen exists (14.4) and not editable until the handle layer renders a list (14.3), so shipping the form now would put an option in the select that no author could choose and no proof could exercise. It lands in 14.4, with the operation that creates it.
+
+### A layer arrives with a size
+
+The default half-extent is 0.35 of the frame height rather than zero. This is the part 14.1 was blocked on: a shape that starts at nothing has to be given an extent by something *other* than its handles before its handles can be reached, which is exactly the dependency on the region sliders that 14.1 removes.
+
+Zero still means unmasked. It is no longer where a layer starts, but it is the only way to say "the whole frame", and a size that made the layer vanish instead would leave that unsayable. What changed is that it stopped being load-bearing: nothing has to pass through it to get a shape any more.
+
+**Consequence for the proofs.** Every browser proof that read the frame's corner to find the selected layer was reading a layer that covered the frame because nothing confined it. Those readings move to the shape the layer now has. That is not proof churn to be minimised -- it is the proofs catching up with what a layer is.

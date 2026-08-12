@@ -227,7 +227,12 @@ Each gated control then needs applicability requirements with their own browser 
 Supersedes group 13's shape items. Ordered so each is usable before the next exists, and so the thing blocking the handles goes first.
 
 - [ ] 14.1 (blocked on 14.2 — see the note below) **Retire the Layer Region section.** Its four sliders go; placement, size, aspect and rotation stay as the shape's geometry, driven by the canvas handles. This unblocks the 12.3 merge and is what the user asked for
-- [ ] 14.2 **Shape vocabulary on the layer**: ellipse, regular polygon with a side count, and free vertex list — presented as named forms (triangle, square, rectangle, circle, ellipse, diamond, polygon) rather than as three constructions. Chosen when the layer is created
+- [x] 14.2 **Shape vocabulary on the layer**, delivered as seven named forms over two constructions — Rectangle, Ellipse, Triangle, Diamond, Pentagon, Hexagon, and Polygon with a side count (3–12) — plus a real default size of 0.35, which is what unblocks 14.1. **R65** records the three decisions this needed:
+  - Square and circle get no entry of their own. They are Rectangle and Ellipse at equal extents, the extents are handle-driven, and a form naming itself a square would stop being one on the first drag. The default aspect is one, so choosing Rectangle draws a square and choosing Ellipse draws a circle
+  - Polygons are inscribed in the extent, so no form spills past a corner a handle is drawn on
+  - The free vertex list lands with the pen (14.4), not here: it is not authorable until the pen exists nor editable until the handle layer renders a list, so shipping the option now would put a form in the select that nobody could choose and no proof could exercise
+  - Proof churn, all of it from the default size rather than from the vocabulary: `readStudioColorCount` reads the centre of the frame instead of its corner, the thirteen *field* proofs open through a new `openStudioFieldLayer` that releases the layer with `Region size 0`, and the treatment lens releases the layer playing the ground. Two new browser proofs — the named-form half of `selectedLayer.maskShape`, and `selectedLayer.maskSides`. 27/27 selected-layer proofs green
+  - Left for 14.1: the section is still titled Layer Region and the controls are still labelled "Region shape" / "Region sides". Renaming them belongs with retiring the section, not ahead of it
 - [ ] 14.3 **Handle layer renders a list** rather than a fixed eight nodes (this is 13.2), which every non-rectangular shape needs
 - [ ] 14.4 **Pen tool**: a canvas mode that places vertices and closes the path, producing a free-form shape. Second canvas-owned operation, so it needs its own interactionOwnership entry and canvas-handle rows
 - [ ] 14.5 **Chromatic engines** as a per-layer axis beside the layer kind — chromatic induction, chromointerference, physichromie. Read Croix10's chunk registry and ramp chunk (tasks 1.1 and 1.2) first: this is the port that R57 deferred, not new invention
@@ -246,5 +251,7 @@ In the proof viewport it is not. Playwright runs 1280x720 with the canvas laid o
 **So 14.2 comes first.** Its premise — a layer is created *as* a shape, with a form and a real default size — removes the problem at the root rather than working around it. A new layer then has a grabbable shape from the moment it exists, the fixture becomes "add a layer", and the size-zero-means-unmasked special case stops being load-bearing.
 
 Do not solve this by widening the proof viewport. That would hide a real question the product should answer: what a freshly created layer *is*. The answer R64 already gives is "a shape", and 14.2 is where that gets built.
+
+**14.2 is done.** A layer now arrives as a Rectangle at half-extent 0.35, so `openStudioHandleFixture` no longer needs `setStudioSlider(page, "Region size", 0.2)` to make a grabbable shape — "add a layer" is enough, and the handles the fixture reaches for are inside the proof viewport from the moment the layer exists. That is the blocker cleared; 14.1 can start.
 
 **Revised order for group 14:** 14.2 (shape vocabulary with real defaults) → 14.1 (retire the sliders) → 14.3 (handle list) → 14.4 (pen) → 14.5 (engines) → 14.6/14.7 (cursor) → 14.8 (envelope).
