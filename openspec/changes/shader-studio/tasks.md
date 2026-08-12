@@ -126,17 +126,17 @@ Croix10's surface is the floor, not the ceiling. Each control carried across sti
 
 ## 7. Shader source assembly
 
-- [ ] 7.1 Resolve R53 (proposal open question 2) and record it in `design.md`: whether the artifact is a bare fragment shader or a runnable module carrying its uniform declarations and defaults. The MCP's usefulness depends on the answer, so this precedes 7.2
-- [ ] 7.2 Implement assembly: composed GLSL plus **current** uniform values — whatever the user has edited them to, not the preset's stored values
-- [ ] 7.3 Emit source that compiles without referencing the studio's chunk registry
-- [ ] 7.4 Assert no watermark, attribution comment, or injected identifier appears in the output — a test, not a convention
-- [ ] 7.5 Unit tests over assembly for every registered layer type and for a mixed stack
+- [x] 7.1 Resolve R53 (proposal open question 2) and record it in `design.md`: whether the artifact is a bare fragment shader or a runnable module carrying its uniform declarations and defaults. The MCP's usefulness depends on the answer, so this precedes 7.2
+- [x] 7.2 Implement assembly: composed GLSL plus **current** uniform values — whatever the user has edited them to, not the preset's stored values
+- [x] 7.3 Emit source that compiles without referencing the studio's chunk registry
+- [x] 7.4 Assert no watermark, attribution comment, or injected identifier appears in the output — a test, not a convention
+- [x] 7.5 Unit tests over assembly for every registered layer type and for a mixed stack
 
 ## 8. Clipboard delivery
 
-- [ ] 8.1 Add the copy-source action as an additional product action that never substitutes for artifact intent (`core/setup-export.md`)
-- [ ] 8.2 Assert `exportIntent` still describes only image and video after delivery is exercised
-- [ ] 8.3 Acceptance row and browser proof; run `npm run verify:delivery`
+- [x] 8.1 Add the copy-source action as an additional product action that never substitutes for artifact intent (`core/setup-export.md`)
+- [x] 8.2 Assert `exportIntent` still describes only image and video after delivery is exercised
+- [ ] 8.3 Acceptance row and browser proof; run `npm run verify:delivery`. **Row and proof are done** — the copy action rides on the `export.image-action` entry, because footer coverage is checked against every action in the sticky footer whichever control declares them, and the browser proof asserts runnable source on the clipboard. Only the delivery run is outstanding, and it is blocked with 2.10
 
 ## 9. MCP delivery — the primary path
 
