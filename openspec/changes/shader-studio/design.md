@@ -285,3 +285,39 @@ That decision has a boundary worth stating: SVG features with no equivalent in t
 3. Free-form vertex shapes, with vertex count declared as a workload dimension.
 4. Raster image layer (3.1), PNG and JPEG, through media lifecycle coverage.
 5. SVG import as a conversion to free-form shape layers, with an explicit unsupported-feature report.
+
+## R64 — the shape is the layer, the technique is the engine, and the cursor is an input
+
+Supersedes the shape half of R63 and the 13.1 brief written beside it. Raised by the user after seeing 12.1 and 12.3 land:
+
+> *"Right now we have only the square, the rectangle, and the ellipse. What you call the region is this shape and I need to create any type of shape that I want. It can be with a pen ... triangle, circles, squares, rectangles, diamonds ... I don't need the layer region on the sidebar. What I need is to have the option to select those forms to create them."*
+>
+> *"I didn't see that you removed the other set of options that we previously had ... different chromatic engines so that I can create all the different styles from Cruz-Diez ... they need to be able to, like a shader does, have these cursor interactions."*
+
+### Three corrections to what was planned
+
+**1. The region was the wrong shape of idea.** R63 treated shapes as a new layer *type* sitting beside the region. The user's reading is simpler and better: the region **is** the shape, and it should be chosen when the layer is created rather than assembled afterwards from four sliders. A layer is a shape; the shape has a form; the form is picked from a set.
+
+That kills the Layer Region section as a control surface. Its targets survive as the shape's geometry -- placement, size, aspect, rotation are still what a shape has -- but they are driven by the canvas handles (12.3) and not by sliders in the sidebar. This is the same retirement 13.7 already required for the acceptance model's sake; it now has a product reason as well, which is the better of the two.
+
+**2. Two shapes is not a shape set.** Rectangle and ellipse were what the mask arithmetic gave away cheaply. The user wants the actual vocabulary: triangle, square, rectangle, circle, ellipse, diamond, regular polygon, and a free-form pen. Most of these are one construction, not eight: a **regular polygon of n sides with a rotation** yields triangle, diamond, square, pentagon and hexagon, and the circle is its limit. Only the ellipse (a scaled circle, already present) and the free-form polygon are separate. So the set is three constructions -- ellipse, regular polygon, free vertex list -- presented as a vocabulary of named shapes.
+
+**3. The Cruz-Diez techniques were never ported, not removed.** Worth stating plainly because the user reasonably read their absence as a regression. The engine-shaped modules came from Croix10 and were taken back out under R57 as orphans the layer stack did not consume. Nothing was deleted from a working product; the techniques have been waiting for the layer model to be ready for them, and it now is.
+
+### Decision
+
+**Shapes are chosen, not configured.** Adding a layer offers a form. The form is a `shape` uniform -- ellipse, polygon, or free -- plus a side count for the polygon case and a vertex list for the free case. The sidebar loses Layer Region entirely; the canvas gains the handles that already exist.
+
+**A pen tool is a mode, not a control.** Free-form drawing is a canvas interaction: click to place vertices, close the path to finish. That makes it the second canvas-owned operation after region shaping, and it needs the handle layer to render a list rather than a fixed eight (13.2, unchanged).
+
+**Chromatic engines are a per-layer choice, like the layer kind.** Each Cruz-Diez technique -- chromatic induction, chromointerference, physichromie -- is a way of colouring a field, so it belongs beside `selectedLayer.type` as a second axis: what the layer draws, and how it is coloured. Not a global mode, because the reference works combine techniques across layers in one picture, which a global switch would forbid.
+
+**The cursor is a uniform, not an event.** Hover interaction means the pointer's position and its proximity to a shape reach the shader as values, and each engine decides what to do with them. That keeps every technique's response to the cursor in the same place as the technique itself, and it makes the interaction continuous rather than a hover state that is either on or off. Croix10's proximity-push chunk (task 1.2) is the existing prior art and should be read before this is designed further.
+
+### Consequence
+
+**Retiring the region sliders is now load-bearing, not housekeeping.** It blocks the handles from merging and it is what the user asked for, so it goes first rather than last.
+
+**Cursor input changes the frame contract.** Every control so far has been static: the same stack renders the same frame anywhere. A cursor uniform makes the preview interactive while the exported artifact and the delivered source must stay deterministic -- the export has no cursor. What the cursor resolves to at export time is a decision that must be made explicitly, not inherited, and R53's baked-source deliverable has the same question.
+
+**The workload envelope takes two new dimensions**, not one: polygon vertex count (R63) and whichever engines cost more per pixel than the plain ramp. Both land in the revisit 12.7 already asks for.

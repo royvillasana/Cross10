@@ -201,7 +201,7 @@ Raised by the user: layers that are shapes -- the geometric ones and free-form -
 - [ ] 13.6 **SVG import as conversion**, not rasterisation: each path becomes a free-form shape layer, so an imported figure can be recoloured, tapered and treated like a drawn one. Curves flatten to segments -- the tolerance is a decision to record, not a constant to guess -- and every unsupported feature (gradients, strokes, clip paths, text) is reported at import rather than silently dropped
 - [ ] 13.7 Retire the four Layer Region sliders in favour of the handles, which the acceptance model requires before 12.3 can merge: one operation, one owning surface
 
-### 13.1 starting brief
+### 13.1 starting brief (superseded by R64 — see group 14; the verification notes at the end still apply)
 
 Everything below is known, not guessed. Written at the end of the session that designed R63 so the next one can start editing rather than re-deriving.
 
@@ -221,3 +221,16 @@ Each gated control then needs applicability requirements with their own browser 
 **Known-failing before you start**, so they are not mistaken for new breakage: `finds built-in controls through every module form` (a checker self-test running against a temp fixture, unrelated to product code), and `app-performance.gates.test.ts` (shells out to Playwright, needs the perf environment). The stable browser suite fails five framework specs -- three orientation, one runtime-requirements, one media upload -- all present at the branch point.
 
 **Measure before writing any expectation.** Every proof in this project that was written from intuition failed; every one written after dumping what the renderer actually produced passed first or second try. Write a throwaway probe spec, print the real pixels, then write the expectation. Delete the probe.
+
+## 14. Shapes as layers, chromatic engines, and cursor input (R64)
+
+Supersedes group 13's shape items. Ordered so each is usable before the next exists, and so the thing blocking the handles goes first.
+
+- [ ] 14.1 **Retire the Layer Region section.** Its four sliders go; placement, size, aspect and rotation stay as the shape's geometry, driven by the canvas handles. This unblocks the 12.3 merge and is what the user asked for
+- [ ] 14.2 **Shape vocabulary on the layer**: ellipse, regular polygon with a side count, and free vertex list — presented as named forms (triangle, square, rectangle, circle, ellipse, diamond, polygon) rather than as three constructions. Chosen when the layer is created
+- [ ] 14.3 **Handle layer renders a list** rather than a fixed eight nodes (this is 13.2), which every non-rectangular shape needs
+- [ ] 14.4 **Pen tool**: a canvas mode that places vertices and closes the path, producing a free-form shape. Second canvas-owned operation, so it needs its own interactionOwnership entry and canvas-handle rows
+- [ ] 14.5 **Chromatic engines** as a per-layer axis beside the layer kind — chromatic induction, chromointerference, physichromie. Read Croix10's chunk registry and ramp chunk (tasks 1.1 and 1.2) first: this is the port that R57 deferred, not new invention
+- [ ] 14.6 **Cursor as a uniform**: pointer position and proximity reach the shader, and each engine decides its response. Croix10's proximity-push chunk is the prior art
+- [ ] 14.7 **Decide what the cursor resolves to at export**, for both the image artifact and R53's baked source. The preview is interactive; the artifact and the delivered source must stay deterministic. This is a decision to record, not a default to inherit
+- [ ] 14.8 Workload envelope and pipeline registration for the two new dimensions — polygon vertex count and per-engine cost — folded into the revisit 12.7 already asks for
