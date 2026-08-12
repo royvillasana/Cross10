@@ -40,6 +40,10 @@ describe("appSchema", () => {
     expect(sections.map((section) => section.title)).toEqual([
       "Setup",
       "Selected Layer",
+      // Split from Selected Layer: one entity above ten controls must divide
+      // into explicit workflow stages, and the kind gate moves with the
+      // controls it reveals because R34 scopes gating to the section.
+      "Layer Pattern",
       "Image Export",
       "Export",
     ]);

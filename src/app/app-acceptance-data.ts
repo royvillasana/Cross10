@@ -119,21 +119,32 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer",
       groupingReason:
-        "Everything about the layer currently selected: what kind it is, how much of it reaches the composite, and how that kind draws. The kind selector gates the controls it reveals from inside the same section.",
+        "What the selected layer is as a whole: how much of it reaches the composite, how it sits, and the two colours every kind of layer carries. None of these depend on the kind, so none of them are gated.",
       id: "selected-layer",
       targets: [
         "selectedLayer.opacity",
         "selectedLayer.angle",
-        "selectedLayer.type",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
+      ],
+      title: "Selected Layer",
+      workflowStage: "compose",
+    },
+    {
+      entity: "Selected layer",
+      entityId: "selected-layer-pattern",
+      groupingReason:
+        "How the selected layer's kind draws, and the kind selector itself. The gate sits here rather than above because R34 scopes gating to the section, so it has to share a section with everything it reveals. Split from the composition stage because one entity above ten controls must divide into explicit workflow stages.",
+      id: "selected-layer-pattern",
+      targets: [
+        "selectedLayer.type",
         "selectedLayer.count",
         "selectedLayer.mirror",
         "selectedLayer.widthRatio",
         "selectedLayer.phase",
         "selectedLayer.rampType",
       ],
-      title: "Selected Layer",
+      title: "Layer Pattern",
       workflowStage: "shape",
     },
     {
