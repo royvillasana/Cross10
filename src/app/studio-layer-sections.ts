@@ -374,6 +374,7 @@ widthRatio: {
         sliderValueKind: "discrete",
         step: 1,
         target: "selectedLayer.paletteSlots",
+        variant: "discrete",
         type: "slider",
       },
       colorC: {

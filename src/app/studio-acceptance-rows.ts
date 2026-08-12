@@ -333,6 +333,7 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     id: "selectedLayer.blendMode",
     kind: "control",
     layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
     target: "selectedLayer.blendMode",
     userAction:
       "Put a mid grey layer over a coloured field, then choose Multiply as the blend mode.",
@@ -350,6 +351,7 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     id: "selectedLayer.maskShape",
     kind: "control",
     layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
     target: "selectedLayer.maskShape",
     userAction: "Size a region, then choose Ellipse as the region shape.",
   },
