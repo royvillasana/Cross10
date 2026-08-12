@@ -6,6 +6,7 @@ import {
 } from "./app-acceptance";
 import { appPerformance } from "./app-performance";
 import { appSchema } from "./app-schema";
+import { STUDIO_BAND_COUNT } from "./studio-layer-sections";
 
 /**
  * This file replaces the starter assertions the scaffold ships with.
@@ -78,11 +79,36 @@ describe("appSchema", () => {
     expect(persistenceInclude).toContain("layers");
   });
 
-  it("keeps performance paths empty until the workload envelope is declared", () => {
-    // Stack depth is this product's new workload dimension (task 0.13). Until it
-    // is declared, an empty envelope is the honest state rather than a stale one.
+  it("declares stack depth as a runtime-state workload dimension", () => {
+    // Stack depth is this product's new workload dimension (task 0.13/2.8a).
+    // It is sourced from runtime state rather than a schema target because the
+    // runtime owns the layer list, so there is no control behind the magnitude
+    // and no schema endpoint for a boundary to equal.
+    const stackDepth = appPerformance.workloadEnvelope.dimensions.find(
+      (dimension) => dimension.id === "stack-depth",
+    );
+
+    expect(stackDepth?.source).toEqual({ kind: "runtime-state", path: "layers" });
+    expect(stackDepth?.unit).toBe("layers");
+  });
+
+  it("keeps the band count boundary equal to its schema endpoint", () => {
+    // The guard that matters: a schema-backed workload boundary must equal the
+    // control's own endpoint, so widening the slider without widening the
+    // envelope is a failure rather than a silent understatement of the load.
+    const bandCount = appPerformance.workloadEnvelope.dimensions.find(
+      (dimension) => dimension.id === "band-count",
+    );
+
+    expect(bandCount?.interactiveMax).toBe(STUDIO_BAND_COUNT.max);
+    expect(bandCount?.batchMax).toBe(STUDIO_BAND_COUNT.max);
+    expect(bandCount?.defaultValue).toBe(STUDIO_BAND_COUNT.defaultValue);
+  });
+
+  it("keeps performance scenarios empty until the pipeline is registered", () => {
+    // Scenarios are derived from pipeline paths, which task 2.8b registers.
+    // Authoring them before the passes exist would invent paths.
     expect(appPerformance.scenarios).toEqual([]);
-    expect(appPerformance.workloadEnvelope).toEqual({ dimensions: [] });
   });
 
   it("declares production reload coverage for the product schema", () => {

@@ -32,6 +32,18 @@ const GRADIENT_APPLICABILITY = {
   mode: "conditional",
 } as const;
 
+/**
+ * The band count's numeric domain, exported because `app-performance.ts` builds
+ * the `band-count` workload dimension from it. A schema-backed workload boundary
+ * must equal the schema endpoint, so the two cannot be allowed to drift: one
+ * literal, read by both the control and the envelope.
+ */
+export const STUDIO_BAND_COUNT = {
+  defaultValue: 24,
+  max: 200,
+  min: 1,
+} as const;
+
 export const STUDIO_LAYER_SECTIONS = [
   {
     controls: {
@@ -76,9 +88,17 @@ export const STUDIO_LAYER_SECTIONS = [
           { label: "Stripes", value: "stripes" },
           { label: "Gradient", value: "gradient" },
         ],
+        // Not `workload`, for two reasons that agree. Structurally, a select
+        // over string options is not a numeric schema source — it declares no
+        // finite `min`/`max`/numeric default — so it cannot back a workload
+        // dimension, and every explicit workload control must map to exactly
+        // one. Substantively, the reason below is the argument against it: each
+        // body is a constant per-pixel cost, so the kind changes *which* work
+        // happens, never *how much*. Switching kind must stay responsive, which
+        // is what this role claims.
         performanceReason:
           "The kind selects which body the assembled program calls; each is a constant per-pixel cost.",
-        performanceRole: "workload",
+        performanceRole: "responsiveness",
         target: "selectedLayer.type",
         type: "select",
       },
@@ -105,10 +125,10 @@ export const STUDIO_LAYER_SECTIONS = [
       count: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,
-        defaultValue: 24,
+        defaultValue: STUDIO_BAND_COUNT.defaultValue,
         label: "Band count",
-        max: 200,
-        min: 1,
+        max: STUDIO_BAND_COUNT.max,
+        min: STUDIO_BAND_COUNT.min,
         // Boundaries resolve analytically from the screen-space derivative
         // rather than by supersampling, so per-pixel cost does not vary with
         // the count. The ceiling is the Nyquist limit against pixel pitch, not
