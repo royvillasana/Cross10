@@ -45,7 +45,7 @@ Copied, not imported: both apps are monolithic signed packages, so a shared depe
 - [ ] 1.4b **Deferred to group 2.** The scene reader is the one moved module that reads schema state, and this app has no layer schema yet. Moving it verbatim would import Croix10's engine-shaped state model into an app whose state is a layer stack, so it is rewritten in 2.x against the real schema rather than copied and then undone
 - [ ] 1.5 Move the timeline wiring: loop time from `getToolcraftTimelineLoopTime`, no wall-clock read anywhere in the render path — lands with 1.4b, since it reads timeline state through the same reader
 - [x] 1.6 Rename every carried symbol off the `croix10` prefix in one pass — `Croix10`→`Studio`, `CROIX10_`→`STUDIO_`. Zero residual references; `tsc --noEmit` clean
-- [ ] 1.7 Populate `src/app/app-verification-impact.json` for each moved module. **Blocked until 2.8**: every entry's `acceptanceIds` must name rows that exist, and this app declares only `persistence.reload` until the layer acceptance rows land
+- [x] 1.7 Populate `src/app/app-verification-impact.json` for each moved module. **Blocked until 2.8**: every entry's `acceptanceIds` must name rows that exist, and this app declares only `persistence.reload` until the layer acceptance rows land
 - [x] 1.8 Write the unit tests for chunk assembly and variant cache keying. Croix10 never wrote them (its own 1.11 is still open), so there is nothing to carry — authored here against the stack-signature key (R54). 12 tests, `studio-layers.test.ts`, all passing
 
 ## 2. Layer-type registry and stack assembly
