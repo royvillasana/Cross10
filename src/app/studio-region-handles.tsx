@@ -11,6 +11,7 @@ import {
   studioPointerToRegionUnits,
   studioRegionDisplayValues,
   studioRegionHandleAnchor,
+  studioRegionOutlinePoints,
   studioRegionScreenRect,
   studioResizeRegion,
   type StudioCanvasRect,
@@ -38,6 +39,20 @@ const REGION_TARGETS = {
   centerX: "selectedLayer.maskCenterX",
   centerY: "selectedLayer.maskCenterY",
   size: "selectedLayer.maskSize",
+} as const;
+
+/**
+ * Read for the outline only, never written by a gesture.
+ *
+ * The nodes still drive the extent -- size, aspect and placement -- because
+ * that is the geometry a drag has always written. What the form and the
+ * rotation change is what is *drawn* over it, which until 14.3 was an
+ * axis-aligned rectangle whatever the layer actually was.
+ */
+const OUTLINE_TARGETS = {
+  rotation: "selectedLayer.maskRotation",
+  shape: "selectedLayer.maskShape",
+  sides: "selectedLayer.maskSides",
 } as const;
 
 /**
@@ -180,6 +195,12 @@ export function StudioRegionHandles({
     aspect: readNumber(values, REGION_TARGETS.aspect),
     centerX: readNumber(values, REGION_TARGETS.centerX),
     centerY: readNumber(values, REGION_TARGETS.centerY),
+    rotation: readNumber(values, OUTLINE_TARGETS.rotation),
+    shape:
+      typeof values[OUTLINE_TARGETS.shape] === "string"
+        ? (values[OUTLINE_TARGETS.shape] as string)
+        : undefined,
+    sides: readNumber(values, OUTLINE_TARGETS.sides),
     size: readNumber(values, REGION_TARGETS.size),
   };
 
@@ -281,6 +302,15 @@ export function StudioRegionHandles({
   const rect = studioRegionScreenRect(shown, canvasRect);
 
   const scale = overlayFrame.scale === 0 ? 1 : overlayFrame.scale;
+  // The outline the layer actually has, as a point list (14.3). Drawn as one
+  // path rather than as a border on the body button, because a border can only
+  // ever be a rectangle and most of these forms are not.
+  const outline = studioRegionOutlinePoints(shown, canvasRect)
+    .map(
+      (point) =>
+        `${(point.x - overlayFrame.left) / scale},${(point.y - overlayFrame.top) / scale}`,
+    )
+    .join(" ");
   const local = {
     height: rect.height / scale,
     left: (rect.left - overlayFrame.left) / scale,
@@ -344,6 +374,18 @@ export function StudioRegionHandles({
       data-studio-region-handles=""
       ref={overlayRef}
     >
+      {/*
+       * Sized by CSS to the overlay rather than to the shape: with no viewBox
+       * the SVG's user units are its own CSS pixels, which is the same space
+       * the nodes are placed in, and a rotated form whose points sit outside
+       * the extent's box is not clipped by a box cropped to it.
+       */}
+      <svg
+        aria-hidden="true"
+        className={styles.outline}
+      >
+        <polygon className={styles.outlineShape} points={outline} />
+      </svg>
       <button
         aria-label="Move region"
         className={styles.body}

@@ -18,9 +18,33 @@
   pointer-events: auto;
 }
 
+/*
+ * The shape's own outline (14.3), drawn as a path rather than as a border on
+ * the body. A border can only be a rectangle, and most of the forms are not one
+ * -- a diamond wore a rectangle's outline until this existed, and a rotated
+ * shape wore an unrotated one.
+ */
+.outline {
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.outlineShape {
+  fill: none;
+  stroke: rgb(255 255 255 / 70%);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .body {
   background: transparent;
-  border: 1px dashed rgb(255 255 255 / 70%);
+  /* The outline above draws the shape; the body is the hit area for moving it. */
+  border: 1px dashed rgb(255 255 255 / 18%);
   cursor: move;
   touch-action: none;
   padding: 0;

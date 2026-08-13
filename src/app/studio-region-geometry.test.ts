@@ -6,6 +6,7 @@ import {
   studioPointerToRegionUnits,
   studioRegionDisplayValues,
   studioRegionHandleAnchor,
+  studioRegionOutlinePoints,
   studioRegionScreenRect,
   studioResizeRegion,
   type StudioCanvasRect,
@@ -182,5 +183,80 @@ describe("studioRegionHandleAnchor", () => {
     expect(studioRegionHandleAnchor("northWest")).toEqual({ x: -1, y: -1 });
     expect(studioRegionHandleAnchor("east")).toEqual({ x: 1, y: 0 });
     expect(studioRegionHandleAnchor("south")).toEqual({ x: 0, y: 1 });
+  });
+});
+
+describe("the shape outline", () => {
+  // A frame whose centre is the origin and whose unit is 100 CSS pixels, so a
+  // half-extent of 0.25 is 25 pixels and every expectation below is readable.
+  const canvas = { height: 100, left: 0, top: 0, width: 200 } as const;
+  const base = { aspect: 1, centerX: 0, centerY: 0, size: 0.25 } as const;
+
+  it("traces a rectangle as its four corners", () => {
+    const points = studioRegionOutlinePoints(base, canvas);
+
+    expect(points).toHaveLength(4);
+    expect(points).toContainEqual({ x: 75, y: 25 });
+    expect(points).toContainEqual({ x: 125, y: 75 });
+  });
+
+  it("gives a triangle three points and stands it up", () => {
+    const points = studioRegionOutlinePoints({ ...base, shape: "triangle" }, canvas);
+
+    expect(points).toHaveLength(3);
+    // The apex is directly above the centre: the screen's y runs down, so
+    // "above" is the smallest y in the list.
+    const apex = points.reduce((lowest, point) => (point.y < lowest.y ? point : lowest));
+    expect(apex.x).toBeCloseTo(100, 6);
+    // The centre is at y=50 and the extent is 25 pixels, so an apex above the
+    // centre is at 25 rather than 75. Screen y runs down.
+    expect(apex.y).toBeCloseTo(25, 6);
+  });
+
+  it("gives a polygon the side count it asks for", () => {
+    expect(
+      studioRegionOutlinePoints({ ...base, shape: "polygon", sides: 7 }, canvas),
+    ).toHaveLength(7);
+    // Below three there is no polygon to draw, so the count is held there.
+    expect(
+      studioRegionOutlinePoints({ ...base, shape: "polygon", sides: 1 }, canvas),
+    ).toHaveLength(3);
+  });
+
+  it("inscribes every form in the same extent", () => {
+    // What R65 promises: no form reaches further than the box its handles are
+    // drawn on, so the furthest any point sits from the centre is the size.
+    for (const shape of ["rectangle", "ellipse", "triangle", "diamond", "hexagon"]) {
+      const points = studioRegionOutlinePoints({ ...base, shape }, canvas);
+      const furthest = Math.max(
+        ...points.map((point) => Math.hypot(point.x - 100, point.y - 50)),
+      );
+      // The rectangle's corners sit at the diagonal of the extent; every
+      // inscribed form stays within the circle the extent describes.
+      expect(furthest).toBeLessThanOrEqual(shape === "rectangle" ? 35.4 : 25.01);
+    }
+  });
+
+  it("turns the outline with the shape rather than leaving it square", () => {
+    const upright = studioRegionOutlinePoints({ ...base, shape: "triangle" }, canvas);
+    const turned = studioRegionOutlinePoints(
+      { ...base, rotation: 90, shape: "triangle" },
+      canvas,
+    );
+
+    // A quarter turn puts the apex on a side instead of on top, which the old
+    // rectangular outline could not have shown at all.
+    const apexOf = (points: readonly { x: number; y: number }[]) =>
+      points.reduce((lowest, point) => (point.y < lowest.y ? point : lowest));
+    expect(apexOf(upright).y).toBeCloseTo(25, 6);
+    expect(apexOf(turned).y).not.toBeCloseTo(25, 1);
+  });
+
+  it("stretches the form with the aspect without bending it", () => {
+    const wide = studioRegionOutlinePoints({ ...base, aspect: 2, shape: "diamond" }, canvas);
+    const spanX = Math.max(...wide.map((p) => p.x)) - Math.min(...wide.map((p) => p.x));
+    const spanY = Math.max(...wide.map((p) => p.y)) - Math.min(...wide.map((p) => p.y));
+
+    expect(spanX).toBeCloseTo(spanY * 2, 6);
   });
 });

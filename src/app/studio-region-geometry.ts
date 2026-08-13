@@ -17,8 +17,17 @@ export type StudioRegionValues = {
   readonly aspect: number;
   readonly centerX: number;
   readonly centerY: number;
+  /** Degrees about the shape's own centre. Optional so a drag can ignore it. */
+  readonly rotation?: number;
+  /** The named form, as the control spells it. Absent reads as a rectangle. */
+  readonly shape?: string;
+  /** Side count, read only by the `polygon` form. */
+  readonly sides?: number;
   readonly size: number;
 };
+
+/** A point on screen, in CSS pixels. */
+export type StudioScreenPoint = { readonly x: number; readonly y: number };
 
 /** The canvas as the pointer sees it: CSS pixels, y down. */
 export type StudioCanvasRect = {
@@ -99,6 +108,108 @@ export function studioRegionScreenRect(
     top: centreY - halfHeight,
     width: halfWidth * 2,
   };
+}
+
+/**
+ * How many sides a named form has, and how far it is turned to stand up.
+ *
+ * The single source of this mapping is the shader (`studio-layers.ts`); this is
+ * the drawing side of the same contract, and the two have to agree or the
+ * outline traces a shape the renderer is not filling.
+ *
+ * The shader turns by `90 - 180/n` because its base angle points at a *side* —
+ * the fold that test performs is measured from an apothem. Here the points are
+ * the vertices, which sit half a wedge further round, and `base + 180/n` is
+ * exactly 90 degrees for every count. So every polygon starts with a vertex
+ * straight up, which is the same "point-up" the shader produces and a good deal
+ * easier to read. Getting this wrong drew each form rotated by half a wedge,
+ * which is a triangle standing on its point.
+ *
+ * The rectangle is not a polygon here because it is the box itself.
+ */
+function polygonForm(
+  shape: string | undefined,
+  sides: number | undefined,
+): { readonly count: number } | null {
+  const count =
+    shape === "triangle"
+      ? 3
+      : shape === "diamond"
+        ? 4
+        : shape === "pentagon"
+          ? 5
+          : shape === "hexagon"
+            ? 6
+            : shape === "polygon"
+              ? Math.max(Math.round(sides ?? 8), 3)
+              : 0;
+
+  return count === 0 ? null : { count };
+}
+
+/**
+ * The outline of the shape as a list of screen points, ready to be drawn.
+ *
+ * A list rather than a box, which is the whole of 14.3: until now the overlay
+ * drew an axis-aligned rectangle whatever the layer actually was, so a diamond
+ * wore a rectangle's outline and a rotated shape wore an unrotated one. The pen
+ * (14.4) needs the same list to render a free vertex path, so the shape of this
+ * function is the shape that has to hold.
+ *
+ * Built in the shader's own space and then converted once: the extent is read
+ * from `size` and `aspect` exactly as the mask test reads it, the form supplies
+ * its points, rotation turns them about the centre, and only then does the
+ * result become CSS pixels with y running down.
+ *
+ * The ellipse is sampled rather than described because the caller draws a
+ * polyline; sixty-four points is smooth at any size the canvas is shown at and
+ * costs nothing next to a repaint.
+ */
+export function studioRegionOutlinePoints(
+  values: StudioRegionValues,
+  canvas: StudioCanvasRect,
+): readonly StudioScreenPoint[] {
+  const perUnit = unit(canvas);
+  const halfHeight = values.size;
+  const halfWidth = values.size * values.aspect;
+  const form = polygonForm(values.shape, values.sides);
+
+  // Local points, in field units, before rotation and before the screen flip.
+  let local: readonly StudioScreenPoint[];
+  if (form) {
+    // Inscribed in the extent, as the shader inscribes it: the vertices sit on
+    // the ellipse the size and aspect describe, so no form spills past a corner
+    // a handle is drawn on (R65).
+    local = Array.from({ length: form.count }, (_unused, index) => {
+      const angle = ((90 + (index * 360) / form.count) * Math.PI) / 180;
+      return { x: Math.cos(angle) * halfWidth, y: Math.sin(angle) * halfHeight };
+    });
+  } else if (values.shape === "ellipse") {
+    local = Array.from({ length: 64 }, (_unused, index) => {
+      const angle = (index * 2 * Math.PI) / 64;
+      return { x: Math.cos(angle) * halfWidth, y: Math.sin(angle) * halfHeight };
+    });
+  } else {
+    local = [
+      { x: -halfWidth, y: -halfHeight },
+      { x: halfWidth, y: -halfHeight },
+      { x: halfWidth, y: halfHeight },
+      { x: -halfWidth, y: halfHeight },
+    ];
+  }
+
+  const angle = ((values.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const centreX = canvas.left + canvas.width / 2 + values.centerX * perUnit;
+  const centreY = canvas.top + canvas.height / 2 - values.centerY * perUnit;
+
+  return local.map((point) => ({
+    x: centreX + (point.x * cos - point.y * sin) * perUnit,
+    // Flipped once, here: the shader's y runs up from the centre and the
+    // screen's runs down.
+    y: centreY - (point.x * sin + point.y * cos) * perUnit,
+  }));
 }
 
 /** Where a pointer is, in the shader's units, relative to the frame centre. */
