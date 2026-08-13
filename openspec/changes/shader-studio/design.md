@@ -487,3 +487,33 @@ Size and aspect deliberately do not scale it. A path is authored geometry rather
 Twenty-four vertices. Every vertex is a literal and an unrolled iteration, so an unbounded path is an unbounded program.
 
 The cap bounds the cost without making it constant: the crossing test walks the path once per pixel, so per-layer work varies with a length the author chooses. The growth class is unchanged -- still linear in stack depth -- but the per-layer constant is now author-controlled, which is precisely what a workload dimension declares. **It is not declared yet**, because a dimension obliges a fixture adapter that can build a path of a given length, which means driving the pen from the performance fixture. The pipeline comment names the gap rather than staying silent about it.
+
+## R70 -- the chromatic ramp is carried as the layer's own controls, not as a compound gradient
+
+Settled while doing 4.2, which reads "carry the chromatic ramp surface (9A) onto the gradient layer type, consuming all five gradient parts per R23".
+
+R23 is a Croix10 decision: `gradient` is an atomic compound control owning its type, angle and stop list, and splitting those owned fields into sibling controls is forbidden. Croix10 therefore declared the compound control and proved all five parts -- `gradientType`, `angle`, `stops.position`, `stops.color`, `stops.opacity`.
+
+### What this product already has
+
+Reading the four parts against the gradient layer type, three of them are here already and are not siblings *of* a compound control -- they are the layer's own surface, shared with the other kinds:
+
+- **type** is `Transition shape`: linear, radial, angular.
+- **angle** is `selectedLayer.angle`, which every layer has, because every field has an orientation.
+- **stop colours** are the palette slots: two to four inks, which a stripe rhythm reads as its cycle and a ramp reads as its stops.
+
+What was missing is where the ramp *starts*. Croix10 carried that as 9A.3, a scalar beside the compound control; here it is 4.2's only real content.
+
+### Decision
+
+**Do not declare the compound `gradient` control.** Adopting it now would restate the angle, the transition shape and the palette as fields of a second control -- three operations with two surfaces each, which is the arrangement 14.1 and 15.3 exist to remove. R23 forbids splitting a compound control's fields into siblings; it does not oblige a product whose surface was never built that way to assemble one.
+
+**Carry the ramp's placement as `Offset`, the control that already means it.** A band sequence slides along its axis and a ramp slides along its own, so one control covers both kinds and the gradient body reads a `phase` uniform named for the stripes' own. Its domain becomes signed, because a band sequence repeats and a ramp does not: forward by a cycle is the same bands and a different ramp.
+
+The section rules make the same choice independently. A control gated by `selectedLayer.type` must sit in the section holding that gate (R34), which is `Layer Pattern`, and `Layer Pattern` is full at ten. A gradient-only offset had nowhere to live; the shared one needed no new place at all.
+
+### What stays undelivered, and what it would cost
+
+**Stop positions and stop opacity.** Uneven stops mean a position per slot, which is a collection (R45/R46) and therefore the compound control's job -- so it is the one part of 9A that cannot be carried in the sibling form. Per-stop opacity is a second alpha inside a layer that already has one, and it changes what "reach" means for a ramp: the layer would be partly transparent along its own axis rather than uniformly.
+
+Neither is needed by the reference works: Cruz-Diez's washes are even, and the structures that are not even are band fields, which have their own controls. Recorded here rather than left implied, so the next attempt starts from the price rather than re-deriving it.
