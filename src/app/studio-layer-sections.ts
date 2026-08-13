@@ -446,6 +446,34 @@ widthRatio: {
   },
   {
     controls: {
+      media: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        assetKind: "image",
+        // A button as well as a drop target. Dropping on the canvas already
+        // worked, but it is not discoverable and it is not reachable from a
+        // file manager the author has not opened -- a control renders the
+        // browse affordance the canvas cannot.
+        //
+        // Still the runtime's import rather than a product one: this declares
+        // the surface, and the runtime reads the file, allocates the asset, and
+        // creates the layer that draws it.
+        label: "Import image",
+        performanceReason:
+          "Decoding happens once per import, off the render path; the draw binds a texture it already has.",
+        performanceRole: "responsiveness",
+        target: "media.image",
+        type: "fileDrop",
+      },
+    },
+    // Its own section because a file drop renders as a surface rather than a
+    // field, and titled so it collides with none of the layer-kind option
+    // labels, which now include "Image" (R33).
+    id: "selected-layer-media",
+    title: "Layer Media",
+  },
+  {
+    controls: {
       engine: {
         semanticGroup: "engine",
         applicability: { mode: "always" },

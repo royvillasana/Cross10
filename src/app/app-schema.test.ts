@@ -50,6 +50,9 @@ describe("appSchema", () => {
       // remains is the form itself and how it is turned and read.
       "Layer Shape",
       "Layer Palette",
+      // A file drop renders as its own surface rather than as a field, so it is
+      // declared as its own section rather than split out generated.
+      "Layer Media",
       // How the field is coloured, as distinct from what the field is: the
       // engine carries its own gate, so it is a stage of its own rather than a
       // twelfth control in the kind's section.

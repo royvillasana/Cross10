@@ -60,6 +60,24 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     {
       alternative: {
         reason:
+          "A product-authored media manager, which would restate the reorder, rename and delete the layers panel already owns and would drift from it the first time either changed.",
+        surface: "canvas",
+      },
+      capability: "collection-edit",
+      evidence: {
+        detail:
+          "An imported picture becomes a layer, so the list that manages pictures is the list that manages layers. Two lists over one collection is the ambiguity this entry exists to prevent, and the runtime's panel already names, orders, hides and deletes them.",
+        source: "usability-analysis",
+      },
+      id: "media-management",
+      reason:
+        "Managing imported media is managing layers: the runtime creates a layer per imported file, so the layers panel is where they are named, ordered, hidden and removed.",
+      surface: "panel",
+      target: "media.image",
+    },
+    {
+      alternative: {
+        reason:
           "The four Layer Region sliders, which owned this until 14.1 and are now retired. A number is exact but blind, and the judgement being made -- where this shape sits on this picture, and how big -- is one a number cannot show. Keeping them beside the handles would have made one operation answer to two surfaces, which is the rule that forced the choice rather than merely suggesting it.",
         surface: "panel",
       },
@@ -183,6 +201,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.maskInvert",
       ],
       title: "Layer Shape",
+      workflowStage: "confine",
+    },
+    {
+      entity: "Selected layer",
+      entityId: "selected-layer-media",
+      groupingReason:
+        "Bringing a picture into the stack. Its own stage because a file drop renders as a surface rather than as a field, and because import, storage and the transform buttons beside it belong to the runtime -- what this product owns is the layer that draws the result.",
+      id: "selected-layer-media",
+      targets: ["media.image"],
+      title: "Layer Media",
       workflowStage: "confine",
     },
     {
