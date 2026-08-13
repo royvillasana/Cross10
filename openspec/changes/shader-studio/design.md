@@ -429,3 +429,33 @@ The first attempt gated the engine to stripes, on the ground that Cruz-Diez's te
 R34 puts a gated control in the section holding its gate, which would have put the engine controls in `Layer Pattern`; the ten-control rule then rejected that section at twelve. The only way out is an engine that is *not* gated by the kind -- which means the gradient must honour it too, which means the axis is genuinely beside the kind rather than inside one branch of it. Which is what R64 asked for in the first place.
 
 A ramp has no band edges, so what stands in for the boundary is the seam between consecutive palette slots -- where a gradient's induced colour actually appears.
+
+## R68 -- the cursor is a committed position, not an event
+
+14.6 and 14.7 together, because the export question decides the design rather than following it.
+
+### The decision 14.7 asks for
+
+An exported artifact has no pointer. Neither does R53's delivered source: a shader taken away and compiled elsewhere has no studio around it to move a mouse. But the preview is interactive, and every control until now rendered the same frame anywhere.
+
+Three answers were possible. The cursor could resolve to a neutral position at export -- the frame's centre, say -- which makes the artifact differ from the preview the author was looking at when they pressed the button. It could disable cursor-driven engines at export, which makes the artifact differ *more*. Or the position could be part of the document.
+
+**The cursor is committed to state.** `stack.cursor` is an uncontrolled value target beside `stack.layerRecord`, written by the canvas and read by the scene builder, so the export frame builds the same scene the preview did and the delivered source bakes the position the author left it at. What you see is what you get, and the artifact stays deterministic because the value it reads is a value and not an event.
+
+This is R44's precedent applied again -- the cursor hotspot was committed to state for the same reason -- and it is why the shader takes a `uCursor` uniform rather than sampling anything live.
+
+A pointer that leaves the frame parks off-frame rather than staying where it was, so an export made with the pointer elsewhere on screen is the field with no cursor in it, which is what an author would expect of an image made while not touching the canvas.
+
+### One quantity, and each engine decides
+
+The cursor reaches the engines through a single value: how near the pointer is, falling off across a fixed radius. Each technique multiplies its own amount by it, so the response belongs to the technique rather than to the cursor -- induction spreads its fringe near the pointer, physichromie sweeps its viewing angle there, interference beats there.
+
+Croix10's proximity-push chunk is the prior art. This is the same idea with the push replaced by whatever the technique already does, which is what makes it an input rather than a fourth engine.
+
+It is opt-in per layer (`Follow the pointer`), because a stack where every layer chased the pointer would be a toy rather than an instrument, and because a static layer is still the common case.
+
+### The listener cannot live on the canvas
+
+Found by measurement, and worth recording because it will happen again. The first implementation put `onPointerMove` on the canvas element, and the engines never responded over the shape -- the region handles are an overlay drawn on top of exactly the field the engines colour, and they swallow the moves.
+
+A pointer position is a global fact. It is read from the window and converted against the canvas rectangle, which is also what will keep working when the pen (14.4) adds a second overlay. Commits are coalesced to one per frame; the value is read once per draw regardless.
