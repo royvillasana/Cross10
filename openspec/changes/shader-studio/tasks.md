@@ -92,37 +92,15 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 
 ## 3. Remaining layer types
 
-- [ ] 3.1 Register the **image** layer type, drawing its media through the runtime media surface rather than a product-authored uploader
+- [x] 3.1 **Image layers land**, and the surface is `canvas.upload` rather than a fileDrop control — one flag, and the runtime does the rest: it reads the file, allocates the asset, and creates the layer the asset belongs to. No product-authored uploader anywhere, which is what the task asked for.
+  - **The evidence contract decided the design.** A `media-lifecycle` row requires `layer-media-lifecycle` evidence, and the only helper that attaches it asserts the layer collection changed. So a dropped picture must *create* a layer; media attaching to the already-selected layer cannot produce the evidence its own row requires. That shape was built and withdrawn rather than committed half-true
+  - **No fileDrop, no fileDrop package.** The six-value lifecycle set (upload/remove/reset/rotate/flip/transform-output) exists to hold a *control* honest, and this product declares no control. Enabling `canvas.upload` added no acceptance obligation at all — verified by running the suites, not assumed
+  - Renderer: `sampler2D` as a third uniform kind, per-layer texture units, a one-pixel transparent fallback so an unbound sampler cannot show another layer's picture, textures freed with the renderer. Media decoded off the render path through `useToolcraftMediaPresentationUrls`, the surface the runtime exports to products
+  - Rotate and flip read from the **asset's own transform**, so the runtime's media controls drive this renderer rather than a product copy that would drift
+  - A layer the runtime created for a picture *is* an image layer whatever the record says, because the record cannot know: the runtime allocates layer and asset together, and a product default of "stripes" would draw bands over the picture
+  - `canvas.upload: false` had been asserted beside `sizing: editable-output` as one decision; they were always two. The frame is still sized by the author, and an image is a layer rather than the thing the frame is measured by
 
-### 3.1 starting brief
 
-Scoped against the runtime rather than guessed. The rendering half is tractable; the acceptance half is larger than "a layer type" suggests, and obliges a feature nobody has asked for yet.
-
-**Status: the renderer half is done and committed; the surface is not.**
-
-**The finding that decides the design.** A fileDrop row must carry `media-lifecycle` evidence, and `browser-runtime-evidence-requirements.ts` maps that to the required evidence type `layer-media-lifecycle`. The only helper that attaches it is `expectToolcraftLayerMediaLifecycle`, which asserts `before.layerIds !== after.layerIds`. **So a dropped image must create a layer.** Media attaching to the already-selected layer cannot produce the evidence its own row requires — that shape was built and withdrawn rather than committed half-true.
-
-That also settles where the control lives: the file drop belongs to the *stack*, not to `selectedLayer`. And it means `layersOwnMediaManagement` is the branch that applies, so the obligation is the `hasSelectedLayerImageTransformCoverage` one — a runtime row with `layerCoverage: "selected-layer-controls"` and `mediaLifecycleCoverage` for rotate, flip and transform-output — rather than the six-value fileDrop set.
-
-**Already done, on `shape-vocabulary`:** `sampler2D` as a third uniform kind; the `image` layer type and its body; texture creation, per-layer units, blank-texture fallback and disposal; media decoded through `useToolcraftMediaPresentationUrls`; rotate and flip read from the asset's own transform. The rendering half keys media by `asset.layerId`, which is exactly what drop-creates-a-layer needs.
-
-**Left:** find whether the runtime creates the layer on drop or the product must; place the fileDrop as a stack-level control; write the browser proof around a real image fixture, asserting the layer collection changes on import and on remove, and that rotate and flip change the rendered pixels.
-
-**How a product gets pixels from runtime media.** `useToolcraftMediaPresentationUrls(mediaAssets)` is exported for products and returns `ReadonlyMap<assetId, url>`. That is the supported route: the canvas loads each URL into an `ImageBitmap` and uploads it as a texture. `resolveMediaResource` is *not* the route — it is handed to panel actions only, and is not exported from the React index.
-
-**Assets already know their layer.** `ToolcraftMediaAssetBase` carries `layerId`, so matching an asset to a layer needs no product-owned map. That is the media half of R56 already solved by the runtime.
-
-**One registry gap.** `StudioLayerUniform.type` is `"float" | "vec3"`. A sampler is neither, so the image type needs a third uniform kind and a bind step — per-layer texture units under R52's mangling (`uLayer0_image`), which is a small extension of `declareLayerUniforms` and the upload loop.
-
-**The acceptance half is the real cost, and it forces a product decision.** A fileDrop control in a layers-enabled app obliges, from `acceptance/media-upload.ts`:
-
-- `media-lifecycle` evidence rows for the upload surface
-- layers-owned media management: an `interactionOwnership` entry whose capability is `collection-edit` or `structured-selection`
-- **image transform coverage** — a runtime row with `layerCoverage: "selected-layer-controls"` and `mediaLifecycleCoverage` covering `rotate`, `flip`, and `transform-output`
-
-That last one is not a proof obligation, it is a *feature* obligation: registering image layers means shipping rotate and flip on images. Decide whether that is wanted before starting — the alternative is deferring 3.1 the way R62 deferred the shape layer type, with the reason recorded.
-
-**Do not** hand-roll an uploader to dodge it. `component-contracts.runtime.ts` forbids product-authored import surfaces, and the whole point of the task is that media comes through the runtime.
 - [ ] 3.2 Register the **shape** layer type, applying R45/R46: the collection is exactly its `itemControls`, positions live in a canvas-owned array beside it
 - [ ] 3.3 Prove an image layer composites above, below, and between procedural layers — the scenario that motivated the whole stack
 - [ ] 3.4 Acceptance rows and browser proofs for both types in the same batch
