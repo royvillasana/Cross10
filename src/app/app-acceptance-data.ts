@@ -185,6 +185,20 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
     },
     {
       entity: "Selected layer",
+      entityId: "selected-layer-engine",
+      groupingReason:
+        "How the layer's field is coloured, as distinct from what the field is. The Cruz-Diez techniques read a field rather than build one, so they sit beside the layer kind as a second axis and carry their own gate -- which is what lets them be a stage of their own rather than a twelfth control in the kind's section.",
+      id: "selected-layer-engine",
+      targets: [
+        "selectedLayer.engine",
+        "selectedLayer.engineAmount",
+        "selectedLayer.enginePitch",
+      ],
+      title: "Layer Engine",
+      workflowStage: "colour",
+    },
+    {
+      entity: "Selected layer",
       entityId: "selected-layer-palette",
       groupingReason:
         "The inks the layer works in and how many of them are in play. Independent of the kind because the slots mean something to both -- extra inks in a stripe rhythm, extra stops in a ramp -- so they are neither gated nor placed beside the gate.",

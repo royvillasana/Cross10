@@ -385,6 +385,80 @@ widthRatio: {
   },
   {
     controls: {
+      engine: {
+        semanticGroup: "engine",
+        applicability: { mode: "always" },
+        defaultValue: "none",
+        label: "Chromatic engine",
+        // The three Cruz-Diez techniques that are ways of *colouring a banded
+        // field* rather than ways of building one (R67). Order is the contract
+        // with the branch order in the stripes body.
+        options: [
+          { label: "None", value: "none" },
+          { label: "Induction", value: "induction" },
+          { label: "Physichromie", value: "physichromie" },
+          { label: "Interference", value: "chromointerference" },
+        ],
+        performanceReason:
+          "Each engine is a handful of operations on the band the body has already resolved; none of them samples the field a second time.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.engine",
+        type: "select",
+      },
+      engineAmount: {
+        semanticGroup: "engine",
+        // Gated to the engines that read it rather than to stripes: at None
+        // there is nothing for an amount to be the amount of.
+        applicability: {
+          all: [
+            {
+              oneOf: ["induction", "physichromie", "chromointerference"],
+              target: "selectedLayer.engine",
+            },
+          ],
+          mode: "conditional",
+        },
+        defaultValue: 0.25,
+        label: "Engine amount",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One multiply inside the engine branch already taken.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.engineAmount",
+        type: "slider",
+      },
+      enginePitch: {
+        semanticGroup: "engine",
+        applicability: {
+          all: [
+            { oneOf: ["chromointerference"], target: "selectedLayer.engine" },
+          ],
+          mode: "conditional",
+        },
+        defaultValue: 1.2,
+        label: "Interference pitch",
+        max: 2,
+        min: 0.5,
+        // The beat period is what the ratio sets, and it is a property of the
+        // field rather than of the work per pixel: the second structure is
+        // resolved from the coordinate the body already has.
+        performanceReason:
+          "The second structure reads the coordinate the body already resolved; its pitch changes the beat, not the work.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.05,
+        target: "selectedLayer.enginePitch",
+        type: "slider",
+      },
+    },
+    id: "selected-layer-engine",
+    title: "Layer Engine",
+  },
+  {
+    controls: {
       hue: {
         semanticGroup: "treatment",
         applicability: { mode: "always" },

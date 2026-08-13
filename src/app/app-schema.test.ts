@@ -50,6 +50,10 @@ describe("appSchema", () => {
       // remains is the form itself and how it is turned and read.
       "Layer Shape",
       "Layer Palette",
+      // How the field is coloured, as distinct from what the field is: the
+      // engine carries its own gate, so it is a stage of its own rather than a
+      // twelfth control in the kind's section.
+      "Layer Engine",
       "Layer Treatment",
       "Image Export",
       "Export",

@@ -336,6 +336,9 @@ vec4 studioStripesBody(
   float jitterAmount,
   float jitterFrequency,
   float paletteSlots,
+  float engine,
+  float engineAmount,
+  float enginePitch,
   vec3 colorA,
   vec3 colorB,
   vec3 colorC,
@@ -401,6 +404,59 @@ vec4 studioStripesBody(
   vec3 far = studioPaletteSlot(bandIndex + 1.0, paletteSlots, colorA, colorB, colorC, colorD);
   vec3 pair = paletteSlots < 2.5 ? mix(colorA, colorB, band) : mix(near, far, band);
 
+  // The chromatic engine, applied to the field this body has just resolved
+  // rather than replacing it (R67). Each technique is a way of colouring a
+  // banded field, and every value it needs -- the band index, the distance to
+  // the boundary, the two inks either side -- has already been computed above.
+  // Branch order is the contract with the engine option order.
+  if (engine >= 0.5) {
+    // Distance to the nearest band boundary, in cycles. The techniques below
+    // are all about what happens at or across an edge, so this is the quantity
+    // they share.
+    float toEdge = min(position, 1.0 - position);
+
+    if (engine < 1.5) {
+      // Induction chromatique. The afterimage colour the eye induces along a
+      // high-frequency boundary, made explicit: the complement of the local
+      // colour, strongest at the edge and falling off across a fringe whose
+      // width is the amount. Nothing is added away from the edges, so at any
+      // amount the middle of a band is the colour it always was.
+      float fringeSpan = max(engineAmount * 0.25, 0.0001);
+      float fringe = 1.0 - smoothstep(0.0, fringeSpan, toEdge);
+      pair = mix(pair, vec3(1.0) - pair, fringe * engineAmount);
+    } else if (engine < 2.5) {
+      // Physichromie. A relief of strips whose apparent colour depends on where
+      // the viewer stands: the amount shears which slot each strip presents, so
+      // sweeping it moves the whole field through colour states rather than
+      // recolouring one band. The side faces occlude as the shear grows, which
+      // is what a real lamella does seen obliquely.
+      // The amount is the viewer's displacement from head-on, so zero is the
+      // identity: every engine leaves the field exactly as it found it at zero,
+      // which is what makes the amount comparable across the three of them. At
+      // a half it presented each band as the average of itself and its
+      // neighbour -- a flat grey field, which is a technique destroying its
+      // subject rather than moving it through colour states.
+      vec3 presented = mix(near, far, clamp(engineAmount, 0.0, 1.0));
+      float occlusion = 1.0 - min(engineAmount * 0.35, 0.55);
+      pair = presented * occlusion;
+    } else {
+      // Chromointerference. A second printed structure at a slightly different
+      // pitch, beating against the first. The moire is nowhere drawn -- it is
+      // the product of the two, so it appears at the beat period their ratio
+      // implies, which is the whole point of the technique.
+      float secondScaled = coordinate * max(count * enginePitch, 1.0) + phase;
+      float secondBand = fract(secondScaled);
+      float secondEdge = max(fwidth(secondBand) * 1.5, 1e-5);
+      float secondMask = smoothstep(0.5 - secondEdge, 0.5 + secondEdge, secondBand);
+      vec3 secondInk = studioPaletteSlot(
+        floor(secondScaled), paletteSlots, colorA, colorB, colorC, colorD
+      );
+      // Difference rather than a mix: it is black exactly where the two prints
+      // agree, which is what makes the beat itself the thing that is seen.
+      pair = mix(pair, abs(pair - secondInk), secondMask * engineAmount);
+    }
+  }
+
   return vec4(pair, coverage);
 }
 `;
@@ -412,6 +468,9 @@ vec4 studioGradientBody(
   float angle,
   float rampType,
   float paletteSlots,
+  float engine,
+  float engineAmount,
+  float enginePitch,
   vec3 colorA,
   vec3 colorB,
   vec3 colorC,
@@ -430,10 +489,42 @@ vec4 studioGradientBody(
     position = fract((atan(centered.y, centered.x) - radians) * 0.15915494309189535 + 1.0);
   }
 
-  return vec4(
-    studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD),
-    1.0
-  );
+  vec3 colour = studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD);
+
+  // The same three techniques the stripes body offers (R67), read against a
+  // ramp instead of a band. A ramp has no edges of its own, so what stands in
+  // for "the boundary" is the seam between two consecutive slots -- which is
+  // where a gradient's induced colour actually appears.
+  if (engine >= 0.5) {
+    float slots = max(paletteSlots - 1.0, 1.0);
+    float withinSlot = fract(clamp(position, 0.0, 1.0) * slots);
+    float toEdge = min(withinSlot, 1.0 - withinSlot);
+
+    if (engine < 1.5) {
+      float fringeSpan = max(engineAmount * 0.25, 0.0001);
+      float fringe = 1.0 - smoothstep(0.0, fringeSpan, toEdge);
+      colour = mix(colour, vec3(1.0) - colour, fringe * engineAmount);
+    } else if (engine < 2.5) {
+      // The viewer's position shifts where the ramp is read, so the whole
+      // transition slides through its colour states rather than one stop
+      // changing. Occlusion darkens with the shear, as in the relief.
+      // Zero is head-on and leaves the ramp where it is, as in the stripes body.
+      vec3 shifted = studioPaletteRamp(
+        clamp(position + engineAmount * 0.25, 0.0, 1.0),
+        paletteSlots, colorA, colorB, colorC, colorD
+      );
+      colour = shifted * (1.0 - min(engineAmount * 0.35, 0.55));
+    } else {
+      // A second ramp at a different pitch, beating against the first.
+      vec3 second = studioPaletteRamp(
+        fract(position * max(enginePitch, 0.01)),
+        paletteSlots, colorA, colorB, colorC, colorD
+      );
+      colour = mix(colour, abs(colour - second), engineAmount);
+    }
+  }
+
+  return vec4(colour, 1.0);
 }
 `;
 
@@ -454,6 +545,20 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
           type: "float",
         },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        // Same three, in the same order as the stripes type and the control.
+        {
+          defaultValue: 0,
+          name: "engine",
+          optionValues: [
+            "none",
+            "induction",
+            "physichromie",
+            "chromointerference",
+          ],
+          type: "float",
+        },
+        { defaultValue: 0.25, name: "engineAmount", type: "float" },
+        { defaultValue: 1.2, name: "enginePitch", type: "float" },
         { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
         { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
@@ -483,6 +588,27 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         // characteristic of the field until it has an observable worth naming.
         { defaultValue: 12, name: "jitterFrequency", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        /**
+         * The chromatic engine (R67), and the two values every technique reads.
+         *
+         * Order here is the contract with the branch order in the body and with
+         * the option order of the control, all three of which have to agree --
+         * declaring a uniform out of order is how this project once spent three
+         * diagnoses on a value silently arriving in the wrong parameter.
+         */
+        {
+          defaultValue: 0,
+          name: "engine",
+          optionValues: [
+            "none",
+            "induction",
+            "physichromie",
+            "chromointerference",
+          ],
+          type: "float",
+        },
+        { defaultValue: 0.25, name: "engineAmount", type: "float" },
+        { defaultValue: 1.2, name: "enginePitch", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
         { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },

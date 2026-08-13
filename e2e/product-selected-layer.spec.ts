@@ -1549,6 +1549,167 @@ test("browser: studio region rotation turns the region about its own centre", as
   );
 });
 
+
+/**
+ * How many tones the field carries, and how much of it is neither ink.
+ *
+ * Both halves are needed because the three engines change different things. An
+ * induced fringe multiplies the tones without moving either ink, so counting
+ * distinct colours sees it. A beat between two printed structures keeps the
+ * tone count where it was and moves how much of the row sits between the two
+ * inks, so the mid share sees that instead.
+ *
+ * Measured before the expectations were written, at eight bands: the plain
+ * field carries 4 distinct colours and almost nothing between the inks; an
+ * induced field at a quarter carries 37; at full amount 120, with nearly half
+ * the row between the inks. Interference holds 7 to 9 tones throughout and
+ * moves its mid share from 0.19 to 0.31 across the pitch range.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const ENGINE_FIELD = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
+    gl.readPixels(
+      Math.floor((canvas.width - span) / 2),
+      Math.floor(canvas.height / 2),
+      span,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    const seen = new Set<string>();
+    let between = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      const sum = pixels[index] + pixels[index + 1] + pixels[index + 2];
+      if (sum > 60 && sum < 700) between += 1;
+    }
+
+    const tones =
+      seen.size <= 8 ? "flat" : seen.size <= 60 ? "induced" : "saturated";
+    const mid = between / span > 0.25 ? "wide" : "narrow";
+    outputSignature = `tones=${tones} mid=${mid}`;
+  }
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.engine"]')
+    ?.querySelector('[role="combobox"]');
+  const slider = (label: string): number | string => {
+    const input = root.querySelector(`input[aria-label="${label}"]`);
+    return input ? Number(input.getAttribute("aria-valuenow")) : "absent";
+  };
+
+  return {
+    controlValue: {
+      amount: slider("Engine amount"),
+      engine: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+      pitch: slider("Interference pitch"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio chromatic engine recolours the field it is given", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+
+  // The inks do not change and the boundaries do: induction puts the complement
+  // of the local colour along every edge, which is the afterimage the eye makes
+  // there anyway, made explicit.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(ENGINE_FIELD),
+    session.controlAction("selectedLayer.engine", async () => {
+      await setStudioSelectValue(page, "selectedLayer.engine", "Induction");
+    }),
+    {
+      controlValue: { amount: 0.25, engine: "Induction", pitch: "absent" },
+      outputSignature: "tones=induced mid=narrow",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.engine", target: "selectedLayer.engine" },
+  );
+});
+
+test("browser: studio engine amount scales the technique", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSelectValue(page, "selectedLayer.engine", "Induction");
+
+  // The fringe widens until most of the row is carrying an induced colour
+  // rather than one of the two inks.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(ENGINE_FIELD),
+    session.controlAction("selectedLayer.engineAmount", async () => {
+      await setStudioSlider(page, "Engine amount", 1);
+    }),
+    {
+      controlValue: { amount: 1, engine: "Induction", pitch: "absent" },
+      outputSignature: "tones=saturated mid=wide",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.engineAmount",
+      target: "selectedLayer.engineAmount",
+    },
+  );
+});
+
+test("browser: studio interference pitch changes the beat", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSelectValue(page, "selectedLayer.engine", "Interference");
+  await setStudioSlider(page, "Engine amount", 0.5);
+  await setStudioSlider(page, "Interference pitch", 1);
+
+  // At a ratio of one the two structures coincide and the field is mostly the
+  // tone their agreement leaves; pulling the pitch apart moves the beat, and
+  // the row stops sitting between the inks.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(ENGINE_FIELD),
+    session.controlAction("selectedLayer.enginePitch", async () => {
+      await setStudioSlider(page, "Interference pitch", 0.5);
+    }),
+    {
+      controlValue: { amount: 0.5, engine: "Interference", pitch: 0.5 },
+      outputSignature: "tones=flat mid=narrow",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.enginePitch",
+      target: "selectedLayer.enginePitch",
+    },
+  );
+});
+
 /**
  * The colour the layer leaves behind, read inside its region and outside it.
  *
