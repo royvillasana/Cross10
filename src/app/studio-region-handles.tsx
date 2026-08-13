@@ -6,6 +6,13 @@ import { useToolcraftDispatch, useToolcraftSelector } from "@/toolcraft/runtime/
 
 import styles from "./studio-region-handles.module.css";
 import {
+  appendStudioVertex,
+  readStudioVertexPath,
+  readStudioVertexPaths,
+  STUDIO_PEN_TARGET,
+  STUDIO_VERTEX_PATH_TARGET,
+} from "./studio-stack-state";
+import {
   STUDIO_REGION_HANDLES,
   studioMoveRegion,
   studioPointerToRegionUnits,
@@ -13,6 +20,7 @@ import {
   studioRegionHandleAnchor,
   studioRegionOutlinePoints,
   studioRegionScreenRect,
+  studioVertexToScreen,
   studioResizeRegion,
   type StudioCanvasRect,
   type StudioRegionHandleId,
@@ -204,6 +212,64 @@ export function StudioRegionHandles({
     size: readNumber(values, REGION_TARGETS.size),
   };
 
+  const penLayerId =
+    typeof values[STUDIO_PEN_TARGET] === "string"
+      ? (values[STUDIO_PEN_TARGET] as string)
+      : "";
+  const drawing = penLayerId !== "" && penLayerId === selectedLayerId;
+  const vertexPath = readStudioVertexPath(
+    readStudioVertexPaths(values[STUDIO_VERTEX_PATH_TARGET]),
+    selectedLayerId ?? "",
+  );
+
+  /**
+   * A click while the pen is drawing: place a vertex, or close the path.
+   *
+   * Closing is clicking the first vertex again rather than a separate control,
+   * which is how every pen behaves and which keeps the whole operation on the
+   * canvas -- the point of making it a mode rather than a sidebar field.
+   *
+   * The closing test is in screen pixels, not field units: what the author is
+   * aiming at is a dot of a fixed size on screen, and at a zoomed-out canvas a
+   * field-unit radius would be an unhittable fraction of it.
+   */
+  const placeVertex = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>): void => {
+      if (!canvasRect) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const point = studioPointerToRegionUnits(
+        { x: event.clientX, y: event.clientY },
+        canvasRect,
+      );
+      const paths = readStudioVertexPaths(values[STUDIO_VERTEX_PATH_TARGET]);
+      const existing = readStudioVertexPath(paths, penLayerId);
+      const first = existing[0];
+
+      if (first && existing.length >= 3) {
+        const screen = studioVertexToScreen(first, canvasRect);
+        const near =
+          Math.hypot(screen.x - event.clientX, screen.y - event.clientY) <= 12;
+        if (near) {
+          dispatch({
+            target: STUDIO_PEN_TARGET,
+            type: "controls.setValue",
+            value: "",
+          });
+          return;
+        }
+      }
+
+      dispatch({
+        target: STUDIO_VERTEX_PATH_TARGET,
+        type: "controls.setValue",
+        value: appendStudioVertex(paths, penLayerId, [point.x, point.y]),
+      });
+    },
+    [canvasRect, dispatch, penLayerId, values],
+  );
+
   const commit = React.useCallback(
     (next: StudioRegionValues, label: string): void => {
       const group = `studio-region-${gestureRef.current}`;
@@ -305,6 +371,13 @@ export function StudioRegionHandles({
   // The outline the layer actually has, as a point list (14.3). Drawn as one
   // path rather than as a border on the body button, because a border can only
   // ever be a rectangle and most of these forms are not.
+  const toLocal = (point: { x: number; y: number }) => ({
+    x: (point.x - overlayFrame.left) / scale,
+    y: (point.y - overlayFrame.top) / scale,
+  });
+  const penPoints = vertexPath.map((point) =>
+    toLocal(studioVertexToScreen(point, canvasRect)),
+  );
   const outline = studioRegionOutlinePoints(shown, canvasRect)
     .map(
       (point) =>
@@ -370,8 +443,12 @@ export function StudioRegionHandles({
 
   return (
     <div
-      className={dragging ? `${styles.overlay} ${styles.dragging}` : styles.overlay}
+      className={
+        dragging || drawing ? `${styles.overlay} ${styles.dragging}` : styles.overlay
+      }
+      data-studio-pen={drawing ? "" : undefined}
       data-studio-region-handles=""
+      onPointerDown={drawing ? placeVertex : undefined}
       ref={overlayRef}
     >
       {/*
@@ -385,7 +462,25 @@ export function StudioRegionHandles({
         className={styles.outline}
       >
         <polygon className={styles.outlineShape} points={outline} />
+        {penPoints.length > 1 ? (
+          <polyline
+            className={styles.penPath}
+            points={penPoints.map((point) => `${point.x},${point.y}`).join(" ")}
+          />
+        ) : null}
       </svg>
+      {penPoints.map((point, index) => (
+        <span
+          aria-hidden="true"
+          // The first vertex is the one that closes the path, so it is the one
+          // marked differently -- the affordance has to say where to click.
+          className={index === 0 ? `${styles.vertex} ${styles.vertexFirst}` : styles.vertex}
+          data-testid={`studio-pen-vertex-${index}`}
+          key={`${point.x},${point.y},${index}`}
+          style={{ left: `${point.x}px`, top: `${point.y}px` }}
+        />
+      ))}
+      {drawing ? null : (
       <button
         aria-label="Move region"
         className={styles.body}
@@ -400,7 +495,8 @@ export function StudioRegionHandles({
         }}
         type="button"
       />
-      {STUDIO_REGION_HANDLES.map((handle) => {
+      )}
+      {(drawing ? [] : STUDIO_REGION_HANDLES).map((handle) => {
         const anchor = studioRegionHandleAnchor(handle);
         return (
           <button

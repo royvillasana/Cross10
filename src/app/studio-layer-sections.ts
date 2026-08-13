@@ -355,7 +355,7 @@ widthRatio: {
         semanticGroup: "region",
         applicability: { mode: "always" },
         defaultValue: 0,
-        label: "Rotation",
+        label: "Shape rotation",
         max: 180,
         min: -180,
         performanceReason:
@@ -365,6 +365,21 @@ widthRatio: {
         step: 1,
         target: "selectedLayer.maskRotation",
         type: "slider",
+      },
+      pen: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        // Starts a drawing rather than toggling a tool: pressing it clears the
+        // layer's path and hands the canvas to the pen, and closing the path on
+        // the canvas hands it back. A tool that stayed on would be a mode the
+        // sidebar owns and the canvas has to remember.
+        actions: [{ label: "Draw", value: "draw-shape" }],
+        label: "Free shape",
+        performanceReason:
+          "Starts a canvas gesture; the path it collects is uploaded once when the shape is closed.",
+        performanceRole: "responsiveness",
+        target: "stack.pen",
+        type: "actions",
       },
       maskInvert: {
         semanticGroup: "region",

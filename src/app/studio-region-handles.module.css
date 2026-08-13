@@ -41,6 +41,34 @@
   vector-effect: non-scaling-stroke;
 }
 
+/* The path as it is being drawn, and the vertices already placed. */
+.penPath {
+  fill: rgb(120 180 255 / 12%);
+  stroke: rgb(120 180 255);
+  stroke-dasharray: 5 3;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.vertex {
+  background: rgb(120 180 255);
+  border: 1px solid rgb(10 20 40);
+  border-radius: 50%;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  pointer-events: none;
+  position: absolute;
+  width: 9px;
+}
+
+/* The one that closes the path, so it reads as a target rather than a mark. */
+.vertexFirst {
+  background: rgb(255 255 255);
+  height: 13px;
+  margin: -7px 0 0 -7px;
+  width: 13px;
+}
+
 .body {
   background: transparent;
   /* The outline above draws the shape; the body is the hit area for moving it. */

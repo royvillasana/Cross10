@@ -6,7 +6,11 @@ import { studioPipelineRegistration } from "./studio-pipeline";
 import { buildStudioSceneParameters, studioSceneRect } from "./studio-scene";
 import { studioAssembleDeliverableSource } from "./studio-source";
 import {
+  clearStudioVertexPath,
   planStudioLayerDuplication,
+  readStudioVertexPaths,
+  STUDIO_PEN_TARGET,
+  STUDIO_VERTEX_PATH_TARGET,
   readStudioLayerEntry,
   readStudioLayerRecord,
   STUDIO_LAYER_RECORD_TARGET,
@@ -87,6 +91,29 @@ function handleStudioPanelAction({
 }: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]):
   | Promise<void>
   | void {
+  if (action.value === "draw-shape") {
+    // A fresh drawing: the layer's previous path goes, and the canvas is handed
+    // to the pen for this layer. Both writes are one edit each so undo steps
+    // through them the way it steps through any other product edit.
+    const layerId = state.selectedLayerId ?? "";
+    if (!layerId) return;
+
+    dispatch({
+      target: STUDIO_VERTEX_PATH_TARGET,
+      type: "controls.setValue",
+      value: clearStudioVertexPath(
+        readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
+        layerId,
+      ),
+    });
+    dispatch({
+      target: STUDIO_PEN_TARGET,
+      type: "controls.setValue",
+      value: layerId,
+    });
+    return;
+  }
+
   if (action.value === "duplicate-layer") {
     duplicateStudioSelectedLayer({ dispatch, state });
     return;

@@ -212,6 +212,22 @@ export function studioRegionOutlinePoints(
   }));
 }
 
+/**
+ * A field-unit point as CSS pixels, which is the inverse of
+ * `studioPointerToRegionUnits` and shares its one subtlety: the shader's y runs
+ * up from the centre and the screen's runs down.
+ */
+export function studioVertexToScreen(
+  point: readonly [number, number],
+  canvas: StudioCanvasRect,
+): StudioScreenPoint {
+  const perUnit = unit(canvas);
+  return {
+    x: canvas.left + canvas.width / 2 + point[0] * perUnit,
+    y: canvas.top + canvas.height / 2 - point[1] * perUnit,
+  };
+}
+
 /** Where a pointer is, in the shader's units, relative to the frame centre. */
 export function studioPointerToRegionUnits(
   point: { readonly x: number; readonly y: number },

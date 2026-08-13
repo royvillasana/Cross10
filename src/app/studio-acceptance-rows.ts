@@ -110,6 +110,26 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     userAction: "Switch Layer kind between Stripes and Gradient.",
   },
   {
+    actionCoverage: ["draw-shape"],
+    automated: true,
+    automatedTestName: "declares the pen collects a vertex path on the canvas",
+    browser: true,
+    browserTestName: "browser: studio pen draws a free path on the canvas",
+    componentType: "actions",
+    // The path is state until the shader consumes it, so what changed is a
+    // command side effect rather than pixels. Filling the path is the second
+    // half of 14.4 and brings its own rendered-pixels claim with it.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Pressing Draw hands the canvas to the pen: each click places a vertex, the path so far is drawn between them, and the layer's own extent handles stand aside so every click is the pen's. Clicking the first vertex again closes the path and gives the canvas back, leaving the vertices in place.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.pen",
+    kind: "control",
+    target: "stack.pen",
+    userAction:
+      "Press Draw, click three points on the canvas, then click the first point again.",
+  },
+  {
     actionCoverage: ["duplicate-layer"],
     automated: true,
     automatedTestName: "declares duplicating copies a layer or a whole group under new ids",

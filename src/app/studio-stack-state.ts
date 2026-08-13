@@ -66,6 +66,77 @@ export function readStudioCursor(value: unknown): readonly [number, number] {
     : STUDIO_CURSOR_AWAY;
 }
 
+/**
+ * Free vertex paths, keyed by layer id (14.4).
+ *
+ * Uncontrolled, like the layer record and for the same reason: the canvas
+ * writes it and no control edits it. Keyed rather than held on the selected
+ * layer because a path belongs to the layer that was drawn, and selection moves.
+ *
+ * Points are in field units -- normalised against height, from the centre of the
+ * frame -- which is the one form that survives a change of backing size, a zoom,
+ * or an export at another resolution.
+ */
+export const STUDIO_VERTEX_PATH_TARGET = "stack.vertexPaths";
+
+/**
+ * Which layer the pen is currently drawing, or absent when it is not drawing.
+ *
+ * A mode, and deliberately a *product* one rather than a runtime canvas mode:
+ * the runtime owns viewport navigation, and this owns what a click on the
+ * canvas means while it is on. Held per layer id rather than as a boolean so a
+ * selection change while drawing cannot silently retarget the path.
+ */
+export const STUDIO_PEN_TARGET = "stack.penLayerId";
+
+export type StudioVertexPoint = readonly [number, number];
+export type StudioVertexPaths = Readonly<Record<string, readonly StudioVertexPoint[]>>;
+
+/** Reads the paths out of raw state, discarding anything malformed. */
+export function readStudioVertexPaths(value: unknown): StudioVertexPaths {
+  if (typeof value !== "object" || value === null) return {};
+
+  const paths: Record<string, readonly StudioVertexPoint[]> = {};
+  for (const [id, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(entry)) continue;
+    const points = entry.filter(
+      (point): point is StudioVertexPoint =>
+        Array.isArray(point) &&
+        point.length === 2 &&
+        point.every((axis) => typeof axis === "number" && Number.isFinite(axis)),
+    );
+    if (points.length > 0) paths[id] = points;
+  }
+  return paths;
+}
+
+/** The path a layer carries, or an empty one. */
+export function readStudioVertexPath(
+  paths: StudioVertexPaths,
+  layerId: string,
+): readonly StudioVertexPoint[] {
+  return paths[layerId] ?? [];
+}
+
+/** Appends one point to a layer's path, leaving every other path identical. */
+export function appendStudioVertex(
+  paths: StudioVertexPaths,
+  layerId: string,
+  point: StudioVertexPoint,
+): StudioVertexPaths {
+  return { ...paths, [layerId]: [...readStudioVertexPath(paths, layerId), point] };
+}
+
+/** Drops a layer's path entirely, which is how a fresh drawing starts. */
+export function clearStudioVertexPath(
+  paths: StudioVertexPaths,
+  layerId: string,
+): StudioVertexPaths {
+  const next = { ...paths };
+  delete next[layerId];
+  return next;
+}
+
 export const STUDIO_SHAPE_GEOMETRY_TARGETS = [
   "selectedLayer.maskSize",
   "selectedLayer.maskAspect",

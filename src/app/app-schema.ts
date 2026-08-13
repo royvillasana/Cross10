@@ -7,7 +7,9 @@ import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
 import {
   STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
+  STUDIO_PEN_TARGET,
   STUDIO_SHAPE_GEOMETRY_TARGETS,
+  STUDIO_VERTEX_PATH_TARGET,
 } from "./studio-stack-state";
 
 /**
@@ -51,6 +53,8 @@ export const appSchema = defineToolcraft({
     additionalValueTargets: [
       STUDIO_LAYER_RECORD_TARGET,
       STUDIO_CURSOR_TARGET,
+      STUDIO_VERTEX_PATH_TARGET,
+      STUDIO_PEN_TARGET,
       ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],

@@ -1358,7 +1358,7 @@ const REGION_EXTENT = (
 
   return {
     controlValue: {
-      rotation: sliderValue("Rotation"),
+      rotation: sliderValue("Shape rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
     },
     outputSignature,
@@ -1488,7 +1488,7 @@ const POLYGON_EXTENT = (
 
   return {
     controlValue: {
-      rotation: sliderValue("Rotation"),
+      rotation: sliderValue("Shape rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
       sides: sidesControl
         ? Number(sidesControl.getAttribute("aria-valuenow"))
@@ -1543,7 +1543,7 @@ test("browser: studio region rotation turns the region about its own centre", as
   await expectToolcraftSelectedLayerControl(
     session.observe(POLYGON_EXTENT),
     session.controlAction("selectedLayer.maskRotation", async () => {
-      await setStudioSlider(page, "Rotation", 90);
+      await setStudioSlider(page, "Shape rotation", 90);
     }),
     {
       controlValue: { rotation: 90, shape: "Triangle", sides: "absent" },
@@ -2011,6 +2011,53 @@ test("browser: studio duplicate copies the layer and its settings", async ({
   expect(afterGroup.stack.split(">")).toHaveLength(
     stackWithMember.split(">").length + 1,
   );
+});
+
+
+test("browser: studio pen draws a free path on the canvas", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to draw on.");
+
+  const vertices = page.locator('[data-testid^="studio-pen-vertex-"]');
+  const moveHandle = page.getByTestId("studio-region-move");
+  await expect(moveHandle, "the extent handles own the canvas before the pen does").toBeVisible();
+
+  const at = (fx: number, fy: number) => ({
+    x: box.x + box.width * fx,
+    y: box.y + box.height * fy,
+  });
+  const corners = [at(0.35, 0.3), at(0.65, 0.3), at(0.5, 0.7)];
+
+  const drawn = await expectToolcraftAcceptanceOutcome(
+    async () => ({
+      handlesShown: await moveHandle.isVisible(),
+      vertices: await vertices.count(),
+    }),
+    async () => {
+      await page
+        .locator('[data-toolcraft-control-target="stack.pen"]')
+        .getByRole("button", { name: "Draw" })
+        .first()
+        .click();
+      for (const corner of corners) {
+        await page.mouse.click(corner.x, corner.y);
+      }
+    },
+    { evidenceType: "command-side-effect", requirementId: "stack.pen" },
+  );
+
+  // Three vertices placed, and the extent handles stood aside while they were:
+  // a click that reached a resize node would have resized instead of drawing.
+  expect(drawn).toEqual({ handlesShown: false, vertices: 3 });
+
+  // Closing on the first vertex gives the canvas back and keeps the path.
+  await page.mouse.click(corners[0]?.x ?? 0, corners[0]?.y ?? 0);
+  await expect(moveHandle).toBeVisible();
+  await expect(vertices).toHaveCount(3);
 });
 
 /**
