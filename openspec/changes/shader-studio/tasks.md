@@ -271,6 +271,6 @@ A layer is copied from the `Current layer` Actions control in the Selected Layer
 - The id is derived (`layer-1-copy`) rather than random, so provenance is readable in persisted state and in a failing test; the counter only appears on collision
 - The target is **`stack.actions`, not `selectedLayer.*`**. R51 obliges every `selectedLayer` target to prove it edits the selected layer's *output*, and duplicating edits no layer at all — it adds one. The rule caught a claim the command could not make
 - Evidence is **`command-side-effect`, not rendered pixels**: a copy composited directly above an opaque source is the same frame, so a pixel proof would be unchanged by a duplicate that worked perfectly
-- Groups are refused rather than half-copied — a group's duplicate has to copy its members, which is a different operation with a different observable
+- Groups copy as a block: the group, its members, and nested groups, with each member's parentage rewired onto the copies. A member left pointing at the original would have made the copy an empty container, which is why the rewiring is a pure plan with its own tests rather than a detail of the handler
 
 **Revised order for group 14:** 14.2 (shape vocabulary with real defaults) → 14.1 (retire the sliders) → 14.3 (handle list) → 14.4 (pen) → 14.5 (engines) → 14.6/14.7 (cursor) → 14.8 (envelope).
