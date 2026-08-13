@@ -263,4 +263,14 @@ Do not solve this by widening the proof viewport. That would hide a real questio
 
 **14.2 is done.** A layer now arrives as a Rectangle at half-extent 0.35, so `openStudioHandleFixture` no longer needs `setStudioSlider(page, "Region size", 0.2)` to make a grabbable shape — "add a layer" is enough, and the handles the fixture reaches for are inside the proof viewport from the moment the layer exists. That is the blocker cleared; 14.1 can start.
 
+### 14.9 Duplicate a layer (user request, delivered)
+
+A layer is copied from the `Current layer` Actions control in the Selected Layer section: the copy lands directly above its source, carries every value the source had, and becomes the selection.
+
+- Two dispatches, because a layer lives in two places (R56): `layers.add` with an explicit draft id for the runtime half — identity, name, visibility, group — and one `stack.layerRecord` write for the product half. Either alone is a bug that looks like a feature: only the first gives a plain new layer wearing a copy's name; only the second writes values no layer has
+- The id is derived (`layer-1-copy`) rather than random, so provenance is readable in persisted state and in a failing test; the counter only appears on collision
+- The target is **`stack.actions`, not `selectedLayer.*`**. R51 obliges every `selectedLayer` target to prove it edits the selected layer's *output*, and duplicating edits no layer at all — it adds one. The rule caught a claim the command could not make
+- Evidence is **`command-side-effect`, not rendered pixels**: a copy composited directly above an opaque source is the same frame, so a pixel proof would be unchanged by a duplicate that worked perfectly
+- Groups are refused rather than half-copied — a group's duplicate has to copy its members, which is a different operation with a different observable
+
 **Revised order for group 14:** 14.2 (shape vocabulary with real defaults) → 14.1 (retire the sliders) → 14.3 (handle list) → 14.4 (pen) → 14.5 (engines) → 14.6/14.7 (cursor) → 14.8 (envelope).
