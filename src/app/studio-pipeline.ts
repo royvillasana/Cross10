@@ -164,17 +164,17 @@ export const studioPipelineRegistration =
           // constant is now author-controlled rather than fixed, which is what
           // a workload dimension exists to declare.
           //
-          // It is not declared yet, and that is a gap rather than a decision:
-          // a dimension obliges a fixture adapter that can build a path of a
-          // given length, which means driving the pen from the performance
-          // fixture. Named here so the declaration is honest about what it does
-          // not yet cover.
+          // `path-vertices` is therefore declared, and it is the only dimension
+          // in this list whose cost is not constant in it. The relationship
+          // stays `linear`: the pass is linear in stack depth and linear in the
+          // path length each layer carries, which is what `linear` over a list
+          // of dimensions means.
           //
           // A non-constant `composite` pass at frame frequency raises a kernel
           // benchmark requirement. That requirement is correct rather than
           // unfortunate, and functional delivery leaves it pending: resolving it
           // needs an authorized performance run, not an authored timing value.
-          dimensions: ["stack-depth", "band-count", "polygon-sides"],
+          dimensions: ["stack-depth", "band-count", "polygon-sides", "path-vertices"],
           frequency: "frame",
           relationship: "linear",
         },
