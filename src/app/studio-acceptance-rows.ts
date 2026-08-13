@@ -592,22 +592,9 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     target: "selectedLayer.maskSides",
     userAction: "Choose Polygon as the region shape, then drag Region sides.",
   },
-  {
-    automated: true,
-    automatedTestName: "declares the region rotation turns the region about its own centre",
-    browser: true,
-    browserTestName: "browser: studio region rotation turns the region about its own centre",
-    componentType: "slider",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "Turning Region rotation swings a wide region off the horizontal, so it reaches above and below the frame's midline where it did not and stops reaching the sides.",
-    fixture: SELECTED_LAYER_FIXTURE,
-    id: "selectedLayer.maskRotation",
-    kind: "control",
-    layerCoverage: "selected-layer-controls",
-    target: "selectedLayer.maskRotation",
-    userAction: "Size a wide region, then drag Region rotation.",
-  },
+  // The `selectedLayer.maskRotation` control row retired with 15.3 along with
+  // the slider it proved. The turn is not unproved: it is the canvas-handle row
+  // above, which drives the grip that now owns it.
   {
     automated: true,
     automatedTestName: "declares the region sense swaps which side the layer draws on",

@@ -78,7 +78,7 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     {
       alternative: {
         reason:
-          "The four Layer Region sliders, which owned this until 14.1 and are now retired. A number is exact but blind, and the judgement being made -- where this shape sits on this picture, and how big -- is one a number cannot show. Keeping them beside the handles would have made one operation answer to two surfaces, which is the rule that forced the choice rather than merely suggesting it.",
+          "The four Layer Region sliders, which owned this until 14.1, and the Shape rotation slider, which owned the turn until 15.3. All five are retired. A number is exact but blind, and the judgement being made -- where this shape sits on this picture, how big, and which way it faces -- is one a number cannot show. Keeping them beside the handles would have made one operation answer to two surfaces, which is the rule that forced the choice rather than merely suggesting it.",
         surface: "panel",
       },
       capability: "direct-spatial-edit",
@@ -89,7 +89,7 @@ export const appProductReadiness: ToolcraftProductReadiness = {
       },
       id: "shape-shaping",
       reason:
-        "A shape is moved, resized and proportioned by dragging it, so the canvas both makes the edit and shows the evidence for it. One entry rather than three because all three gestures end in the same dispatch: `controls.setValue` against the geometry the handles own.",
+        "A shape is moved, resized, proportioned and turned by dragging it, so the canvas both makes the edit and shows the evidence for it. One entry rather than four because all four gestures end in the same dispatch: `controls.setValue` against the geometry the handles own.",
       surface: "canvas",
       target: "controls.setValue",
     },
@@ -191,13 +191,12 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer-region",
       groupingReason:
-        "What form the selected layer takes, and how that form is turned and read. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages. Where the form sits and how big it is left this section with 14.1: the canvas handles own that, and a slider beside them would make one operation answer to two surfaces.",
+        "What form the selected layer takes, and which side of it the layer draws on. Independent of the kind, so it is neither gated nor placed beside the gate, and split from the other stages because one entity above ten controls must divide into explicit workflow stages. Where the form sits and how big it is left this section with 14.1, and how far it is turned left with 15.3: the canvas handles own all three, and a slider beside them would make one operation answer to two surfaces. What stays is the choice among a vocabulary of forms, which is not a spatial judgement and has no gesture.",
       id: "selected-layer-region",
       targets: [
         "selectedLayer.maskShape",
         "selectedLayer.maskSides",
         "stack.pen",
-        "selectedLayer.maskRotation",
         "selectedLayer.maskInvert",
       ],
       title: "Layer Shape",

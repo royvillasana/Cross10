@@ -1347,18 +1347,12 @@ const REGION_EXTENT = (
     outputSignature = `corners=${corners} sides=${sides} caps=${caps}`;
   }
 
-  const sliderValue = (label: string): number => {
-    const slider = root.querySelector(`input[aria-label="${label}"]`);
-    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
-  };
-
   const combobox = root
     .querySelector('[data-toolcraft-control-target="selectedLayer.maskShape"]')
     ?.querySelector('[role="combobox"]');
 
   return {
     controlValue: {
-      rotation: sliderValue("Shape rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
     },
     outputSignature,
@@ -1384,7 +1378,7 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
       await setStudioSelectValue(page, "selectedLayer.maskShape", "Ellipse");
     }),
     {
-      controlValue: { rotation: 0, shape: "Ellipse" },
+      controlValue: { shape: "Ellipse" },
       outputSignature: "corners=ground sides=field caps=field",
       selectedLayerId: layerId,
     },
@@ -1400,7 +1394,7 @@ test("browser: studio region shape switches the rectangle for an ellipse", async
       await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
     }),
     {
-      controlValue: { rotation: 0, shape: "Triangle", sides: "absent" },
+      controlValue: { shape: "Triangle", sides: "absent" },
       outputSignature: "apex=field base=ground left=ground right=ground",
       selectedLayerId: layerId,
     },
@@ -1472,11 +1466,6 @@ const POLYGON_EXTENT = (
     ].join(" ");
   }
 
-  const sliderValue = (label: string): number => {
-    const slider = root.querySelector(`input[aria-label="${label}"]`);
-    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
-  };
-
   const combobox = root
     .querySelector('[data-toolcraft-control-target="selectedLayer.maskShape"]')
     ?.querySelector('[role="combobox"]');
@@ -1488,7 +1477,6 @@ const POLYGON_EXTENT = (
 
   return {
     controlValue: {
-      rotation: sliderValue("Shape rotation"),
       shape: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
       sides: sidesControl
         ? Number(sidesControl.getAttribute("aria-valuenow"))
@@ -1519,7 +1507,7 @@ test("browser: studio region sides reshape the polygon", async ({ page }) => {
       await setStudioSlider(page, "Sides", 3);
     }),
     {
-      controlValue: { rotation: 0, shape: "Polygon", sides: 3 },
+      controlValue: { shape: "Polygon", sides: 3 },
       outputSignature: "apex=field base=ground left=ground right=ground",
       selectedLayerId: layerId,
     },
@@ -1527,36 +1515,9 @@ test("browser: studio region sides reshape the polygon", async ({ page }) => {
   );
 });
 
-test("browser: studio region rotation turns the region about its own centre", async ({
-  page,
-}) => {
-  test.setTimeout(120_000);
-
-  const { layerId, session } = await openStudioSingleLayer(page);
-  await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
-
-  // Proved on a triangle rather than on a wide rectangle. The aspect slider
-  // retired with 14.1, so the only shape available without a handle drag is one
-  // at equal extents -- and a quarter turn leaves a square exactly where it was.
-  // A triangle carries its own orientation, so the turn is visible in the shape
-  // itself: the apex leaves the top and the reach appears on one side.
-  await expectToolcraftSelectedLayerControl(
-    session.observe(POLYGON_EXTENT),
-    session.controlAction("selectedLayer.maskRotation", async () => {
-      await setStudioSlider(page, "Shape rotation", 90);
-    }),
-    {
-      controlValue: { rotation: 90, shape: "Triangle", sides: "absent" },
-      outputSignature: "apex=ground base=ground left=field right=ground",
-      selectedLayerId: layerId,
-    },
-    {
-      requirementId: "selectedLayer.maskRotation",
-      target: "selectedLayer.maskRotation",
-    },
-  );
-});
-
+// The rotation proof left this file with 15.3, along with the slider it drove.
+// The turn is proved where it now happens: "browser: studio rotation grip turns
+// the layer's shape on the canvas", in the canvas handle spec.
 
 /**
  * How many tones the field carries, and how much of it is neither ink.
@@ -2163,11 +2124,6 @@ const TREATED_FIELD = (
     // a patch there straddles it.
     outputSignature = `inside=${at(0.5)} outside=${at(0.5, 0.31)}`;
   }
-
-  const sliderValue = (label: string): number => {
-    const slider = root.querySelector(`input[aria-label="${label}"]`);
-    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
-  };
 
   const combobox = root
     .querySelector('[data-toolcraft-control-target="selectedLayer.blendMode"]')

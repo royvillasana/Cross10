@@ -358,21 +358,10 @@ widthRatio: {
         // noise: a side count is countable in a way a band count of 200 is not.
         variant: "discrete",
       },
-      maskRotation: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        defaultValue: 0,
-        label: "Shape rotation",
-        max: 180,
-        min: -180,
-        performanceReason:
-          "Turns the sampling coordinate once before the comparison the composite already makes.",
-        performanceRole: "responsiveness",
-        sliderValueKind: "continuous",
-        step: 1,
-        target: "selectedLayer.maskRotation",
-        type: "slider",
-      },
+      // `Shape rotation` retired here with 15.3, for the reason 14.1 retired
+      // the four extent sliders: the canvas grip turns the shape, and one
+      // operation answers to one surface. It stayed this long because it was
+      // the only way to rotate at all, which is exactly what 15.2 changed.
       pen: {
         semanticGroup: "region",
         applicability: { mode: "always" },
