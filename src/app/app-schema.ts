@@ -5,6 +5,7 @@ import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
 import {
+  STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
   STUDIO_SHAPE_GEOMETRY_TARGETS,
 } from "./studio-stack-state";
@@ -49,6 +50,7 @@ export const appSchema = defineToolcraft({
     // would restore the layer list and lose everything each layer looked like.
     additionalValueTargets: [
       STUDIO_LAYER_RECORD_TARGET,
+      STUDIO_CURSOR_TARGET,
       ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],

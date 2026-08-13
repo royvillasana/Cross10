@@ -30,6 +30,8 @@ export type StudioLayerValues = Readonly<{
 
 export type StudioStackSceneParameters = Readonly<{
   backgroundColor: readonly [number, number, number];
+  /** Pointer position in field units, from the centre of the frame (R68). */
+  cursor: readonly [number, number];
   includeBackground: boolean;
   layers: readonly StudioLayerValues[];
 }>;
@@ -146,6 +148,9 @@ export function createStudioStackRenderer(
 
       const resolution = location("uResolution");
       if (resolution) gl.uniform2f(resolution, width, height);
+
+      const cursor = location("uCursor");
+      if (cursor) gl.uniform2f(cursor, parameters.cursor[0], parameters.cursor[1]);
 
       const background = location("uBackgroundColor");
       if (background) gl.uniform3fv(background, [...parameters.backgroundColor]);

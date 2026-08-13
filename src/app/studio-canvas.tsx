@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { shouldIncludeToolcraftPreviewBackground } from "@/toolcraft/runtime";
 import {
+  useToolcraftDispatch,
   useToolcraftPipelinePass,
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
@@ -13,6 +14,7 @@ import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
 import { StudioRegionHandles } from "./studio-region-handles";
+import { STUDIO_CURSOR_AWAY, STUDIO_CURSOR_TARGET } from "./studio-stack-state";
 import {
   buildStudioSceneParameters,
   readStudioRenderScale,
@@ -143,6 +145,66 @@ export function StudioCanvas(): React.JSX.Element {
       renderer.render(parameters, width, height);
     }, [acquireRenderer, frame, parameters, renderScale]),
   );
+
+  const dispatch = useToolcraftDispatch();
+
+  /**
+   * The pointer, committed to state in field units (R68).
+   *
+   * Listened for on the window rather than on the canvas, which is not a
+   * refinement but a requirement: the region handles are an overlay drawn on
+   * top of the shape, and a canvas-bound listener never sees a pointer moving
+   * across the very field the engines are supposed to respond to. A pointer
+   * position is a global fact, so it is read globally and converted against the
+   * canvas rectangle.
+   *
+   * Coalesced to one commit per frame. Every move would otherwise dispatch, and
+   * the value is read once per draw regardless.
+   */
+  React.useEffect(() => {
+    let frame = 0;
+    let pending: readonly [number, number] | undefined;
+
+    const commit = () => {
+      frame = 0;
+      if (!pending) return;
+      dispatch({
+        target: STUDIO_CURSOR_TARGET,
+        type: "controls.setValue",
+        value: [...pending],
+      });
+      pending = undefined;
+    };
+
+    const onMove = (event: PointerEvent) => {
+      const canvas = canvasRef.current;
+      const box = canvas?.getBoundingClientRect();
+      if (!box || box.height <= 0) return;
+
+      const inside =
+        event.clientX >= box.left &&
+        event.clientX <= box.right &&
+        event.clientY >= box.top &&
+        event.clientY <= box.bottom;
+
+      pending = inside
+        ? [
+            (event.clientX - (box.left + box.width / 2)) / box.height,
+            // Flipped: the field measures upward from its centre and the page
+            // measures downward from its top, so a pointer moved up has to
+            // arrive as a larger y rather than a smaller one.
+            -(event.clientY - (box.top + box.height / 2)) / box.height,
+          ]
+        : [...STUDIO_CURSOR_AWAY];
+      if (!frame) frame = requestAnimationFrame(commit);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [dispatch]);
 
   if (unsupported) {
     // Product output, not app chrome: a WebGL2 failure means there is no other

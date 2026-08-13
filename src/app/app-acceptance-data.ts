@@ -192,6 +192,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: [
         "selectedLayer.engine",
         "selectedLayer.engineAmount",
+        "selectedLayer.engineCursor",
         "selectedLayer.enginePitch",
       ],
       title: "Layer Engine",

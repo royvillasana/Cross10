@@ -2,6 +2,8 @@ import {
   buildStudioStack,
   pruneStudioLayerRecord,
   readStudioLayerRecord,
+  readStudioCursor,
+  STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
   type StudioRuntimeLayer,
 } from "./studio-stack-state";
@@ -86,6 +88,9 @@ export function buildStudioSceneParameters(
   return {
     backgroundColor:
       studioColorToLinear(state.values[BACKGROUND_COLOR_TARGET]) ?? FALLBACK_COLOR,
+    // Read from committed state rather than from a pointer event, which is what
+    // lets the export frame build the same scene as the preview (R68).
+    cursor: readStudioCursor(state.values[STUDIO_CURSOR_TARGET]),
     // Passed in rather than read from `export.includeBackground`, because the
     // two are different questions. The switch says whether an exported artifact
     // carries the background; whether the *preview* shows it is the runtime's

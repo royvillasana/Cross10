@@ -11,6 +11,7 @@ function scene(
 ): StudioStackSceneParameters {
   return {
     backgroundColor: [0, 0, 0],
+    cursor: [-9, -9],
     includeBackground: true,
     layers,
   };
@@ -139,6 +140,7 @@ describe("deliverable shader source", () => {
     const included = studioAssembleDeliverableSource(scene([stripes]));
     const excluded = studioAssembleDeliverableSource({
       backgroundColor: [0.25, 0.5, 0.75],
+      cursor: [-9, -9],
       includeBackground: false,
       layers: [stripes],
     });

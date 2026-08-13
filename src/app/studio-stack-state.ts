@@ -44,6 +44,28 @@ export const STUDIO_LAYER_RECORD_TARGET = "stack.layerRecord";
  * *controls*, so they have to be declared here or persistence drops them and a
  * reload throws away every shape the author placed.
  */
+/**
+ * Where the pointer is, committed to state (R68).
+ *
+ * Uncontrolled, like the layer record: the canvas writes it and no control
+ * edits it. Committing it rather than reading an event is what keeps the
+ * artifact deterministic — an export has no pointer, and a delivered shader has
+ * no pointer either, so what they both need is a *position*, and the honest one
+ * is the last place the author left it.
+ */
+export const STUDIO_CURSOR_TARGET = "stack.cursor";
+
+/** Field units, from the centre of the frame. Off-frame until the pointer arrives. */
+export const STUDIO_CURSOR_AWAY: readonly [number, number] = [-9, -9];
+
+export function readStudioCursor(value: unknown): readonly [number, number] {
+  return Array.isArray(value) &&
+    value.length === 2 &&
+    value.every((entry) => typeof entry === "number" && Number.isFinite(entry))
+    ? [value[0] as number, value[1] as number]
+    : STUDIO_CURSOR_AWAY;
+}
+
 export const STUDIO_SHAPE_GEOMETRY_TARGETS = [
   "selectedLayer.maskSize",
   "selectedLayer.maskAspect",

@@ -1,6 +1,9 @@
+import { expect } from "@playwright/test";
+
 import { expectToolcraftSelectedLayerControl } from "./browser-layer-evidence-helpers";
 import {
   openStudioSingleLayer,
+  STUDIO_PRODUCT_OUTPUT,
   openStudioTwoLayerStack,
   selectStudioLayer,
   setStudioColorHex,
@@ -1708,6 +1711,160 @@ test("browser: studio interference pitch changes the beat", async ({ page }) => 
       target: "selectedLayer.enginePitch",
     },
   );
+});
+
+
+/**
+ * Which side of the field is carrying the technique.
+ *
+ * The cursor's whole claim is spatial -- the engine reaches where the pointer
+ * is and not where it is not -- so the reading has to ask two places rather
+ * than measure one. Both sample points sit inside the shape, either side of its
+ * centre, so a difference between them is the pointer's doing and not the
+ * shape's edge.
+ *
+ * Measured before the expectations were written, at eight bands with induction
+ * at full amount: a plain band carries 4 distinct tones across the patch and an
+ * induced one carries 13 to 17, so the boundary between them is nowhere near
+ * either reading.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const CURSOR_FIELD = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const width = 120;
+      const x = Math.min(
+        Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const pixels = new Uint8Array(width * 4);
+      gl.readPixels(
+        x,
+        Math.floor(canvas.height / 2),
+        width,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+      const seen = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      return seen.size > 8 ? "induced" : "plain";
+    };
+
+    outputSignature = `left=${at(0.4)} right=${at(0.6)}`;
+  }
+
+  const combobox = root
+    .querySelector('[data-toolcraft-control-target="selectedLayer.engine"]')
+    ?.querySelector('[role="combobox"]');
+
+  return {
+    controlValue: {
+      engine: (combobox?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+      follow:
+        root
+          .querySelector(
+            '[data-toolcraft-control-target="selectedLayer.engineCursor"] [role="switch"]',
+          )
+          ?.getAttribute("aria-checked") ?? "absent",
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio engine follows the pointer across the field", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSelectValue(page, "selectedLayer.engine", "Induction");
+  await setStudioSlider(page, "Engine amount", 1);
+
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to aim a pointer at.");
+  const aim = async (fraction: number): Promise<void> => {
+    await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
+    // One commit per frame, so the value the shader reads is a frame behind the
+    // move that produced it.
+    await page.waitForTimeout(200);
+  };
+
+  await aim(0.4);
+
+  // The pointer has to be put back after the switch is clicked: clicking it
+  // moves the pointer to the sidebar, which is off the canvas, and an engine
+  // following a pointer that has left reaches nothing anywhere. Both halves are
+  // the same action -- turn it on, then point at something.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(CURSOR_FIELD),
+    session.controlAction("selectedLayer.engineCursor", async () => {
+      await toggleStudioSwitch(page, "selectedLayer.engineCursor");
+      await aim(0.4);
+    }),
+    {
+      controlValue: { engine: "Induction", follow: "true" },
+      outputSignature: "left=induced right=plain",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.engineCursor",
+      target: "selectedLayer.engineCursor",
+    },
+  );
+
+  // And it is the pointer that decides which side, not the switch: moving to
+  // the other half of the field trades one for the other.
+  await aim(0.6);
+  await expect
+    .poll(async () => output.evaluate((node) => node.getAttribute("data-studio-stack")), {
+      timeout: 5000,
+    })
+    .toBe("stripes");
+  expect(
+    await page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        "[data-toolcraft-product-output]",
+      );
+      const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!canvas || !gl) return "absent";
+      const at = (fx: number): string => {
+        const width = 120;
+        const x = Math.round(canvas.width * fx) - width / 2;
+        const pixels = new Uint8Array(width * 4);
+        gl.readPixels(x, Math.floor(canvas.height / 2), width, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        const seen = new Set<string>();
+        for (let index = 0; index < pixels.length; index += 4) {
+          seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+        }
+        return seen.size > 8 ? "induced" : "plain";
+      };
+      return `left=${at(0.4)} right=${at(0.6)}`;
+    }),
+  ).toBe("left=plain right=induced");
 });
 
 /**

@@ -288,6 +288,23 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares following the pointer confines the engine to its reach",
+    browser: true,
+    browserTestName: "browser: studio engine follows the pointer across the field",
+    componentType: "switch",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Turning on Follow the pointer confines the engine to the pointer's neighbourhood, so the field carries the technique where the pointer is and its plain colours everywhere else; moving the pointer moves which part of the field is affected. The control is absent while the engine is None.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.engineCursor",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.engineCursor",
+    userAction:
+      "Choose an engine, turn on Follow the pointer, then move the pointer across the canvas.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the interference pitch sets the beat period",
     browser: true,
     browserTestName: "browser: studio interference pitch changes the beat",

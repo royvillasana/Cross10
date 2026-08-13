@@ -326,6 +326,7 @@ const CHUNK_STRIPES_BODY = `
 vec4 studioStripesBody(
   vec2 fragmentPosition,
   vec2 resolution,
+  vec2 cursor,
   float angle,
   float count,
   float widthRatio,
@@ -338,6 +339,7 @@ vec4 studioStripesBody(
   float paletteSlots,
   float engine,
   float engineAmount,
+  float engineCursor,
   float enginePitch,
   vec3 colorA,
   vec3 colorB,
@@ -414,6 +416,16 @@ vec4 studioStripesBody(
     // are all about what happens at or across an edge, so this is the quantity
     // they share.
     float toEdge = min(position, 1.0 - position);
+    // How near the pointer is, as a value between nothing and everything. This
+    // is the whole of the cursor's effect on an engine: each technique scales
+    // by it and so decides its own response, rather than the cursor being a
+    // fourth engine or a mode of its own. Croix10's proximity push is the prior
+    // art, and this is the same idea with the push replaced by the technique.
+    //
+    // A cursor parked outside the frame reaches nothing, which is what makes an
+    // export with no pointer identical to a preview nobody is touching.
+    float cursorReach = 1.0 - smoothstep(0.0, 0.45, length(centered - cursor));
+    float engineStrength = engineAmount * mix(1.0, cursorReach, step(0.5, engineCursor));
 
     if (engine < 1.5) {
       // Induction chromatique. The afterimage colour the eye induces along a
@@ -421,9 +433,9 @@ vec4 studioStripesBody(
       // colour, strongest at the edge and falling off across a fringe whose
       // width is the amount. Nothing is added away from the edges, so at any
       // amount the middle of a band is the colour it always was.
-      float fringeSpan = max(engineAmount * 0.25, 0.0001);
+      float fringeSpan = max(engineStrength * 0.25, 0.0001);
       float fringe = 1.0 - smoothstep(0.0, fringeSpan, toEdge);
-      pair = mix(pair, vec3(1.0) - pair, fringe * engineAmount);
+      pair = mix(pair, vec3(1.0) - pair, fringe * engineStrength);
     } else if (engine < 2.5) {
       // Physichromie. A relief of strips whose apparent colour depends on where
       // the viewer stands: the amount shears which slot each strip presents, so
@@ -436,8 +448,8 @@ vec4 studioStripesBody(
       // a half it presented each band as the average of itself and its
       // neighbour -- a flat grey field, which is a technique destroying its
       // subject rather than moving it through colour states.
-      vec3 presented = mix(near, far, clamp(engineAmount, 0.0, 1.0));
-      float occlusion = 1.0 - min(engineAmount * 0.35, 0.55);
+      vec3 presented = mix(near, far, clamp(engineStrength, 0.0, 1.0));
+      float occlusion = 1.0 - min(engineStrength * 0.35, 0.55);
       pair = presented * occlusion;
     } else {
       // Chromointerference. A second printed structure at a slightly different
@@ -453,7 +465,7 @@ vec4 studioStripesBody(
       );
       // Difference rather than a mix: it is black exactly where the two prints
       // agree, which is what makes the beat itself the thing that is seen.
-      pair = mix(pair, abs(pair - secondInk), secondMask * engineAmount);
+      pair = mix(pair, abs(pair - secondInk), secondMask * engineStrength);
     }
   }
 
@@ -465,11 +477,13 @@ const CHUNK_GRADIENT_BODY = `
 vec4 studioGradientBody(
   vec2 fragmentPosition,
   vec2 resolution,
+  vec2 cursor,
   float angle,
   float rampType,
   float paletteSlots,
   float engine,
   float engineAmount,
+  float engineCursor,
   float enginePitch,
   vec3 colorA,
   vec3 colorB,
@@ -496,31 +510,33 @@ vec4 studioGradientBody(
   // for "the boundary" is the seam between two consecutive slots -- which is
   // where a gradient's induced colour actually appears.
   if (engine >= 0.5) {
+    float cursorReach = 1.0 - smoothstep(0.0, 0.45, length(centered - cursor));
+    float engineStrength = engineAmount * mix(1.0, cursorReach, step(0.5, engineCursor));
     float slots = max(paletteSlots - 1.0, 1.0);
     float withinSlot = fract(clamp(position, 0.0, 1.0) * slots);
     float toEdge = min(withinSlot, 1.0 - withinSlot);
 
     if (engine < 1.5) {
-      float fringeSpan = max(engineAmount * 0.25, 0.0001);
+      float fringeSpan = max(engineStrength * 0.25, 0.0001);
       float fringe = 1.0 - smoothstep(0.0, fringeSpan, toEdge);
-      colour = mix(colour, vec3(1.0) - colour, fringe * engineAmount);
+      colour = mix(colour, vec3(1.0) - colour, fringe * engineStrength);
     } else if (engine < 2.5) {
       // The viewer's position shifts where the ramp is read, so the whole
       // transition slides through its colour states rather than one stop
       // changing. Occlusion darkens with the shear, as in the relief.
       // Zero is head-on and leaves the ramp where it is, as in the stripes body.
       vec3 shifted = studioPaletteRamp(
-        clamp(position + engineAmount * 0.25, 0.0, 1.0),
+        clamp(position + engineStrength * 0.25, 0.0, 1.0),
         paletteSlots, colorA, colorB, colorC, colorD
       );
-      colour = shifted * (1.0 - min(engineAmount * 0.35, 0.55));
+      colour = shifted * (1.0 - min(engineStrength * 0.35, 0.55));
     } else {
       // A second ramp at a different pitch, beating against the first.
       vec3 second = studioPaletteRamp(
         fract(position * max(enginePitch, 0.01)),
         paletteSlots, colorA, colorB, colorC, colorD
       );
-      colour = mix(colour, abs(colour - second), engineAmount);
+      colour = mix(colour, abs(colour - second), engineStrength);
     }
   }
 
@@ -558,6 +574,12 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
           type: "float",
         },
         { defaultValue: 0.25, name: "engineAmount", type: "float" },
+        {
+          booleanControl: true,
+          defaultValue: 0,
+          name: "engineCursor",
+          type: "float",
+        },
         { defaultValue: 1.2, name: "enginePitch", type: "float" },
         { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
@@ -608,6 +630,12 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
           type: "float",
         },
         { defaultValue: 0.25, name: "engineAmount", type: "float" },
+        {
+          booleanControl: true,
+          defaultValue: 0,
+          name: "engineCursor",
+          type: "float",
+        },
         { defaultValue: 1.2, name: "enginePitch", type: "float" },
         { defaultValue: [1, 1, 1], name: "colorA", type: "vec3" },
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
@@ -774,7 +802,7 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       composite.a
     );
 
-    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution${args ? `, ${args}` : ""});
+    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor${args ? `, ${args}` : ""});
     composite = studioComposite(composite, layer, ${weight}, ${name("blendMode")});
   }`;
 }
@@ -799,6 +827,13 @@ precision highp float;
 uniform vec2 uResolution;
 uniform vec3 uBackgroundColor;
 uniform float uIncludeBackground;
+/**
+ * Where the pointer is, in the same units the field is measured in: normalised
+ * against height, from the centre of the frame. Committed to state rather than
+ * read from an event (R68), so the exported artifact and the delivered source
+ * carry the position the author left it at instead of no position at all.
+ */
+uniform vec2 uCursor;
 
 ${declareLayerUniforms(stack)}
 

@@ -430,6 +430,25 @@ widthRatio: {
         target: "selectedLayer.engineAmount",
         type: "slider",
       },
+      engineCursor: {
+        semanticGroup: "engine",
+        applicability: {
+          all: [
+            {
+              oneOf: ["induction", "physichromie", "chromointerference"],
+              target: "selectedLayer.engine",
+            },
+          ],
+          mode: "conditional",
+        },
+        defaultValue: false,
+        label: "Follow the pointer",
+        performanceReason:
+          "One distance and one mix against a coordinate the engine already has; the cost is the same on or off.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.engineCursor",
+        type: "switch",
+      },
       enginePitch: {
         semanticGroup: "engine",
         applicability: {
