@@ -15,6 +15,7 @@ import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
 import { StudioRegionHandles } from "./studio-region-handles";
+import { useStudioShortcuts } from "./studio-shortcuts";
 import {
   STUDIO_CURSOR_AWAY,
   STUDIO_CURSOR_TARGET,
@@ -65,6 +66,10 @@ export function StudioCanvas(): React.JSX.Element {
   // Mounted here because product code has one mount point inside the runtime
   // shell; the sync belongs to the product rather than to the canvas it lives in.
   useStudioLayerSync();
+  // The product's own keys (15.4). Mounted beside the sync for the same reason:
+  // product code has one mount point inside the runtime shell, and a document
+  // listener belongs to the product rather than to the canvas it lives in.
+  useStudioShortcuts();
 
   const frame = useToolcraftProductSceneFrame();
   // Select the state object itself, which is referentially stable per update, and

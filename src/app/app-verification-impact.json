@@ -254,6 +254,39 @@
     },
     {
       "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-region-geometry.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-region-handles.module.css"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-region-handles.tsx"
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include",
         "canvas.render-scale",
@@ -274,6 +307,14 @@
       "passIds": [
         "layer-stack"
       ]
+    },
+    {
+      "acceptanceIds": [
+        "stack.pen",
+        "stack.pen.shortcut"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-shortcuts.ts"
     },
     {
       "acceptanceIds": [

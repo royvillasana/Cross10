@@ -1975,6 +1975,58 @@ test("browser: studio duplicate copies the layer and its settings", async ({
 });
 
 
+test("browser: pressing P hands the canvas to the pen", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to draw on.");
+
+  const vertices = page.locator('[data-testid^="studio-pen-vertex-"]');
+  const moveHandle = page.getByTestId("studio-region-move");
+
+  // A drawing already under way, started from the button, so the shortcut has
+  // something to be measured against.
+  await page
+    .locator('[data-toolcraft-control-target="stack.pen"]')
+    .getByRole("button", { name: "Draw" })
+    .first()
+    .click();
+  await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.3);
+  await page.mouse.click(box.x + box.width * 0.65, box.y + box.height * 0.3);
+  await expect(vertices).toHaveCount(2);
+
+  // Closing is what gives the canvas back, and only a closed path leaves the
+  // extent handles up to be stood aside again.
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.7);
+  await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.3);
+  await expect(moveHandle).toBeVisible();
+  await expect(vertices).toHaveCount(3);
+
+  const pressed = await expectToolcraftAcceptanceOutcome(
+    async () => ({
+      handlesShown: await moveHandle.isVisible(),
+      vertices: await vertices.count(),
+    }),
+    async () => {
+      await page.keyboard.press("p");
+    },
+    { evidenceType: "command-side-effect", requirementId: "stack.pen.shortcut" },
+  );
+
+  // Both halves of the operation, which is what makes this the Draw button's
+  // accelerator rather than a lookalike that only flips the mode: the canvas
+  // belongs to the pen, and the path it starts is empty rather than the closed
+  // one that was there a moment ago.
+  expect(pressed).toEqual({ handlesShown: false, vertices: 0 });
+
+  // And it draws: the key started a real drawing, not a mode with nothing
+  // behind it.
+  await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.4);
+  await expect(vertices).toHaveCount(1);
+});
+
 test("browser: studio pen draws a free path on the canvas", async ({ page }) => {
   test.setTimeout(120_000);
 
@@ -2124,6 +2176,11 @@ const TREATED_FIELD = (
     // a patch there straddles it.
     outputSignature = `inside=${at(0.5)} outside=${at(0.5, 0.31)}`;
   }
+
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
 
   const combobox = root
     .querySelector('[data-toolcraft-control-target="selectedLayer.blendMode"]')

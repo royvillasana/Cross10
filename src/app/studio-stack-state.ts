@@ -155,6 +155,42 @@ export function clearStudioVertexPath(
   return next;
 }
 
+/**
+ * Starting a drawing, as the two writes it takes.
+ *
+ * The layer's previous path goes and the canvas is handed to the pen for that
+ * layer, one edit each so undo steps through them the way it steps through any
+ * other product edit.
+ *
+ * A plan rather than a dispatch because two surfaces ask for this one
+ * operation: the Draw button in Layer Shape, and the P shortcut (15.4). They
+ * are not two operations and must not be two implementations -- a shortcut that
+ * re-derived the writes would be free to drift from the button, and the first
+ * thing to drift would be the path-clearing that makes the drawing fresh.
+ *
+ * Empty for a selection that cannot draw, so neither caller has to decide what
+ * "no layer" means.
+ */
+export function planStudioPenDrawing(
+  layerId: string,
+  vertexPaths: unknown,
+): readonly Readonly<{
+  target: string;
+  type: "controls.setValue";
+  value: unknown;
+}>[] {
+  if (!layerId) return [];
+
+  return [
+    {
+      target: STUDIO_VERTEX_PATH_TARGET,
+      type: "controls.setValue",
+      value: clearStudioVertexPath(readStudioVertexPaths(vertexPaths), layerId),
+    },
+    { target: STUDIO_PEN_TARGET, type: "controls.setValue", value: layerId },
+  ];
+}
+
 export const STUDIO_SHAPE_GEOMETRY_TARGETS = [
   "selectedLayer.maskSize",
   "selectedLayer.maskAspect",

@@ -165,6 +165,24 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
       "Press Draw, click three points on the canvas, then click the first point again.",
   },
   {
+    automated: true,
+    automatedTestName: "planStudioPenDrawing starts one drawing, whichever surface asked for it",
+    browser: true,
+    browserTestName: "browser: pressing P hands the canvas to the pen",
+    componentType: "keyboard-shortcut",
+    // The same side effect the Draw button has, reached by a key. Declared as
+    // its own row rather than folded into `stack.pen` because a shortcut that
+    // is only implied by another row's prose is a shortcut nothing checks.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Pressing P with a layer selected hands the canvas to the pen exactly as the Draw button does: the extent handles stand aside and the layer's previous path is cleared, so the next click starts a fresh drawing. It is the only key this product takes -- undo, redo and zoom belong to the runtime and are left to it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.pen.shortcut",
+    kind: "runtime",
+    target: "stack.penLayerId",
+    userAction: "Select a layer and press P.",
+  },
+  {
     actionCoverage: ["duplicate-layer"],
     automated: true,
     automatedTestName: "declares duplicating copies a layer or a whole group under new ids",
