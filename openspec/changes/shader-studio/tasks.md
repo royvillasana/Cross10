@@ -166,7 +166,7 @@ Raised from the user's reference set and decomposed in R60. Ordered so each item
 - [x] 12.4 **Layer treatment** — hue, saturation, contrast. Applied as the layer composites, so a layer can change what is beneath it rather than only painting over it
 - [x] 12.5 **Blend mode** per layer. With 12.4 this is what makes a shape read as a lens, which is the whole of group B
 - [ ] 12.6 **Tapered shadow** attached to a shape: an offset band whose thickness varies along its length. The reference shadows are wedges rather than blurs, so this reuses the taper construction rather than adding a filter
-- [ ] 12.7 Revisit `rendererPipelineRegistration` and the workload envelope once treatment lands. A layer that reads beneath itself changes what the composite pass does, and the declaration should say so rather than being inherited from when every layer only painted
+- [x] 12.7 Revisited with 13.4 and 14.8 as one pass. Treatment made a layer read the composite beneath it and write it back, which is more work *per layer* and therefore still linear in stack depth; the declaration now says so for treatment, engines and the cursor rather than being inherited from when every layer only painted
 - [ ] 12.8 Acceptance rows and browser proofs for every control and handle above, batched per item
 - [ ] 12.9 Presets for the reference set, as gallery entries (group 5). Blocked until 12.0–12.6, because the entries are exactly these capabilities in combination
 - [ ] 12.10 **Fluted glass** — striped displacement of an imported image. Needs the image layer type (3.1) first, and is the only reference group whose subject is imported media rather than generated field
@@ -196,7 +196,7 @@ Raised by the user: layers that are shapes -- the geometric ones and free-form -
 - [ ] 13.1 Register the **shape layer type** with rectangle and ellipse, and pay R62's gating bill in one batch: gate `selectedLayer.colorB` and the three Layer Palette controls, and write the applicability proofs beside them
 - [ ] 13.2 Generalise the canvas handle layer from a fixed eight nodes around a rectangle to a **list of handles**, with an acceptance row per handle kind rather than per handle
 - [ ] 13.3 **Free-form shapes**: a closed polygon as an ordered vertex list in region units, one node handle per vertex, point-in-polygon in the fragment shader. Vertex count is the first control whose cost is not constant per pixel, so it lands as a workload dimension
-- [ ] 13.4 Revisit `workloadEnvelope` and `rendererPipelineRegistration` for the vertex count -- the same revisit 12.7 asks for after treatment, so do both together
+- [x] 13.4 Done with 12.7 and 14.8. The vertex count that will vary the cost is the pen's free vertex list, not the polygon side count
 - [ ] 13.5 **Raster image layer** (this is 3.1): PNG and JPEG decoded to a texture, through the runtime's `mediaLifecycleCoverage` rather than a plain control
 - [ ] 13.6 **SVG import as conversion**, not rasterisation: each path becomes a free-form shape layer, so an imported figure can be recoloured, tapered and treated like a drawn one. Curves flatten to segments -- the tolerance is a decision to record, not a constant to guess -- and every unsupported feature (gradients, strokes, clip paths, text) is reported at import rather than silently dropped
 - [ ] 13.7 Retire the four Layer Region sliders in favour of the handles, which the acceptance model requires before 12.3 can merge: one operation, one owning surface
@@ -247,7 +247,10 @@ Supersedes group 13's shape items. Ordered so each is usable before the next exi
   - The engine is **not** gated by layer kind, so the gradient honours it too — forced by R34 plus the ten-control rule, and it makes the axis genuinely beside the kind rather than inside one branch of it
 - [x] 14.6 **Cursor as a uniform.** `uCursor` carries the pointer in field units; one proximity value reaches every engine and each scales its own amount by it, so the response belongs to the technique. Opt-in per layer through `Follow the pointer`. The listener is on the *window*, not the canvas — the region handles overlay the very field the engines colour and swallow moves bound to it (R68)
 - [x] 14.7 **Decided: the cursor is committed to state** (R68). `stack.cursor` is an uncontrolled value target beside `stack.layerRecord`, so the export frame builds the same scene the preview did and the delivered source bakes the position the author left it at — what you see is what you get, and the artifact stays deterministic because it reads a value rather than an event. R44's precedent, applied again. A pointer that leaves the frame parks off-frame, so an export made while not touching the canvas is the field with no cursor in it
-- [ ] 14.8 Workload envelope and pipeline registration for the two new dimensions — polygon vertex count and per-engine cost — folded into the revisit 12.7 already asks for
+- [x] 14.8 Done, and one of the two assumed dimensions did not survive contact with how it was built:
+  - **`polygon-sides` is declared**, constant in the way `band-count` is — the shape test folds its angle into one wedge, so twelve sides read what three do. Declaring it obliged a fixture adapter and re-identified all six performance paths
+  - **No engine dimension.** A select over strings cannot back one (no numeric bounds), and each engine branch is a constant; the largest is interference. A constant bigger than the old constant is still a constant
+  - The relationship stays `linear` in stack depth. What moved is the size of the per-layer constant, which belongs to the pending kernel benchmark rather than to the growth class
 
 ### 14.1 is blocked on 14.2, found on starting it
 
