@@ -204,7 +204,7 @@ export const appPerformancePathAdapters = [
     fixtureApplications: stackApplications,
     observeOutcome: ({ page }) => observeStackColorCount(page),
     pathId:
-      "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+      "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
     prepare: openApp,
     action: async ({ page }) => {
       // Initial render is measured by reloading into a fresh mount. The stack is
@@ -217,7 +217,7 @@ export const appPerformancePathAdapters = [
     fixtureApplications: stackApplications,
     observeOutcome: ({ page }) => observeStackColorCount(page),
     pathId:
-      "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+      "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
     prepare: openApp,
     action: async ({ page }) => {
       // A committed discrete edit: nudge the band count by one keyboard step.
@@ -230,7 +230,7 @@ export const appPerformancePathAdapters = [
     fixtureApplications: stackApplications,
     observeOutcome: ({ page }) => observeStackColorCount(page),
     pathId:
-      "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+      "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
     prepare: openApp,
     action: async ({ page }) => {
       // A real pointer drag across the thumb, so liveness is measured during the
@@ -293,7 +293,7 @@ export const appPerformancePathAdapters = [
       },
     },
     pathId:
-      "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+      "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
     prepare: openApp,
   },
 ] as const satisfies readonly ToolcraftPerformancePathAdapter[];
