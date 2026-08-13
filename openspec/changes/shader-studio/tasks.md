@@ -98,6 +98,16 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 
 Scoped against the runtime rather than guessed. The rendering half is tractable; the acceptance half is larger than "a layer type" suggests, and obliges a feature nobody has asked for yet.
 
+**Status: the renderer half is done and committed; the surface is not.**
+
+**The finding that decides the design.** A fileDrop row must carry `media-lifecycle` evidence, and `browser-runtime-evidence-requirements.ts` maps that to the required evidence type `layer-media-lifecycle`. The only helper that attaches it is `expectToolcraftLayerMediaLifecycle`, which asserts `before.layerIds !== after.layerIds`. **So a dropped image must create a layer.** Media attaching to the already-selected layer cannot produce the evidence its own row requires — that shape was built and withdrawn rather than committed half-true.
+
+That also settles where the control lives: the file drop belongs to the *stack*, not to `selectedLayer`. And it means `layersOwnMediaManagement` is the branch that applies, so the obligation is the `hasSelectedLayerImageTransformCoverage` one — a runtime row with `layerCoverage: "selected-layer-controls"` and `mediaLifecycleCoverage` for rotate, flip and transform-output — rather than the six-value fileDrop set.
+
+**Already done, on `shape-vocabulary`:** `sampler2D` as a third uniform kind; the `image` layer type and its body; texture creation, per-layer units, blank-texture fallback and disposal; media decoded through `useToolcraftMediaPresentationUrls`; rotate and flip read from the asset's own transform. The rendering half keys media by `asset.layerId`, which is exactly what drop-creates-a-layer needs.
+
+**Left:** find whether the runtime creates the layer on drop or the product must; place the fileDrop as a stack-level control; write the browser proof around a real image fixture, asserting the layer collection changes on import and on remove, and that rotate and flip change the rendered pixels.
+
 **How a product gets pixels from runtime media.** `useToolcraftMediaPresentationUrls(mediaAssets)` is exported for products and returns `ReadonlyMap<assetId, url>`. That is the supported route: the canvas loads each URL into an `ImageBitmap` and uploads it as a texture. `resolveMediaResource` is *not* the route — it is handed to panel actions only, and is not exported from the React index.
 
 **Assets already know their layer.** `ToolcraftMediaAssetBase` carries `layerId`, so matching an asset to a layer needs no product-owned map. That is the media half of R56 already solved by the runtime.
