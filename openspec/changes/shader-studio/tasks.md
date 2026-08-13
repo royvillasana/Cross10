@@ -159,8 +159,8 @@ Croix10's surface is the floor, not the ceiling. Each control carried across sti
 
 ## 5. Gallery
 
-- [ ] 5.1 Implement the gallery as a `select` over the preset library, applied through runtime commands so undo and reset behave normally
-- [ ] 5.2 Port Croix10's eleven presets as the first collection, each expressed as a layer stack rather than an engine id
+- [ ] 5.1 Implement the gallery as a `select` **plus an apply action** (R71), applied through runtime commands so undo and reset behave normally. **Designed, not started.** The select alone could not be had: every rendered control's value persists, so an apply-on-change select would store the stale active entry R58 rejected. Applying is a stack replacement under one `historyGroup` — `layers.delete` per existing layer, `layers.add` per preset layer with explicit draft ids, one write of `stack.layerRecord`, then `layers.select` — which makes it one undo step and leaves no parallel scene format
+- [ ] 5.2 Port Croix10's eleven presets as the first collection, each expressed as a layer stack rather than an engine id. **Unblocked**: R58 made this wait for group 4, which has now landed, so the three techniques the stack cannot express itself are `selectedLayer.engine` and the three it can are the stack's own model (R67). A preset here is an ordered list of layers with their values, not Croix10's `Record<target, value>` — that shape cannot say "two stripe layers at different angles" 
 - [ ] 5.3 Prove selection sets a starting state and leaves every control live — the scenario the spec exists to pin down
 - [x] 5.4 Resolve open question 4: whether the gallery needs its own persistence, and record the answer in `design.md`
 - [ ] 5.5 Acceptance rows and browser proofs; run `npm run verify:delivery`

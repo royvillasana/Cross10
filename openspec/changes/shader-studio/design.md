@@ -517,3 +517,29 @@ The section rules make the same choice independently. A control gated by `select
 **Stop positions and stop opacity.** Uneven stops mean a position per slot, which is a collection (R45/R46) and therefore the compound control's job -- so it is the one part of 9A that cannot be carried in the sibling form. Per-stop opacity is a second alpha inside a layer that already has one, and it changes what "reach" means for a ramp: the layer would be partly transparent along its own axis rather than uniformly.
 
 Neither is needed by the reference works: Cruz-Diez's washes are even, and the structures that are not even are band fields, which have their own controls. Recorded here rather than left implied, so the next attempt starts from the price rather than re-deriving it.
+
+## R71 -- the gallery is a picker and an apply, because a select alone would store a stale claim
+
+Settled while starting group 5, and before writing any of it, because the two tasks that describe the gallery disagree in a way the code would have had to resolve by accident.
+
+5.1 asks for the gallery "as a `select` over the preset library". R58 decided the gallery persists nothing -- no stored active entry, because a stored selection keeps naming a preset that no longer describes the stack the moment anything is edited.
+
+Those cannot both be had by a select that applies on change. Every rendered control's value is persisted: `include` carries `values`, and there is no per-target exclusion. So an apply-on-change select stores exactly the claim R58 rejected.
+
+### Decision
+
+**Two controls in one `Gallery` section: a `select` that names an entry, and an `actions` control that applies it.**
+
+The select's value then means *the entry chosen in the gallery*, which stays true after any edit, because it is a picker rather than a status. Nothing about the stack is claimed by it. R58 stands unamended: the gallery still persists no statement about what the stack is.
+
+The rejected alternative is apply-on-change, which is Croix10's arrangement and is right *there*: its presets and its engine share one control surface, so the active entry is a real property of the scene. Here the stack is the state, and the gallery is an applicator.
+
+### A preset is a stack, not a target map
+
+Croix10's preset is `Record<target, value>` and is applied as one `controls.setValue` per entry. That shape cannot express this product: two stripe layers with different angles are two entries under one target.
+
+So a preset here is an ordered list of layers -- a type and its values each -- and applying one is a stack replacement: `layers.delete` for every layer present, `layers.add` per preset layer with explicit draft ids, one write of `stack.layerRecord`, and a `layers.select` at the end. All under a single `historyGroup`, so the whole application is one undo step and there is no parallel scene format to keep in sync. That is 5.1's "applied through runtime commands" read strictly: the runtime owns identity and order, the product owns the values hung off each id (R56).
+
+### The ordering block R58 recorded is discharged
+
+R58 blocked 5.2 on group 4, because six of Croix10's eleven presets are named for engines that did not exist here and would have collapsed into near-identical stripe stacks. Group 4 has landed: the three techniques the stack cannot express itself are `selectedLayer.engine`, and the three it can are the stack's own model (R67). The presets can now be expressed as what they are -- a stack, an engine per layer where the technique is the subject, and a palette.
