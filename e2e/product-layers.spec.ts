@@ -1,3 +1,5 @@
+import { expect } from "@playwright/test";
+
 import {
   expectToolcraftLayerGrouping,
   expectToolcraftLayerReorder,
@@ -8,7 +10,10 @@ import {
   dragStudioLayerRow,
   openStudioGroupedStack,
   openStudioTwoLayerStack,
+  readStudioLayerIds,
+  readStudioStackSignature,
   selectStudioLayer,
+  STUDIO_PRODUCT_OUTPUT,
   toggleStudioLayerVisibility,
 } from "./studio-product-helpers";
 import { test } from "./toolcraft-product-test";
@@ -175,3 +180,118 @@ test("browser: studio layer group moves and hides its members together", async (
     { requirementId: "layers.grouping", target: "selectedLayer.type" },
   );
 });
+
+/**
+ * A picture dropped on the canvas becomes a layer that draws it.
+ *
+ * The runtime owns every part of the import: it reads the file, allocates the
+ * asset, and creates the layer the asset belongs to. What this product owns is
+ * the last step -- drawing the result -- so the proof reads the stack the
+ * renderer assembled and the pixels it produced, not the import machinery.
+ *
+ * The fixture image is four flat quadrants, which is what makes the reading
+ * unambiguous: a picture that arrived upside down, mirrored, or stretched would
+ * put different colours at these two points, and a layer that drew its default
+ * stripes instead would put white and black at both.
+ */
+test("browser: studio dropped image becomes a layer that draws it", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  // From an empty stack: the app persists its layers, and anything already
+  // there would composite over the dropped picture and be read instead of it.
+  // Cleared through an init script because the app rewrites storage on every
+  // change, so a clear that runs before the reload is undone by the page it
+  // was clearing for.
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+  });
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  const before = await readStudioLayerIds(page);
+
+  // Dropped rather than typed into a file input: canvas upload is a drop
+  // surface, and there is no input element to fill.
+  await page.locator(STUDIO_PRODUCT_OUTPUT).evaluate(async (node) => {
+    const width = 64;
+    const height = 64;
+    const source = document.createElement("canvas");
+    source.width = width;
+    source.height = height;
+    const context = source.getContext("2d");
+    if (!context) throw new Error("The fixture image needs a 2D context.");
+    context.fillStyle = "#ff2828";
+    context.fillRect(0, 0, width / 2, height / 2);
+    context.fillStyle = "#285aff";
+    context.fillRect(width / 2, 0, width / 2, height / 2);
+    context.fillStyle = "#fae628";
+    context.fillRect(0, height / 2, width / 2, height / 2);
+    context.fillStyle = "#ffffff";
+    context.fillRect(width / 2, height / 2, width / 2, height / 2);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      source.toBlob(resolve, "image/png"),
+    );
+    if (!blob) throw new Error("The fixture image did not encode.");
+
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([blob], "quadrants.png", { type: "image/png" }));
+    node.dispatchEvent(
+      new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }),
+    );
+  });
+
+  // The runtime made a layer for it.
+  await expect
+    .poll(async () => (await readStudioLayerIds(page)).length, { timeout: 15_000 })
+    .toBe(before.length + 1);
+
+  // And the product draws it: the assembled stack says image, and the frame
+  // carries the picture's own colours rather than a stripe field's.
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
+    .toContain("image");
+
+  await expect
+    .poll(
+      async () =>
+        page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+          const canvas = node as HTMLCanvasElement;
+          const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+          if (!gl) return "nogl";
+          const at = (fx: number, fy: number): string => {
+            const pixel = new Uint8Array(4);
+            gl.readPixels(
+              Math.round(canvas.width * fx),
+              Math.round(canvas.height * fy),
+              1,
+              1,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              pixel,
+            );
+            const hue =
+              pixel[0] > 180 && pixel[1] < 120 && pixel[2] < 120
+                ? "red"
+                : pixel[2] > 180 && pixel[0] < 120
+                  ? "blue"
+                  : pixel[0] > 180 && pixel[1] > 180 && pixel[2] < 120
+                    ? "yellow"
+                    : pixel[0] > 180 && pixel[1] > 180 && pixel[2] > 180
+                      ? "white"
+                      : "other";
+            return hue;
+          };
+          // Read well inside the shape the layer arrives with: a layer is a
+          // shape (R65), so an imported picture is confined to that extent like
+          // any other field, and a sample outside it reads bare ground rather
+          // than the picture.
+          //
+          // readPixels counts from the bottom, so the image's top-left quadrant
+          // is at the larger y fraction.
+          return `topLeft=${at(0.45, 0.6)} bottomRight=${at(0.55, 0.4)}`;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe("topLeft=red bottomRight=white");
+});
+

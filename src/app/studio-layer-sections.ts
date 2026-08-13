@@ -152,6 +152,10 @@ export const STUDIO_LAYER_SECTIONS = [
         options: [
           { label: "Stripes", value: "stripes" },
           { label: "Gradient", value: "gradient" },
+          // Reachable by importing rather than by choosing: dropping a picture
+          // on the canvas creates the layer that draws it. Listed so the panel
+          // can say what such a layer is instead of naming a kind it is not.
+          { label: "Image", value: "image" },
         ],
         // Not `workload`, for two reasons that agree. Structurally, a select
         // over string options is not a numeric schema source — it declares no

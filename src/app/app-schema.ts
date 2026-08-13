@@ -31,7 +31,10 @@ export const appSchema = defineToolcraft({
     // The output has its own dimensions rather than inheriting them from an
     // uploaded image: a generated shader is sized by the author, not by media.
     sizing: { mode: "editable-output" },
-    upload: false,
+    // Media arrives by dropping it on the canvas rather than through a product
+    // uploader (3.1). The runtime owns import and creates a layer per file, so
+    // enabling this is the whole of the product's import surface.
+    upload: true,
   },
   identity: appIdentity,
   panels: {

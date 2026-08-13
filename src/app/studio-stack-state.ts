@@ -560,8 +560,14 @@ export function buildStudioStack(
     .map((layer) => {
       const entry = readStudioLayerEntry(record, layer.id);
       const path = readStudioVertexPath(paths, layer.id);
+      const media = images.get(layer.id);
       return {
-        typeId: entry.typeId,
+        // A layer the runtime created for an imported picture *is* an image
+        // layer, whatever the record says. The record cannot know: the runtime
+        // allocates the layer and the asset together on import, and a product
+        // default of "stripes" would have that layer draw bands over the
+        // picture it was created to show.
+        typeId: media ? "image" : entry.typeId,
         // Carried only when there is a path to carry, so a stack of ordinary
         // layers signs exactly as it did before the pen existed.
         ...(path.length >= 3 ? { vertices: path } : {}),

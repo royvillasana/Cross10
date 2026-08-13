@@ -62,11 +62,16 @@ describe("appSchema", () => {
 
   it("sizes the output rather than inheriting it from uploaded media", () => {
     // A generated shader has no source image to take dimensions from, so the
-    // author sets them. `intrinsic-media` would size the canvas from an upload
-    // that never arrives.
+    // author sets them. `intrinsic-media` would size the canvas from whichever
+    // picture happened to arrive first.
+    //
+    // Upload is on since 3.1 and does not contradict that: an image is a layer
+    // in the stack, not the thing the frame is measured by. The two were
+    // asserted together while there was no way to import at all, which made a
+    // single flag stand for two separate decisions.
     expect(appSchema.canvas.enabled).toBe(true);
     expect(appSchema.canvas.sizing).toEqual({ mode: "editable-output" });
-    expect(appSchema.canvas.upload).toBe(false);
+    expect(appSchema.canvas.upload).toBe(true);
   });
 
   it("enables the layers panel, which the whole product is built on", () => {
