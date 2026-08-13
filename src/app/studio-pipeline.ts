@@ -128,14 +128,39 @@ export const studioPipelineRegistration =
           // coverage derives from this list, but it contributes constant
           // per-pixel cost: the count sets the field's frequency and boundaries
           // resolve analytically from screen-space derivatives, so a band is not
-          // a loop iteration. The pass's growth class is therefore set by stack
-          // depth alone.
+          // a loop iteration. `polygon-sides` is declared on the same footing --
+          // the shape test folds its angle into one wedge, so a twelve-sided
+          // form reads what a triangle reads. The pass's growth class is
+          // therefore set by stack depth alone.
+          //
+          // **What a layer does per pixel grew; how it grows did not.** Three
+          // things landed after this was first written, and the revisit 12.7
+          // asks for is to say whether any of them changed the class:
+          //
+          // - *Treatment* (12.4) made a layer read the composite beneath it and
+          //   write it back, so a layer is no longer only paint. That is more
+          //   work per layer, and it is still work per layer: it scales with
+          //   stack depth exactly as the body call and the composite step do.
+          // - *Chromatic engines* (14.5) add a branch per layer. The engine is a
+          //   select over strings, so it cannot back a dimension at all -- no
+          //   numeric bounds -- and substantively it changes *which* work
+          //   happens rather than how much. Each branch is a constant; the
+          //   largest is interference, which resolves a second band structure
+          //   from a coordinate the body already computed. A constant that is
+          //   bigger than the old constant is still a constant.
+          // - *The cursor* (14.6) is one distance per engine branch, read from a
+          //   committed uniform rather than sampled.
+          //
+          // So no dimension is added for any of them, and the relationship
+          // stays `linear` in stack depth. What moved is the size of the
+          // per-layer constant, which is a matter for the pending benchmark
+          // rather than for the growth class.
           //
           // A non-constant `composite` pass at frame frequency raises a kernel
           // benchmark requirement. That requirement is correct rather than
           // unfortunate, and functional delivery leaves it pending: resolving it
           // needs an authorized performance run, not an authored timing value.
-          dimensions: ["stack-depth", "band-count"],
+          dimensions: ["stack-depth", "band-count", "polygon-sides"],
           frequency: "frame",
           relationship: "linear",
         },

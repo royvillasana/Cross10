@@ -43,6 +43,17 @@ const GRADIENT_APPLICABILITY = {
  * must equal the schema endpoint, so the two cannot be allowed to drift: one
  * literal, read by both the control and the envelope.
  */
+/**
+ * The polygon side count's domain, exported for the same reason the band count
+ * is: `app-performance.ts` builds the `polygon-sides` workload dimension from
+ * it, and a schema-backed boundary must equal the schema endpoint.
+ */
+export const STUDIO_REGION_SIDES = {
+  defaultValue: 8,
+  max: 12,
+  min: 3,
+} as const;
+
 export const STUDIO_BAND_COUNT = {
   defaultValue: 24,
   max: 200,
@@ -320,13 +331,18 @@ widthRatio: {
           all: [{ oneOf: ["polygon"], target: "selectedLayer.maskShape" }],
           mode: "conditional",
         },
-        defaultValue: 8,
+        defaultValue: STUDIO_REGION_SIDES.defaultValue,
         label: "Sides",
-        max: 12,
-        min: 3,
+        max: STUDIO_REGION_SIDES.max,
+        min: STUDIO_REGION_SIDES.min,
+        // `workload` because it is the magnitude of a declared dimension, which
+        // is what that role marks -- not because cost grows with it. It does
+        // not: the angle folds into a single wedge, so a twelve-sided shape
+        // reads the same one atan, one mod and one cos a triangle does. Same
+        // shape of claim as `band-count`, and the envelope says so too.
         performanceReason:
           "The side count folds into one angle test, so a twelve-sided shape costs what a triangle does.",
-        performanceRole: "responsiveness",
+        performanceRole: "workload",
         sliderValueKind: "discrete",
         step: 1,
         target: "selectedLayer.maskSides",

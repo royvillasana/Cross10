@@ -3,7 +3,7 @@ import {
   type ToolcraftEnvelopePerformanceConfig,
 } from "@/toolcraft/runtime";
 
-import { STUDIO_BAND_COUNT } from "./studio-layer-sections";
+import { STUDIO_BAND_COUNT, STUDIO_REGION_SIDES } from "./studio-layer-sections";
 import {
   STUDIO_DRAGGABLE_TARGETS,
   STUDIO_SCENE_TARGETS,
@@ -74,6 +74,13 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         "band-count": {
           apply: (value: number) => value,
           dimensionId: "band-count",
+          observe: (value: number) => value,
+        },
+        // A stepped slider over ten whole positions; the applied value is the
+        // value, as with the band count.
+        "polygon-sides": {
+          apply: (value: number) => value,
+          dimensionId: "polygon-sides",
           observe: (value: number) => value,
         },
         // Finite runtime-state source, so the domain is exhaustive rather than
@@ -148,7 +155,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.initial-render",
         interaction: "initial-render",
         pathId:
-          "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
       {
@@ -165,7 +172,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.control-change",
         interaction: "control-change",
         pathId:
-          "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
       {
@@ -183,7 +190,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.control-drag",
         interaction: "control-drag",
         pathId:
-          "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         target: "selectedLayer.count",
         uiSelector: "[data-toolcraft-product-output]",
       },
@@ -238,7 +245,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.export-image",
         interaction: "export",
         pathId:
-          "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
     ],
@@ -271,6 +278,25 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
             workloadBoundary: "maximum",
           },
           unit: "bands",
+        },
+        {
+          // Declared because the pass reads it and path coverage derives from
+          // this list, and constant in exactly the way `band-count` is: the
+          // polygon test folds its angle into one wedge, so the side count
+          // changes the shape rather than the work. The free vertex list the
+          // pen brings (14.4) is the one that will genuinely vary this, and it
+          // is a different source than a slider endpoint.
+          batchMax: STUDIO_REGION_SIDES.max,
+          defaultValue: STUDIO_REGION_SIDES.defaultValue,
+          id: "polygon-sides",
+          interactiveMax: STUDIO_REGION_SIDES.max,
+          mapping: "direct",
+          source: {
+            kind: "schema-target",
+            target: "selectedLayer.maskSides",
+            workloadBoundary: "maximum",
+          },
+          unit: "sides",
         },
       ],
     },
