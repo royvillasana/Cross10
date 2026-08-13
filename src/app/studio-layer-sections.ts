@@ -234,6 +234,30 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.jitterAmount",
         type: "slider",
       },
+      jitterVariation: {
+        semanticGroup: "pattern",
+        applicability: STRIPES_APPLICABILITY,
+        defaultValue: 12,
+        // Which arrangement, not how much: the amount above says how far a band
+        // is displaced, and this says which bands go which way. Named for that
+        // rather than for Croix10's "Wobble rate", whose noise ran along the
+        // band; here the displacement is per band index and hashed, so there is
+        // no rate left to set and a control calling itself one would lie.
+        label: "Jitter variation",
+        max: 20,
+        min: 1,
+        performanceReason:
+          "Scales the index the existing hash already reads; one multiply inside a body that was computing it anyway.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.jitterVariation",
+        type: "slider",
+        // Twenty whole-number positions, because each is a different
+        // arrangement rather than more of anything. A continuous track would
+        // suggest an ordering the values do not have.
+        variant: "discrete",
+      },
       taper: {
         semanticGroup: "pattern",
         applicability: STRIPES_APPLICABILITY,

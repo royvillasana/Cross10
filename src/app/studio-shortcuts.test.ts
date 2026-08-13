@@ -18,7 +18,7 @@ const KEY_EVENT = {
 };
 
 describe("planStudioPenDrawing", () => {
-  it("starts one drawing, whichever surface asked for it", () => {
+  it("planStudioPenDrawing starts one drawing, whichever surface asked for it", () => {
     // The Draw button and the P shortcut both carry this plan out, so the two
     // cannot disagree about what starting a drawing means. Both writes matter:
     // handing the canvas to the pen without clearing the path would continue

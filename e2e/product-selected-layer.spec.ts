@@ -886,6 +886,144 @@ test("browser: studio jitter displaces each band from its even position", async 
 });
 
 /**
+ * Which band is where, read at three fixed places inside the layer's shape.
+ *
+ * Jitter variation cannot be read by any statistic of the field, and that is
+ * the whole difficulty: the number of bands, the light-to-dark balance and the
+ * spread of the run lengths all hold steady across its domain, because it does
+ * not change how irregular the field is -- it changes which bands took which
+ * displacement. So the reading names the arrangement directly: three points,
+ * each comfortably inside a band, reported as the ink that reached them.
+ *
+ * That is a differential claim rather than a fingerprint. Nothing here asserts
+ * that a particular value produces a particular picture; what is asserted is
+ * that moving the control swaps the ink at every one of the three, which no
+ * change of amount, count or width could do while leaving the field's own
+ * statistics where they were.
+ *
+ * The places and the two values are measured, not chosen: at a count of six
+ * with the jitter at nine tenths, variation 12 reads dark-light-dark and
+ * variation 5 reads light-dark-light, stable across repeated runs. The points
+ * sit inside the shape a layer arrives with (R65), since a reading outside it
+ * would find bare ground.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const BAND_ARRANGEMENT = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const size = 6;
+      const pixels = new Uint8Array(size * size * 4);
+      gl.readPixels(
+        Math.round(canvas.width * fx) - size / 2,
+        Math.round(canvas.height * 0.5) - size / 2,
+        size,
+        size,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+      let light = 0;
+      let dark = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const level =
+          (pixels[index] ?? 0) + (pixels[index + 1] ?? 0) + (pixels[index + 2] ?? 0);
+        if (level > 600) light += 1;
+        else if (level < 120) dark += 1;
+      }
+      // A patch that straddled an edge is reported as such rather than rounded
+      // to one side, so a reading that had drifted onto a boundary would fail
+      // loudly instead of passing half the time.
+      if (light === size * size) return "light";
+      if (dark === size * size) return "dark";
+      return "edge";
+    };
+
+    outputSignature = `a=${at(0.368)} b=${at(0.476)} c=${at(0.62)}`;
+  }
+
+  return {
+    controlValue: {
+      count: sliderValue("Band count"),
+      jitter: sliderValue("Jitter"),
+      variation: sliderValue("Jitter variation"),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio jitter variation rearranges which bands moved where", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // Six bands rather than the default twenty-four, so each one is wide enough
+  // that a sample sits well inside it, and the jitter near its limit so the
+  // displacements are large enough to swap which band covers a place.
+  await setStudioSlider(page, "Band count", 6);
+  await setStudioSlider(page, "Jitter", 0.9);
+
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () =>
+            (
+              document.querySelector(
+                "[data-toolcraft-product-output]",
+              ) as HTMLCanvasElement | null
+            )?.width ?? 0,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThan(0);
+
+  // Every one of the three places changes ink, and the field is the same field:
+  // same count, same amount, same two inks. Only which band took which
+  // displacement has moved, which is exactly what this control is for and the
+  // only thing it does.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(BAND_ARRANGEMENT),
+    session.controlAction("selectedLayer.jitterVariation", async () => {
+      await setStudioSlider(page, "Jitter variation", 5);
+    }),
+    {
+      controlValue: { count: 6, jitter: 0.9, variation: 5 },
+      outputSignature: "a=light b=dark c=light",
+      selectedLayerId: layerId,
+    },
+    {
+      requirementId: "selectedLayer.jitterVariation",
+      target: "selectedLayer.jitterVariation",
+    },
+  );
+});
+
+/**
  * How much thicker a band is at one end than the other.
  *
  * Taper moves the split between a band's two colours along the band's own

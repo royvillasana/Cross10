@@ -351,6 +351,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares the jitter variation where the stripe body reads it",
+    browser: true,
+    browserTestName: "browser: studio jitter variation rearranges which bands moved where",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Stepping Jitter variation re-scatters which bands took which displacement: three places inside the shape each swap ink while the field stays the same field — same band count, same jitter, same two inks. It is the arrangement that moves and nothing else, and the control is absent while a gradient layer is selected.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.jitterVariation",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.jitterVariation",
+    userAction: "Drag Jitter variation with a stripes layer selected and the jitter raised.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares taper turns each band into a wedge",
     browser: true,
     browserTestName: "browser: studio taper turns each band into a wedge",

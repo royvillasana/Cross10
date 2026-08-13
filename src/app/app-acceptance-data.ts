@@ -180,6 +180,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.separator",
         "selectedLayer.taper",
         "selectedLayer.jitterAmount",
+        "selectedLayer.jitterVariation",
         "selectedLayer.widthRatio",
         "selectedLayer.phase",
         "selectedLayer.rampType",

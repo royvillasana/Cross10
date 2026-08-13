@@ -343,7 +343,7 @@ vec4 studioStripesBody(
   float taper,
   float separator,
   float jitterAmount,
-  float jitterFrequency,
+  float jitterVariation,
   float paletteSlots,
   float engine,
   float engineAmount,
@@ -373,7 +373,7 @@ vec4 studioStripesBody(
   float scaled = coordinate * max(count, 1.0) + phase;
   float bandIndex = floor(scaled);
   float jitter =
-    fract(sin(bandIndex * max(jitterFrequency, 1e-4)) * 43758.5453) - 0.5;
+    fract(sin(bandIndex * max(jitterVariation, 1e-4)) * 43758.5453) - 0.5;
   float position = fract(scaled + jitterAmount * jitter);
 
   // Analytic edge from the screen-space derivative rather than supersampling:
@@ -682,14 +682,31 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "taper", type: "float" },
         { defaultValue: 0, name: "separator", type: "float" },
         { defaultValue: 0, name: "jitterAmount", type: "float" },
-        // No control yet, deliberately. Varying this changes *which* bands
-        // move rather than how irregular the field is, so every statistic a
-        // proof could name -- run spread, run count, band frequency -- holds
-        // steady across its whole domain. The only honest observable is the
-        // arrangement itself, and asserting that would mean pinning a
-        // fingerprint that depends on backing size and GPU. Carried as a fixed
-        // characteristic of the field until it has an observable worth naming.
-        { defaultValue: 12, name: "jitterFrequency", type: "float" },
+        /**
+         * Which arrangement of displacements the jitter draws, as distinct
+         * from how far it moves each band.
+         *
+         * Named for what it does rather than for what it was. Croix10's
+         * `jitterFrequency` scaled a noise coordinate *along* the band, so the
+         * rate at which a band wobbled down its own length was a real,
+         * continuous thing to control. This field's jitter is per band index
+         * instead -- that is what keeps bands as bands rather than dissolving
+         * them into noise -- and the index goes through a hash, so neighbouring
+         * bands never correlate at any value. There is no rate left to set;
+         * what remains is the choice of arrangement, and calling that a
+         * frequency would be a control that lies (R65's rule).
+         *
+         * Stepped whole numbers for the same reason: each position is a
+         * different arrangement rather than more of anything, so ticks say what
+         * a continuous track would misstate.
+         *
+         * 14.x deferred exposing this at all, on the ground that its only
+         * observable is the arrangement itself and asserting one would pin a
+         * fingerprint. The proof it lands with is differential instead: the
+         * same number of bands in different places, which needs no fingerprint
+         * and holds on any backing.
+         */
+        { defaultValue: 12, name: "jitterVariation", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
         /**
          * The chromatic engine (R67), and the two values every technique reads.

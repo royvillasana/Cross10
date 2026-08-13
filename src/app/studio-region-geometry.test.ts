@@ -250,7 +250,7 @@ describe("the rotation grip", () => {
 });
 
 describe("studioRotateRegion", () => {
-  it("turns the shape to follow the grip, carrying the angle it was grabbed at", () => {
+  it("studioRotateRegion turns the shape to follow the grip, carrying the angle it was grabbed at", () => {
     const grabbed = studioRotateRegion({
       canvas: CANVAS,
       // Grabbed at rest and dragged a quarter turn: the shape follows the grip.

@@ -68,6 +68,33 @@ describe("per-layer uniform mangling", () => {
     ]);
   });
 
+  it("declares the jitter variation where the stripe body reads it", () => {
+    // Uniforms reach a body positionally, so a name that drifts out of step
+    // with the parameter list is not a compile error -- it is a layer drawing
+    // one value where it meant another, silently. This checks the one thing
+    // that keeps them in step for the newest of them: the wrapper passes
+    // `jitterVariation` at exactly the index the body's signature reads it.
+    const source = studioAssembleStackFragmentShader([stripes]);
+    const uniforms = STUDIO_LAYER_TYPES.stripes.uniforms.map((entry) => entry.name);
+    const signature = source.slice(
+      source.indexOf("vec4 studioStripesBody("),
+      source.indexOf(") {", source.indexOf("vec4 studioStripesBody(")),
+    );
+    const parameters = signature
+      .split("\n")
+      .map((line) => line.trim().replace(/^(float|vec2|vec3|sampler2D)\s+/u, ""))
+      .map((line) => line.replace(/,$/u, ""));
+
+    expect(uniforms).toContain("jitterVariation");
+    // The body takes the frame's own three arguments before the layer's, so the
+    // uniform's place in the registry is its place in the signature offset by
+    // those three.
+    expect(parameters.indexOf("jitterVariation") - parameters.indexOf("angle")).toBe(
+      uniforms.indexOf("jitterVariation") - uniforms.indexOf("angle"),
+    );
+    expect(source).toContain("uniform float uLayer0_jitterVariation;");
+  });
+
   it("mangles by index so two layers of one type never share a uniform", () => {
     expect(studioLayerUniformName(0, "angle")).not.toBe(
       studioLayerUniformName(1, "angle"),
