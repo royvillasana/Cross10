@@ -112,7 +112,7 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   {
     actionCoverage: ["duplicate-layer"],
     automated: true,
-    automatedTestName: "declares duplicating a layer copies its values under a new id",
+    automatedTestName: "declares duplicating copies a layer or a whole group under new ids",
     browser: true,
     browserTestName: "browser: studio duplicate copies the layer and its settings",
     componentType: "actions",
@@ -121,12 +121,13 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     // a duplicate that worked perfectly. The side effect is the observable.
     evidence: "command-side-effect",
     expectedObservable:
-      "Duplicate adds a second layer directly above the selected one and the assembled stack grows by that layer's own kind, so the panel gains a row named after the source. Selecting the copy loads the source's values rather than the defaults a fresh layer would carry, and the source keeps every value it had.",
+      "Duplicate adds a copy directly after the selection and the assembled stack grows by what that copy draws, so the panel gains rows named after their sources. Selecting the copy loads the source's values rather than the defaults a fresh layer would carry, and the source keeps every value it had. Duplicating a group copies the group and every layer under it, with each copied member inside the copied group rather than the original.",
     fixture: SELECTED_LAYER_FIXTURE,
     id: "selectedLayer.duplicate",
     kind: "control",
     target: "stack.actions",
-    userAction: "Edit a layer, then press Duplicate in the Selected Layer section.",
+    userAction:
+      "Edit a layer and press Duplicate in the Selected Layer section, then select a group and press it again.",
   },
   {
     automated: true,

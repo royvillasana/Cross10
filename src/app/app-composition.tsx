@@ -6,11 +6,10 @@ import { studioPipelineRegistration } from "./studio-pipeline";
 import { buildStudioSceneParameters, studioSceneRect } from "./studio-scene";
 import { studioAssembleDeliverableSource } from "./studio-source";
 import {
+  planStudioLayerDuplication,
   readStudioLayerEntry,
   readStudioLayerRecord,
   STUDIO_LAYER_RECORD_TARGET,
-  studioDuplicateLayerId,
-  studioDuplicateLayerName,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
 import { createStudioStackRenderer } from "./studio-stack-render";
@@ -101,21 +100,29 @@ function handleStudioPanelAction({
 }
 
 /**
- * Copies the selected layer, with everything that makes it that layer.
+ * Copies the selection, with everything that makes it what it is.
  *
- * Two dispatches rather than one, because the two halves of a layer live in two
- * places: the runtime owns identity, order, name and visibility, and the
- * product owns every value hung off the id (R56). A duplicate that only added a
- * runtime layer would arrive with the registry defaults and look like a plain
- * new layer; one that only copied the record would write values no layer has.
+ * A layer and a group are the same operation over a different block: a layer is
+ * a block of one, a group is itself plus everything under it. The plan works
+ * that out — including rewiring each member's parent onto the copied group —
+ * and this only carries it out, which is what keeps the interesting part
+ * testable without a runtime.
  *
- * The copy is inserted directly above its source rather than at the top of the
- * stack, so it composites where the author was already looking, and it is
- * selected afterwards because the thing you just made is the thing you want to
- * edit.
+ * Two kinds of write, because a layer lives in two places (R56). The runtime
+ * owns identity, order, name, visibility and parentage, so each copy is created
+ * through `layers.add` with an explicit draft id. The product owns every value
+ * hung off an id, so the record entries are written together in one edit at the
+ * end. Either half alone is a bug that looks like a feature: only the first
+ * gives plain new layers wearing copies' names, only the second writes values
+ * no layer has.
  *
- * The record is read before either dispatch: adding a layer does not touch it,
- * so the value written second is still the one the source had.
+ * The record is read once, before any dispatch: adding layers does not touch
+ * it, so the values written are still the ones the sources had. Groups get no
+ * entry — a group organises, it does not render.
+ *
+ * The copy is inserted directly after the block it came from, so it composites
+ * where the author was already looking, and the copied source is selected
+ * afterwards because the thing you just made is the thing you want to edit.
  */
 function duplicateStudioSelectedLayer({
   dispatch,
@@ -126,40 +133,40 @@ function duplicateStudioSelectedLayer({
   >[0]["dispatch"];
   state: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]["state"];
 }): void {
-  const layers = state.layers ?? [];
   const sourceId = state.selectedLayerId ?? "";
-  const sourceIndex = layers.findIndex((layer) => layer.id === sourceId);
-  const source = layers[sourceIndex];
-  // Nothing selected, or a group rather than a layer: a group's copy would have
-  // to copy its members too, which is a different operation with a different
-  // observable, so it is not silently half-done here.
-  if (!source || source.kind === "group") return;
+  const steps = planStudioLayerDuplication(state.layers ?? [], sourceId);
+  if (steps.length === 0) return;
 
-  const record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
-  const entry = readStudioLayerEntry(record, sourceId);
-  const copyId = studioDuplicateLayerId(
-    sourceId,
-    layers.map((layer) => layer.id),
-  );
+  let record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
 
-  dispatch({
-    insertIndex: sourceIndex + 1,
-    layer: {
-      id: copyId,
-      name: studioDuplicateLayerName(source.displayName ?? source.name),
-      // Inside whatever the source is inside, so a duplicate of a grouped layer
-      // stays in its group instead of escaping to the root.
-      ...(source.parentGroupId ? { parentGroupId: source.parentGroupId } : {}),
-      visible: source.visible,
-    },
-    type: "layers.add",
-  });
+  for (const step of steps) {
+    dispatch({
+      insertIndex: step.insertIndex,
+      layer: {
+        id: step.copyId,
+        ...(step.isGroup ? { kind: "group" as const } : {}),
+        name: step.name,
+        ...(step.parentGroupId ? { parentGroupId: step.parentGroupId } : {}),
+        visible: step.visible,
+      },
+      type: "layers.add",
+    });
+
+    if (!step.isGroup) {
+      record = writeStudioLayerEntry(
+        record,
+        step.copyId,
+        readStudioLayerEntry(record, step.sourceId),
+      );
+    }
+  }
+
   dispatch({
     target: STUDIO_LAYER_RECORD_TARGET,
     type: "controls.setValue",
-    value: writeStudioLayerEntry(record, copyId, entry),
+    value: record,
   });
-  dispatch({ layerId: copyId, type: "layers.select" });
+  dispatch({ layerId: steps[0]?.copyId ?? sourceId, type: "layers.select" });
 }
 
 export const appComposition: ToolcraftAppComposition = {

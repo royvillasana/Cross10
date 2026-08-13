@@ -4,7 +4,10 @@ import { expectToolcraftAcceptanceOutcome } from "./browser-acceptance-outcome-h
 
 import { expectToolcraftSelectedLayerControl } from "./browser-layer-evidence-helpers";
 import {
+  addStudioGroup,
+  addStudioLayer,
   openStudioSingleLayer,
+  readStudioLayerIds,
   STUDIO_PRODUCT_OUTPUT,
   openStudioTwoLayerStack,
   selectStudioLayer,
@@ -1885,6 +1888,33 @@ test("browser: studio engine follows the pointer across the field", async ({
  * rendered-pixels proof would be unchanged by a duplicate that worked
  * perfectly. What changed is runtime state, which is a command side effect.
  */
+/**
+ * The Duplicate button, scoped to the control that owns it.
+ *
+ * By target rather than by name: the page carries some seventy buttons and more
+ * than one can answer to a name, so a bare name query resolves to whichever the
+ * runtime rendered first and then waits forever for it to become clickable.
+ */
+function studioDuplicateButton(page: Page) {
+  return page
+    .locator('[data-toolcraft-control-target="stack.actions"]')
+    .getByRole("button", { name: "Duplicate" })
+    .first();
+}
+
+/**
+ * Scrolled into view before it is pressed.
+ *
+ * The controls panel has a sticky footer, and the button sits under it at some
+ * scroll positions -- present, enabled, and unable to receive a click, which
+ * reads as a hang rather than as a miss.
+ */
+async function clickStudioDuplicate(page: Page): Promise<void> {
+  const button = studioDuplicateButton(page);
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+}
+
 async function readStudioDuplicateState(page: Page): Promise<{
   bandCount: number;
   rows: number;
@@ -1922,7 +1952,7 @@ test("browser: studio duplicate copies the layer and its settings", async ({
   const after = await expectToolcraftAcceptanceOutcome(
     async () => readStudioDuplicateState(page),
     async () => {
-      await page.getByRole("button", { name: "Duplicate" }).first().click();
+      await clickStudioDuplicate(page);
     },
     {
       evidenceType: "command-side-effect",
@@ -1946,6 +1976,41 @@ test("browser: studio duplicate copies the layer and its settings", async ({
       { timeout: 5000 },
     )
     .toBe(7);
+
+  // A group is the same command over a bigger block: the group and everything
+  // under it. Two rows arrive rather than one, and the copied member draws --
+  // which it could only do from inside the copied group, because a member left
+  // pointing at the original would have made the copy an empty container.
+  //
+  // The group is built here rather than through the shared grouped fixture,
+  // and every id is derived by diffing the panel rather than assumed. This test
+  // has already built a stack and the app persists it, so a fixture that
+  // expects to start from nothing starts from something instead.
+  const beforeGroup = await readStudioLayerIds(page);
+  await addStudioGroup(page);
+  const groupId =
+    (await readStudioLayerIds(page)).find((id) => !beforeGroup.includes(id)) ?? "";
+  expect(groupId, "adding a group must add exactly one row").not.toBe("");
+
+  // The group is the selection, so the next layer lands inside it.
+  await addStudioLayer(page);
+  const rowsWithGroup = await readStudioLayerIds(page);
+  const stackWithMember = (await readStudioDuplicateState(page)).stack;
+
+  await selectStudioLayer(page, groupId);
+  await clickStudioDuplicate(page);
+
+  await expect
+    .poll(async () => readStudioLayerIds(page), { timeout: 10_000 })
+    .toHaveLength(rowsWithGroup.length + 2);
+
+  const afterGroup = await readStudioDuplicateState(page);
+  expect(afterGroup.selectedLayerId).toBe(`${groupId}-copy`);
+  // One more entry in the assembled stack: the copied member is drawing, which
+  // it does only from inside the copied group.
+  expect(afterGroup.stack.split(">")).toHaveLength(
+    stackWithMember.split(">").length + 1,
+  );
 });
 
 /**

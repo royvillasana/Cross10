@@ -175,6 +175,95 @@ export function studioDuplicateLayerName(sourceName: string): string {
   return `${sourceName} copy`;
 }
 
+/** One layer to create when a duplication runs, in the order it must be created. */
+export type StudioDuplicationStep = Readonly<{
+  copyId: string;
+  insertIndex: number;
+  isGroup: boolean;
+  name: string;
+  parentGroupId?: string;
+  sourceId: string;
+  visible: boolean;
+}>;
+
+/**
+ * Everything a duplication has to create, worked out before anything is
+ * dispatched.
+ *
+ * A group is not one layer, it is a block: the group plus everything under it,
+ * nested groups included. Copying it means re-creating that whole block with
+ * its internal parentage rewired to the copies — a member of the duplicated
+ * group must point at the *new* group, not the old one, or the copy's contents
+ * would be the original's contents seen twice.
+ *
+ * Pure, and returned as a plan rather than executed, because the interesting
+ * part is exactly this rewiring and it is worth testing without a runtime. A
+ * plain layer is a block of one, so there is a single path rather than two.
+ *
+ * The block is read in array order and inserted directly after itself, so the
+ * copy composites in the same order the original does.
+ */
+export function planStudioLayerDuplication(
+  layers: readonly StudioRuntimeLayer[],
+  sourceId: string,
+): readonly StudioDuplicationStep[] {
+  const sourceIndex = layers.findIndex((layer) => layer.id === sourceId);
+  const source = layers[sourceIndex];
+  if (!source) return [];
+
+  // Descendants by ancestry rather than by position: the array is flat and
+  // nothing guarantees a group's members sit next to it.
+  const inBlock = new Set<string>([sourceId]);
+  for (const layer of layers) {
+    const seen = new Set<string>();
+    let parentId = layer.parentGroupId ?? undefined;
+    while (parentId && !seen.has(parentId)) {
+      seen.add(parentId);
+      if (inBlock.has(parentId)) {
+        inBlock.add(layer.id);
+        break;
+      }
+      parentId = layers.find((entry) => entry.id === parentId)?.parentGroupId ?? undefined;
+    }
+  }
+
+  const block = layers.filter((layer) => inBlock.has(layer.id));
+  const lastBlockIndex = layers.reduce(
+    (highest, layer, index) => (inBlock.has(layer.id) ? index : highest),
+    sourceIndex,
+  );
+
+  const taken = new Set(layers.map((layer) => layer.id));
+  const copyIds = new Map<string, string>();
+  for (const layer of block) {
+    const copyId = studioDuplicateLayerId(layer.id, [...taken]);
+    taken.add(copyId);
+    copyIds.set(layer.id, copyId);
+  }
+
+  return block.map((layer, offset) => {
+    const label = layer.displayName ?? layer.name ?? layer.id;
+    const parentId = layer.parentGroupId ?? undefined;
+
+    return {
+      copyId: copyIds.get(layer.id) ?? layer.id,
+      insertIndex: lastBlockIndex + 1 + offset,
+      isGroup: layer.kind === "group",
+      // Only the thing that was duplicated says so. A member keeps its own
+      // name, because inside its new group it is that layer, not a copy of a
+      // sibling — which is also what every design tool does.
+      name: layer.id === sourceId ? studioDuplicateLayerName(label) : label,
+      // Rewired: a member points at the copied group, and the copied block as a
+      // whole hangs wherever the original did.
+      ...(parentId
+        ? { parentGroupId: copyIds.get(parentId) ?? parentId }
+        : {}),
+      sourceId: layer.id,
+      visible: layer.visible,
+    };
+  });
+}
+
 /** Writes one layer's entry, leaving every other entry identical. */
 export function writeStudioLayerEntry(
   record: StudioLayerRecord,
@@ -286,8 +375,10 @@ export function collectStudioSelectedLayerEdit(
 
 /** One entry of the runtime layer list, as much of it as the stack reads. */
 export type StudioRuntimeLayer = Readonly<{
+  displayName?: string;
   id: string;
   kind?: string;
+  name?: string;
   parentGroupId?: string | null;
   visible: boolean;
 }>;

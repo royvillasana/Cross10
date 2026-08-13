@@ -9,6 +9,7 @@ import {
   readStudioLayerEntry,
   readStudioLayerRecord,
   retypeStudioLayerEntry,
+  planStudioLayerDuplication,
   studioDuplicateLayerId,
   studioDuplicateLayerName,
   writeStudioLayerEntry,
@@ -329,5 +330,82 @@ describe("duplicating a layer", () => {
 
     expect(next["layer-1-copy"]?.values.count).toBe(7);
     expect(next["layer-1"]?.values.count).toBe(7);
+  });
+});
+
+describe("duplicating a group", () => {
+  const stack = [
+    { id: "group-1", kind: "group", visible: true },
+    { id: "layer-1", kind: "layer", parentGroupId: "group-1", visible: true },
+    { id: "layer-2", kind: "layer", parentGroupId: "group-1", visible: false },
+    { id: "layer-3", kind: "layer", visible: true },
+  ] as const;
+
+  it("copies the group and everything under it", () => {
+    const steps = planStudioLayerDuplication(stack, "group-1");
+
+    expect(steps.map((step) => step.sourceId)).toEqual([
+      "group-1",
+      "layer-1",
+      "layer-2",
+    ]);
+    expect(steps.map((step) => step.copyId)).toEqual([
+      "group-1-copy",
+      "layer-1-copy",
+      "layer-2-copy",
+    ]);
+  });
+
+  it("points each copied member at the copied group, never at the original", () => {
+    // The whole reason a group is not three separate duplications: a member
+    // still pointing at the old group would put the original's contents in the
+    // copy, and the copy would appear empty.
+    const steps = planStudioLayerDuplication(stack, "group-1");
+
+    expect(steps[1]?.parentGroupId).toBe("group-1-copy");
+    expect(steps[2]?.parentGroupId).toBe("group-1-copy");
+    expect(steps[0]?.parentGroupId).toBeUndefined();
+  });
+
+  it("renames only what was duplicated, and carries each member's visibility", () => {
+    const steps = planStudioLayerDuplication(
+      [{ ...stack[0], displayName: "Group 1" }, stack[1], stack[2], stack[3]],
+      "group-1",
+    );
+
+    expect(steps[0]?.name).toBe("Group 1 copy");
+    expect(steps[1]?.name).toBe("layer-1");
+    expect(steps[2]?.visible).toBe(false);
+  });
+
+  it("inserts the copied block directly after the block it came from", () => {
+    const steps = planStudioLayerDuplication(stack, "group-1");
+
+    // The block occupies 0..2, so its copy starts at 3 and stays contiguous.
+    expect(steps.map((step) => step.insertIndex)).toEqual([3, 4, 5]);
+  });
+
+  it("carries nested groups down the whole tree", () => {
+    const nested = [
+      { id: "outer", kind: "group", visible: true },
+      { id: "inner", kind: "group", parentGroupId: "outer", visible: true },
+      { id: "deep", kind: "layer", parentGroupId: "inner", visible: true },
+      { id: "loose", kind: "layer", visible: true },
+    ] as const;
+    const steps = planStudioLayerDuplication(nested, "outer");
+
+    expect(steps.map((step) => step.sourceId)).toEqual(["outer", "inner", "deep"]);
+    expect(steps[2]?.parentGroupId).toBe("inner-copy");
+  });
+
+  it("treats a plain layer as a block of one", () => {
+    const steps = planStudioLayerDuplication(stack, "layer-3");
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.copyId).toBe("layer-3-copy");
+  });
+
+  it("plans nothing for a selection that is not there", () => {
+    expect(planStudioLayerDuplication(stack, "missing")).toEqual([]);
   });
 });
