@@ -145,6 +145,36 @@ export function pruneStudioLayerRecord(
   return pruned;
 }
 
+/**
+ * An id for a copy of a layer, unique against the ids already in the stack.
+ *
+ * Derived from the source id rather than random: a duplicate is a thing with a
+ * provenance, and an id that says so is readable in persisted state and in a
+ * failing test. The counter only appears when it has to.
+ */
+export function studioDuplicateLayerId(
+  sourceId: string,
+  takenIds: readonly string[],
+): string {
+  const taken = new Set(takenIds);
+  const base = `${sourceId}-copy`;
+  if (!taken.has(base)) return base;
+
+  let index = 2;
+  while (taken.has(`${base}-${index}`)) index += 1;
+  return `${base}-${index}`;
+}
+
+/**
+ * A name for the copy, following whatever the source is called.
+ *
+ * The runtime names a fresh layer "Layer N" from a counter, which for a
+ * duplicate would say nothing about what it is a duplicate of.
+ */
+export function studioDuplicateLayerName(sourceName: string): string {
+  return `${sourceName} copy`;
+}
+
 /** Writes one layer's entry, leaving every other entry identical. */
 export function writeStudioLayerEntry(
   record: StudioLayerRecord,

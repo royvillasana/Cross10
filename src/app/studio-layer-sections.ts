@@ -82,6 +82,29 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.angle",
         type: "slider",
       },
+      duplicate: {
+        semanticGroup: "composition",
+        applicability: { mode: "always" },
+        // A local command on the entity this section already names, which is
+        // what an Actions control is for. Not the sticky footer: that surface
+        // is for delivering the product, and copying a layer delivers nothing.
+        //
+        // The control's label is a context rather than a repeat of the button,
+        // which a single-button Actions control is required to be.
+        //
+        // The target is `stack.actions` rather than a `selectedLayer.*` one on
+        // purpose. R51 obliges every selectedLayer target to prove it edits the
+        // *selected* layer's output, and duplicating edits no layer at all --
+        // it adds one. Naming it selectedLayer would have been a claim the
+        // command cannot make.
+        actions: [{ icon: "copy", label: "Duplicate", value: "duplicate-layer" }],
+        label: "Current layer",
+        performanceReason:
+          "One command that copies a record entry already in memory; no field is re-resolved.",
+        performanceRole: "responsiveness",
+        target: "stack.actions",
+        type: "actions",
+      },
       colorA: {
         semanticGroup: "colour",
         applicability: { mode: "always" },

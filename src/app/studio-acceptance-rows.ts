@@ -110,6 +110,25 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     userAction: "Switch Layer kind between Stripes and Gradient.",
   },
   {
+    actionCoverage: ["duplicate-layer"],
+    automated: true,
+    automatedTestName: "declares duplicating a layer copies its values under a new id",
+    browser: true,
+    browserTestName: "browser: studio duplicate copies the layer and its settings",
+    componentType: "actions",
+    // A duplicate changes the stack, not the picture: a copy composited over an
+    // opaque source is the same frame, so rendered pixels would be unchanged by
+    // a duplicate that worked perfectly. The side effect is the observable.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Duplicate adds a second layer directly above the selected one and the assembled stack grows by that layer's own kind, so the panel gains a row named after the source. Selecting the copy loads the source's values rather than the defaults a fresh layer would carry, and the source keeps every value it had.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.duplicate",
+    kind: "control",
+    target: "stack.actions",
+    userAction: "Edit a layer, then press Duplicate in the Selected Layer section.",
+  },
+  {
     automated: true,
     automatedTestName: "declares layer opacity fades only the selected layer",
     browser: true,

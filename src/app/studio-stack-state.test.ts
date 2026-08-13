@@ -9,6 +9,8 @@ import {
   readStudioLayerEntry,
   readStudioLayerRecord,
   retypeStudioLayerEntry,
+  studioDuplicateLayerId,
+  studioDuplicateLayerName,
   writeStudioLayerEntry,
   type StudioLayerRecord,
 } from "./studio-stack-state";
@@ -294,5 +296,38 @@ describe("stack construction", () => {
     expect(
       projected.find((entry) => entry.target === "selectedLayer.colorA")?.value,
     ).toBe("#3c8fd1");
+  });
+});
+
+describe("duplicating a layer", () => {
+  it("derives the copy's id from its source so the provenance is readable", () => {
+    expect(studioDuplicateLayerId("layer-1", ["layer-1"])).toBe("layer-1-copy");
+  });
+
+  it("counts up only when the derived id is already taken", () => {
+    expect(studioDuplicateLayerId("layer-1", ["layer-1", "layer-1-copy"])).toBe(
+      "layer-1-copy-2",
+    );
+    expect(
+      studioDuplicateLayerId("layer-1", ["layer-1", "layer-1-copy", "layer-1-copy-2"]),
+    ).toBe("layer-1-copy-3");
+  });
+
+  it("names the copy after its source rather than after the stack's counter", () => {
+    expect(studioDuplicateLayerName("Layer 3")).toBe("Layer 3 copy");
+  });
+
+  it("gives the copy the source's values, and leaves the source alone", () => {
+    // The whole point: a duplicate that carried registry defaults would be a
+    // new layer wearing a copy's name.
+    const record = writeStudioLayerEntry({}, "layer-1", {
+      typeId: "stripes",
+      values: { count: 7 },
+    });
+    const entry = readStudioLayerEntry(record, "layer-1");
+    const next = writeStudioLayerEntry(record, "layer-1-copy", entry);
+
+    expect(next["layer-1-copy"]?.values.count).toBe(7);
+    expect(next["layer-1"]?.values.count).toBe(7);
   });
 });

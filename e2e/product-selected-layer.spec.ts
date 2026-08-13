@@ -1,4 +1,6 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+
+import { expectToolcraftAcceptanceOutcome } from "./browser-acceptance-outcome-helpers";
 
 import { expectToolcraftSelectedLayerControl } from "./browser-layer-evidence-helpers";
 import {
@@ -1865,6 +1867,85 @@ test("browser: studio engine follows the pointer across the field", async ({
       return `left=${at(0.4)} right=${at(0.6)}`;
     }),
   ).toBe("left=plain right=induced");
+});
+
+
+/**
+ * What a duplicate is: one more layer in the stack, carrying the values of the
+ * one it came from.
+ *
+ * Every part of the reading is needed, because each alone passes for the wrong
+ * reason. The row count grows for a plain Add too. The stack signature grows
+ * for a plain Add too. A band count of 7 proves only that something is
+ * selected. Together with the selection landing on an id derived from the
+ * source, they say the copy exists, draws, and is a copy.
+ *
+ * Pixels are deliberately not the observable, and the acceptance row says so: a
+ * copy composited directly above an opaque source is the same picture, so a
+ * rendered-pixels proof would be unchanged by a duplicate that worked
+ * perfectly. What changed is runtime state, which is a command side effect.
+ */
+async function readStudioDuplicateState(page: Page): Promise<{
+  bandCount: number;
+  rows: number;
+  selectedLayerId: string;
+  stack: string;
+}> {
+  return page.evaluate(() => ({
+    bandCount: Number(
+      document
+        .querySelector('input[aria-label="Band count"]')
+        ?.getAttribute("aria-valuenow") ?? Number.NaN,
+    ),
+    rows: document.querySelectorAll("[data-layer-id]").length,
+    selectedLayerId:
+      document
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+    stack:
+      document
+        .querySelector("[data-toolcraft-product-output]")
+        ?.getAttribute("data-studio-stack") ?? "absent",
+  }));
+}
+
+test("browser: studio duplicate copies the layer and its settings", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  const { layerId } = await openStudioSingleLayer(page);
+  // An edit the defaults would never produce, so a fresh layer cannot pass for
+  // a copy of this one.
+  await setStudioSlider(page, "Band count", 7);
+
+  const after = await expectToolcraftAcceptanceOutcome(
+    async () => readStudioDuplicateState(page),
+    async () => {
+      await page.getByRole("button", { name: "Duplicate" }).first().click();
+    },
+    {
+      evidenceType: "command-side-effect",
+      requirementId: "selectedLayer.duplicate",
+    },
+  );
+
+  expect(after).toEqual({
+    bandCount: 7,
+    rows: 2,
+    selectedLayerId: `${layerId}-copy`,
+    stack: "stripes>stripes",
+  });
+
+  // The source is untouched: selecting it back finds the value it always had,
+  // which is what makes this a copy rather than a move.
+  await selectStudioLayer(page, layerId);
+  await expect
+    .poll(
+      async () => (await readStudioDuplicateState(page)).bandCount,
+      { timeout: 5000 },
+    )
+    .toBe(7);
 });
 
 /**
