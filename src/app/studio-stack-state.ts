@@ -472,35 +472,6 @@ export type StudioLayerMedia = Readonly<{
   }>;
 }>;
 
-/**
- * The image fields for one layer, taken from the runtime's asset rather than
- * from the product's record.
- *
- * Rotate and flip belong to the media, not to the layer: the runtime's own
- * media control dispatches `media.transform` and stores the result on the
- * asset, so reading it here is what makes those buttons drive this renderer.
- * Holding a second copy in the layer record would be a product-authored
- * transform surface wearing a shader's clothes, and the two would drift the
- * first time either was edited alone.
- */
-function studioMediaLayerFields(
-  media: StudioLayerMedia | undefined,
-): Readonly<Record<string, never>> | {
-  image: TexImageSource;
-  values: Record<string, number>;
-} {
-  if (!media) return {};
-
-  return {
-    image: media.image,
-    values: {
-      imageFlipX: media.transform?.flipHorizontal ? 1 : 0,
-      imageFlipY: media.transform?.flipVertical ? 1 : 0,
-      imageRotation: media.transform?.rotationDeg ?? 0,
-    },
-  };
-}
-
 /** One entry of the runtime layer list, as much of it as the stack reads. */
 export type StudioRuntimeLayer = Readonly<{
   displayName?: string;
@@ -561,24 +532,36 @@ export function buildStudioStack(
       const entry = readStudioLayerEntry(record, layer.id);
       const path = readStudioVertexPath(paths, layer.id);
       const media = images.get(layer.id);
+      // A layer the runtime created for an imported picture *is* an image
+      // layer, whatever the record says. The record cannot know: the runtime
+      // allocates the layer and the asset together on import, and a product
+      // default of "stripes" would have that layer draw bands over the picture
+      // it was created to show.
+      const typeId = media ? "image" : entry.typeId;
+
       return {
-        // A layer the runtime created for an imported picture *is* an image
-        // layer, whatever the record says. The record cannot know: the runtime
-        // allocates the layer and the asset together on import, and a product
-        // default of "stripes" would have that layer draw bands over the
-        // picture it was created to show.
-        typeId: media ? "image" : entry.typeId,
+        typeId,
         // Carried only when there is a path to carry, so a stack of ordinary
         // layers signs exactly as it did before the pen existed.
         ...(path.length >= 3 ? { vertices: path } : {}),
-        // Keyed by layer id because the runtime already keys media that way:
-        // an asset carries the layer it belongs to, so no product-owned map
-        // stands between an upload and the layer that shows it.
-        ...studioMediaLayerFields(images.get(layer.id)),
+        ...(media ? { image: media.image } : {}),
         values: {
-          ...studioLayerDefaults(entry.typeId),
+          // Defaults for the *effective* type, not the recorded one: an
+          // imported layer's record still says stripes, and seeding it with
+          // stripe defaults left the image uniforms unset.
+          ...studioLayerDefaults(typeId),
           ...entry.values,
-          // Runtime-owned, so it always wins over anything the record holds.
+          // Runtime-owned, so they always win over anything the record holds.
+          // The transform belongs to the media rather than to the layer -- the
+          // runtime's own buttons write it onto the asset -- so it is applied
+          // last, over a record that has nothing to say about it.
+          ...(media
+            ? {
+                imageFlipX: media.transform?.flipHorizontal ? 1 : 0,
+                imageFlipY: media.transform?.flipVertical ? 1 : 0,
+                imageRotation: media.transform?.rotationDeg ?? 0,
+              }
+            : {}),
           visible: isEffectivelyVisible(layer, byId) ? 1 : 0,
         },
       };

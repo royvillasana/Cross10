@@ -569,14 +569,25 @@ vec4 studioImageBody(
   // Turning the sampling coordinate rather than the picture, which is the same
   // trick the mask uses: the texture stays axis-aligned and what moves is where
   // each pixel reads from.
-  float radians = rotation * 0.017453292519943295;
+  //
+  // Negated, because those two are opposites: turning where a pixel reads from
+  // by +90 turns the picture it shows by -90. Without this, the runtime's
+  // "90° Right" turned the picture left -- the transform reached the frame and
+  // arrived backwards, which is worse than not arriving.
+  float radians = -rotation * 0.017453292519943295;
   vec2 turned = vec2(
     centered.x * cos(radians) + centered.y * sin(radians),
     -centered.x * sin(radians) + centered.y * cos(radians)
   );
 
-  // Folded after the turn, so a flip mirrors the picture as it now stands
-  // rather than mirroring the frame it was drawn in.
+  // Folded after the turn, so the mirror runs along the *picture's* own axes
+  // rather than the screen's: with a rotation on, "flip horizontal" trades the
+  // picture's left and right, which may read as vertical on screen.
+  //
+  // That is the asset-property reading and it is the one to keep. The transform
+  // is stored on the asset, so it has to mean the same thing to everything that
+  // draws it; mirroring in screen space would make this renderer disagree with
+  // every other consumer of the same metadata as soon as a rotation was on.
   turned.x = mix(turned.x, -turned.x, step(0.5, flipX));
   turned.y = mix(turned.y, -turned.y, step(0.5, flipY));
 
