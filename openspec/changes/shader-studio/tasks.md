@@ -127,10 +127,12 @@ Raised after using image layers: *"It looks like I'm dragging a mask of an image
 
 **Verification note.** The `maps every product production module to current renderer pass ownership` gate reads a delivery catalog that Playwright derives, so it fails whenever any browser proof does — it is a symptom, not a finding of its own. Underneath it, `app-verification-impact.json` was missing the region geometry, the handles and their styles from group 14; those are now registered along with `studio-shortcuts.ts`. What remains is five owners the role classifier does not count as production modules (`app-acceptance-data.ts`, `app-acceptance.ts`, `app-identity.ts`, `app-performance.ts`, `studio-acceptance-rows.ts`), which is the same task 2.10 blocker and not this group's to resolve.
 
-- [ ] 3.2 Register the **shape** layer type, applying R45/R46: the collection is exactly its `itemControls`, positions live in a canvas-owned array beside it
-- [ ] 3.3 Prove an image layer composites above, below, and between procedural layers — the scenario that motivated the whole stack
-- [ ] 3.4 Acceptance rows and browser proofs for both types in the same batch
-- [ ] 3.5 Run `npm run verify:delivery`
+- [~] 3.2 **Superseded by R64, not skipped.** This task is R63's shape *layer type* — a layer sitting beside the region. R64 replaced that reading with the user's: the region **is** the shape, chosen when the layer is created. Group 14 built it that way — seven named forms over two constructions plus the pen's free vertex list, shaped by canvas handles — so registering a separate shape type now would be a second way to make a shape, which is the duplication this product's rules exist to prevent. R62's gating bill is not due either: it was the price of a plain-fill *type*, and a flat shape is a layer with both inks set the same, which is how the 3.3 proof builds its fixture
+- [x] 3.3 **An image layer composites above, below, and between procedural layers**, proved in one browser test and the last case in a single frame: a procedural layer over the picture hides it, a reorder through the panel rows puts the picture over it, and with one procedural layer above and one below — shifted apart so all three are visible at once — the frame reads top-over-picture on the left, picture-over-bottom in the middle, bottom alone on the right. No two of those readings could come from a stack in another order
+  - Each layer is a flat colour of its own (a stripes layer with both inks equal), so a sample says *which* layer reached the pixel rather than only that something did. Sample points measured from where the shapes sit — a quarter of the frame's height in half-extent on a 16:9 frame — rather than guessed
+  - The reorder step goes through the reorder evidence helper, which is stricter than the reading: same layers before and after, different order, different frame. A proof that had deleted a layer could not pass it
+- [x] 3.4 **Acceptance rows and browser proofs**, for the one type that remains after 3.2: `layers.imageComposite` with the browser proof above and an assembled-shader unit test beside it, and the id registered with the verification impact inventory
+- [ ] 3.5 Run `npm run verify:delivery` — same gate as 2.10, and blocked on the same authorization. Not a product gap
 
 ## 4. Control surface parity with Croix10
 
