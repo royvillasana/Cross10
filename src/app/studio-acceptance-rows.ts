@@ -730,19 +730,20 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
-    automatedTestName: "declares the offset slides the band sequence",
+    automatedTestName: "declares the offset where each field body reads it",
     browser: true,
-    browserTestName: "browser: studio offset slides the selected layer's bands",
+    browserTestName: "browser: studio offset slides the selected layer's field along its own axis",
     componentType: "slider",
     evidence: "rendered-pixels",
     expectedObservable:
-      "Raising Offset slides the whole band sequence across the selected layer without changing band count or width, and the control is absent while a gradient layer is selected.",
+      "Raising Offset slides the selected layer's field along its own axis: a band sequence moves across the layer without changing band count or width, and a gradient's ramp slides so that the colour at a fixed place changes -- far enough either way and the transition is carried clear of the shape, leaving one end of the ramp everywhere. It is one operation over two kinds of field, so the control stays as the kind changes and is absent only for an image layer, which has no field of its own to shift.",
     fixture: SELECTED_LAYER_FIXTURE,
     id: "selectedLayer.phase",
     kind: "control",
     layerCoverage: "selected-layer-controls",
     target: "selectedLayer.phase",
-    userAction: "Drag Offset with a stripes layer selected.",
+    userAction:
+      "Drag Offset with a stripes layer selected, then switch the layer to Gradient and drag it again.",
   },
   {
     automated: true,

@@ -95,6 +95,43 @@ describe("per-layer uniform mangling", () => {
     expect(source).toContain("uniform float uLayer0_jitterVariation;");
   });
 
+  it("declares the offset where each field body reads it", () => {
+    // One control over two kinds of field, so the claim is made twice: the
+    // offset reaches each body at the index its own registry gives it. And for
+    // the gradient there is a second claim worth a test -- it is applied to the
+    // ramp coordinate *before* the engines read that coordinate, or an induced
+    // fringe would sit on a seam the author has just moved away from.
+    const source = studioAssembleStackFragmentShader([stripes, gradient]);
+    const placedIn = (body: string, typeId: "gradient" | "stripes"): boolean => {
+      const uniforms = STUDIO_LAYER_TYPES[typeId].uniforms.map((entry) => entry.name);
+      const opening = source.indexOf(`vec4 ${body}(`);
+      const parameters = source
+        .slice(opening, source.indexOf(") {", opening))
+        .split("\n")
+        .map((line) =>
+          line.trim().replace(/^(float|vec2|vec3|sampler2D)\s+/u, "").replace(/,$/u, ""),
+        );
+
+      return (
+        uniforms.includes("phase") &&
+        parameters.indexOf("phase") - parameters.indexOf("angle") ===
+          uniforms.indexOf("phase") - uniforms.indexOf("angle")
+      );
+    };
+
+    expect(placedIn("studioStripesBody", "stripes")).toBe(true);
+    expect(placedIn("studioGradientBody", "gradient")).toBe(true);
+    expect(source).toContain("uniform float uLayer1_phase;");
+
+    // Searched inside the gradient body rather than in the whole program: the
+    // stripes body has an engine block of its own and it is emitted first, so a
+    // whole-source comparison would be measuring against the wrong one.
+    const gradientBody = source.slice(source.indexOf("vec4 studioGradientBody("));
+    const applied = gradientBody.indexOf("position += phase;");
+    expect(applied).toBeGreaterThan(-1);
+    expect(applied).toBeLessThan(gradientBody.indexOf("if (engine >= 0.5)"));
+  });
+
   it("mangles by index so two layers of one type never share a uniform", () => {
     expect(studioLayerUniformName(0, "angle")).not.toBe(
       studioLayerUniformName(1, "angle"),

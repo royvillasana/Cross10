@@ -488,6 +488,7 @@ vec4 studioGradientBody(
   vec2 cursor,
   float angle,
   float rampType,
+  float phase,
   float paletteSlots,
   float engine,
   float engineAmount,
@@ -510,6 +511,11 @@ vec4 studioGradientBody(
   } else {
     position = fract((atan(centered.y, centered.x) - radians) * 0.15915494309189535 + 1.0);
   }
+
+  // Applied here rather than at the palette read, so the engines below read the
+  // ramp the author sees. An offset that moved only the fill would leave an
+  // induced fringe sitting on a seam that is no longer there.
+  position += phase;
 
   vec3 colour = studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD);
 
@@ -627,6 +633,28 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
           optionValues: ["linear", "radial", "angular"],
           type: "float",
         },
+        /**
+         * Where the ramp starts, as a shift along its own axis (9A.3).
+         *
+         * Named `phase` because it is the stripes' `phase` applied to the other
+         * kind of field: one control, `Offset`, shifts a band sequence along
+         * its axis and a ramp along its own. Two names for one operation would
+         * have meant two controls for it, which is the arrangement this product
+         * retires wherever it finds it.
+         *
+         * The ramp is read at a position the shape supplies -- across the frame
+         * for the linear form, out from the centre for the radial, round it for
+         * the angular -- and until this existed that position always began at
+         * the edge. Turning the angle was the only way to move a transition,
+         * which moves the whole field to reposition one seam.
+         *
+         * A shift rather than a wrap, because `studioPaletteRamp` clamps: the
+         * ends hold their own colour as the ramp slides past, so an offset
+         * cannot open a hard seam in a form that has none. The angular ramp
+         * wraps anyway, being periodic, which is the one place a shift reads as
+         * a rotation -- and there it is exactly what a reader would expect.
+         */
+        { defaultValue: 0, name: "phase", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
         // Same three, in the same order as the stripes type and the control.
         {

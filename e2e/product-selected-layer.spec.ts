@@ -444,8 +444,80 @@ const LAYER_PHASE = (
   };
 };
 
-test("browser: studio offset slides the selected layer's bands", async ({ page }) => {
-  test.setTimeout(120_000);
+/**
+ * How far along its ramp each of three places inside the shape has got.
+ *
+ * A gradient reads its colour from a position the ramp's shape supplies, so
+ * moving the ramp along that axis changes the colour at a fixed place. Reported
+ * as three coarse buckets rather than as levels, because the claim is about
+ * where the ramp sits and not about what any particular pixel is worth: at the
+ * ends of the offset's domain the transition has been carried clear of the
+ * shape, so every place reads the same end of the ramp.
+ *
+ * The buckets are far from the readings that decide them -- the saturated ends
+ * measure 0 and 255 against thresholds of 55 and 200 -- which is what keeps a
+ * proof about placement from turning into a proof about tone mapping.
+ *
+ * Inlined because this reader is serialized into the page and cannot call
+ * anything defined outside it.
+ */
+const RAMP_PLACEMENT = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const sliderValue = (label: string): number => {
+    const slider = root.querySelector(`input[aria-label="${label}"]`);
+    return Number(slider?.getAttribute("aria-valuenow") ?? Number.NaN);
+  };
+
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const size = 6;
+      const pixels = new Uint8Array(size * size * 4);
+      gl.readPixels(
+        Math.round(canvas.width * fx) - size / 2,
+        Math.round(canvas.height * 0.5) - size / 2,
+        size,
+        size,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+      let total = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        total +=
+          ((pixels[index] ?? 0) + (pixels[index + 1] ?? 0) + (pixels[index + 2] ?? 0)) / 3;
+      }
+      const level = total / (size * size);
+      return level >= 200 ? "light" : level <= 55 ? "dark" : "mid";
+    };
+
+    outputSignature = `a=${at(0.4)} b=${at(0.5)} c=${at(0.6)}`;
+  }
+
+  return {
+    controlValue: { offset: sliderValue("Offset") },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio offset slides the selected layer's field along its own axis", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
 
   const { layerId, session } = await openStudioSingleLayer(page);
 
@@ -463,6 +535,72 @@ test("browser: studio offset slides the selected layer's bands", async ({ page }
     },
     { requirementId: "selectedLayer.phase", target: "selectedLayer.phase" },
   );
+
+  // The same control over the other kind of field, which is why it is one
+  // control rather than two: the layer becomes a gradient and Offset stays,
+  // now sliding the ramp along its own axis instead of the bands along theirs.
+  await setStudioLayerKind(page, "Gradient");
+  await setStudioSlider(page, "Offset", 0);
+
+  // A gradient arrives white-to-black across the frame, so the shape shows the
+  // light end and the middle of the ramp. Carrying the ramp forward by six
+  // tenths puts the whole shape past its far end: every place reads black,
+  // which no other control on this layer can do -- the angle turns the ramp
+  // without moving where it starts, and the slots change the inks rather than
+  // their placement.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(RAMP_PLACEMENT),
+    session.controlAction("selectedLayer.phase", async () => {
+      await setStudioSlider(page, "Offset", 0.6);
+    }),
+    {
+      controlValue: { offset: 0.6 },
+      outputSignature: "a=dark b=dark c=dark",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.phase", target: "selectedLayer.phase" },
+  );
+
+  // And it slides both ways: the same distance the other way carries the ramp's
+  // near end past the shape instead, so every place reads white. A control that
+  // had merely darkened the layer could not produce this half, and a domain
+  // that started at zero could not have asked for it.
+  await setStudioSlider(page, "Offset", -0.6);
+  await expect
+    .poll(
+      async () =>
+        page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+          const canvas = node as HTMLCanvasElement;
+          const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+          if (!gl) return "nogl";
+          const at = (fx: number): string => {
+            const size = 6;
+            const pixels = new Uint8Array(size * size * 4);
+            gl.readPixels(
+              Math.round(canvas.width * fx) - size / 2,
+              Math.round(canvas.height * 0.5) - size / 2,
+              size,
+              size,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              pixels,
+            );
+            let total = 0;
+            for (let index = 0; index < pixels.length; index += 4) {
+              total +=
+                ((pixels[index] ?? 0) +
+                  (pixels[index + 1] ?? 0) +
+                  (pixels[index + 2] ?? 0)) /
+                3;
+            }
+            const level = total / (size * size);
+            return level >= 200 ? "light" : level <= 55 ? "dark" : "mid";
+          };
+          return `a=${at(0.4)} b=${at(0.5)} c=${at(0.6)}`;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe("a=light b=light c=light");
 });
 
 /**

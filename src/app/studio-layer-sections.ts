@@ -38,6 +38,17 @@ const GRADIENT_APPLICABILITY = {
 } as const;
 
 /**
+ * Both procedural kinds, for the controls whose operation exists in each.
+ *
+ * Not `always`: an image layer draws a picture and has no field of its own to
+ * shift, so a control offered there would be one that does nothing.
+ */
+const FIELD_APPLICABILITY = {
+  all: [{ oneOf: ["stripes", "gradient"], target: "selectedLayer.type" }],
+  mode: "conditional",
+} as const;
+
+/**
  * The band count's numeric domain, exported because `app-performance.ts` builds
  * the `band-count` workload dimension from it. A schema-backed workload boundary
  * must equal the schema endpoint, so the two cannot be allowed to drift: one
@@ -290,13 +301,23 @@ widthRatio: {
       },
       phase: {
         semanticGroup: "pattern",
-        applicability: STRIPES_APPLICABILITY,
+        // Both field kinds, because both have an axis to slide along: a band
+        // sequence moves across its own, a ramp along its own. One operation,
+        // one control -- a second slider for the gradient would have been the
+        // same edit under another name, and it could not have lived here
+        // anyway, since a control gated by the kind must share the section
+        // holding the gate and this one is full.
+        applicability: FIELD_APPLICABILITY,
         defaultValue: 0,
         label: "Offset",
+        // Signed for the gradient's sake. A band sequence repeats, so sliding
+        // it forward by a whole cycle is the same picture and a domain from
+        // zero says everything there is to say; a ramp does not repeat, so the
+        // two directions are different pictures and both have to be reachable.
         max: 1,
-        min: 0,
+        min: -1,
         performanceReason:
-          "The offset shifts the band lookup inside the existing body.",
+          "The offset shifts the field's own lookup coordinate inside the existing body -- the band index for a stripe field, the ramp position for a gradient.",
         performanceRole: "responsiveness",
         sliderValueKind: "continuous",
         step: 0.01,
