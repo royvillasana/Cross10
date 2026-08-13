@@ -93,6 +93,26 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 ## 3. Remaining layer types
 
 - [ ] 3.1 Register the **image** layer type, drawing its media through the runtime media surface rather than a product-authored uploader
+
+### 3.1 starting brief
+
+Scoped against the runtime rather than guessed. The rendering half is tractable; the acceptance half is larger than "a layer type" suggests, and obliges a feature nobody has asked for yet.
+
+**How a product gets pixels from runtime media.** `useToolcraftMediaPresentationUrls(mediaAssets)` is exported for products and returns `ReadonlyMap<assetId, url>`. That is the supported route: the canvas loads each URL into an `ImageBitmap` and uploads it as a texture. `resolveMediaResource` is *not* the route — it is handed to panel actions only, and is not exported from the React index.
+
+**Assets already know their layer.** `ToolcraftMediaAssetBase` carries `layerId`, so matching an asset to a layer needs no product-owned map. That is the media half of R56 already solved by the runtime.
+
+**One registry gap.** `StudioLayerUniform.type` is `"float" | "vec3"`. A sampler is neither, so the image type needs a third uniform kind and a bind step — per-layer texture units under R52's mangling (`uLayer0_image`), which is a small extension of `declareLayerUniforms` and the upload loop.
+
+**The acceptance half is the real cost, and it forces a product decision.** A fileDrop control in a layers-enabled app obliges, from `acceptance/media-upload.ts`:
+
+- `media-lifecycle` evidence rows for the upload surface
+- layers-owned media management: an `interactionOwnership` entry whose capability is `collection-edit` or `structured-selection`
+- **image transform coverage** — a runtime row with `layerCoverage: "selected-layer-controls"` and `mediaLifecycleCoverage` covering `rotate`, `flip`, and `transform-output`
+
+That last one is not a proof obligation, it is a *feature* obligation: registering image layers means shipping rotate and flip on images. Decide whether that is wanted before starting — the alternative is deferring 3.1 the way R62 deferred the shape layer type, with the reason recorded.
+
+**Do not** hand-roll an uploader to dodge it. `component-contracts.runtime.ts` forbids product-authored import surfaces, and the whole point of the task is that media comes through the runtime.
 - [ ] 3.2 Register the **shape** layer type, applying R45/R46: the collection is exactly its `itemControls`, positions live in a canvas-owned array beside it
 - [ ] 3.3 Prove an image layer composites above, below, and between procedural layers — the scenario that motivated the whole stack
 - [ ] 3.4 Acceptance rows and browser proofs for both types in the same batch
