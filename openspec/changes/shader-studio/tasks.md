@@ -101,6 +101,19 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
   - `canvas.upload: false` had been asserted beside `sizing: editable-output` as one decision; they were always two. The frame is still sized by the author, and an image is a layer rather than the thing the frame is measured by
 
 
+### 3.1a Import button — built, proven, then withdrawn on a bad call. Restore it.
+
+The user asked for import from a button rather than only a drop, and for video and GIF. What was built and **passing** before I withdrew it:
+
+- A `fileDrop` control, `assetKind: "image"`, target `media.image`, label "Import image", in its own section `selected-layer-media` titled **"Layer Media"** — its own section because a file drop renders as a surface rather than a field, and that title because R33 forbids a section title containing a gate option label, and "Image" is now one
+- Its inventory entry, plus an `interactionOwnership` entry `media-management` (surface `panel`, capability `collection-edit`, target `media.image`) — managing imported pictures *is* managing layers, since the runtime creates one per file
+- Two acceptance rows: `media.image` (kind control, `media-lifecycle`, coverage upload/remove/reset) and `media.transform` (kind runtime, `layerCoverage: "selected-layer-controls"`, coverage rotate/flip/transform-output, `interactionId: "media-management"`)
+- Two browser proofs, both green, with **measured** expectations against a 64px four-quadrant PNG written by the spec: import → `topLeft=red topRight=blue`; the runtime's "90° Right" → `topLeft=yellow topRight=red`; then "Flip horizontal" → `topLeft=white topRight=blue`. The runtime's buttons are named "90° Right", "Flip horizontal", "Flip vertical". Sample inside the layer's own shape (R65) or you read bare ground, and use a fixture with solid interiors — a 2x2 is all gradient under linear filtering
+
+**Why it was withdrawn, and why that was wrong.** The two `app-browser-model-appearance-evidence` specs failed with it and passed without it, so I attributed the break to the control. On re-testing with repetition, that spec **fails intermittently on its own**: two passes with the change, one fail and one pass without it. The attribution was one sample in each direction. Restore the control and re-test with repeated runs before concluding anything.
+
+**Video and GIF, honestly.** Asset kinds are `file | image | model` — there is no video kind and no video mime handling anywhere in the runtime. A GIF imports as an image and `createImageBitmap` yields its **first frame** only. Animating either needs frame decoding *and* the timeline, and this product declares none (group 6); the contract also forbids animated output driven by local rAF rather than the runtime timeline. So video is blocked on group 6 plus upstream runtime work, not on effort here.
+
 - [ ] 3.2 Register the **shape** layer type, applying R45/R46: the collection is exactly its `itemControls`, positions live in a canvas-owned array beside it
 - [ ] 3.3 Prove an image layer composites above, below, and between procedural layers — the scenario that motivated the whole stack
 - [ ] 3.4 Acceptance rows and browser proofs for both types in the same batch
