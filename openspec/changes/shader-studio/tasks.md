@@ -115,6 +115,15 @@ The Layers panel's "+" menu is runtime-owned, so the import affordance is a `fil
 **Video and GIF, still not possible.** Asset kinds are `file | image | model` — no video kind, no video mime handling in the runtime. A GIF imports as an image and yields its first frame only. Animating either needs frame decoding *and* the timeline this product does not declare (group 6); the contract forbids animated output driven by local rAF instead of the runtime timeline.
 
 
+## 15. Direct manipulation, and the canvas as the tool surface (user request)
+
+Raised after using image layers: *"It looks like I'm dragging a mask of an image instead of the image itself"*, plus rotation on the canvas rather than the sidebar, and Photoshop-style keyboard shortcuts.
+
+- [x] 15.1 **A picture belongs to its layer, not to the frame.** The image body mapped the texture to the canvas and let the mask clip it, so dragging a layer moved a window over a stationary picture. It now samples in the shape's own frame (`maskLocal` over the shape's half-extents), so move, resize and rotate all carry the picture. Only the image type takes the shape frame — a procedural field is a field over the canvas that the mask confines, which is the right model for *it*
+- [ ] 15.2 **A rotation handle on the canvas.** 14.3 made the overlay render a computed point list, so a rotation grip is a node in that list rather than new machinery: place it off one edge, drag it to write `selectedLayer.maskRotation`, and it belongs to the same `shape-shaping` ownership entry (`controls.setValue`) the other gestures do. Note the extent handles are axis-aligned in screen space today — once rotation is handle-driven they should turn with the shape, or grabbing a corner of a turned shape will resize along the wrong axis
+- [ ] 15.3 **Retire `Shape rotation` from the sidebar** once 15.2 lands, for the reason 14.1 retired the other four: one operation, one owning surface. Until then it is the only way to rotate and must stay
+- [ ] 15.4 **Keyboard shortcuts.** Check what the runtime already owns before adding anything — history commands exist (`history.undo` / `history.redo`), so Ctrl/Cmd+Z is very likely the runtime's and must not be reimplemented. Tool modes (V select, Z zoom) are viewport concerns the runtime owns through its canvas; a product-authored zoom would be a second surface for an operation the shell already has. What is genuinely product-owned is the *pen* mode (14.4) and the shape vocabulary, so P for pen is the honest first shortcut. Establish ownership per shortcut before implementing, and expect an `interactionOwnership` entry for any that the product does own
+
 - [ ] 3.2 Register the **shape** layer type, applying R45/R46: the collection is exactly its `itemControls`, positions live in a canvas-owned array beside it
 - [ ] 3.3 Prove an image layer composites above, below, and between procedural layers — the scenario that motivated the whole stack
 - [ ] 3.4 Acceptance rows and browser proofs for both types in the same batch
