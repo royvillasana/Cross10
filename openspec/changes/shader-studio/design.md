@@ -459,3 +459,31 @@ It is opt-in per layer (`Follow the pointer`), because a stack where every layer
 Found by measurement, and worth recording because it will happen again. The first implementation put `onPointerMove` on the canvas element, and the engines never responded over the shape -- the region handles are an overlay drawn on top of exactly the field the engines colour, and they swallow the moves.
 
 A pointer position is a global fact. It is read from the window and converted against the canvas rectangle, which is also what will keep working when the pen (14.4) adds a second overlay. Commits are coalesced to one per frame; the value is read once per draw regardless.
+
+## R69 -- a drawn path is compiled, not uploaded
+
+Decided while building the second half of 14.4. A free vertex list has to reach the shader somehow, and the two ways are not close.
+
+**Uniforms do not fit, and would be the wrong shape even if they did.** Per-layer uniforms are name-mangled (R52), so a vertex array is one uniform per vertex per layer. The stack already carries about thirty vectors per layer at a declared depth of sixteen; a path of any useful length multiplies a budget that is already the largest thing in the program.
+
+The deciding argument is not the budget though -- it is the same one R52 settled name-mangling on. **The delivered shader is the artifact this product exists to produce.** A baked path travels with it: the source someone takes away draws the shape that was drawn. Uniformed vertices would leave the shape behind and oblige whoever compiles the source to supply eight numbers they never saw.
+
+So the vertices are literals in the assembled program, and the stack signature carries them: two stacks with the same types and different paths are different programs, and leaving the path out of the key would serve a cached shader for the shape the author just changed. Editing a path therefore compiles a new program, which is exactly the churn R52 already accepted as inherent.
+
+### One function per layer
+
+Each path has its own length, so a shared test would need a size it cannot have. Each layer with a path gets its own `studioPathInside{n}`, with the vertices as literals and the loop bound a compile-time constant.
+
+The test is the crossing-number rule rather than a convex one. A pen draws concave shapes constantly, and a half-plane test would quietly fill the hull instead of the outline.
+
+### Stored in the shape's frame
+
+The mask tests against `maskLocal` -- the delta from the shape's centre, turned by its rotation -- so a path stored in absolute field units lands wherever the centre happens to be rather than where it was drawn. Vertices are transformed into that frame once, at authoring time, which is what makes moving and turning the layer move and turn the drawing.
+
+Size and aspect deliberately do not scale it. A path is authored geometry rather than an extent, and the way to change it is to draw it again or move a vertex.
+
+### The cap, and the dimension it does not remove
+
+Twenty-four vertices. Every vertex is a literal and an unrolled iteration, so an unbounded path is an unbounded program.
+
+The cap bounds the cost without making it constant: the crossing test walks the path once per pixel, so per-layer work varies with a length the author chooses. The growth class is unchanged -- still linear in stack depth -- but the per-layer constant is now author-controlled, which is precisely what a workload dimension declares. **It is not declared yet**, because a dimension obliges a fixture adapter that can build a path of a given length, which means driving the pen from the performance fixture. The pipeline comment names the gap rather than staying silent about it.
