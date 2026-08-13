@@ -118,13 +118,31 @@ export function readStudioVertexPath(
   return paths[layerId] ?? [];
 }
 
-/** Appends one point to a layer's path, leaving every other path identical. */
+/**
+ * The most vertices one path may hold.
+ *
+ * A cap rather than an open list because the path is compiled into the shader
+ * (R69): every vertex is a literal and an unrolled iteration, so an unbounded
+ * path is an unbounded program. Twenty-four is well past what the reference
+ * works ask for and still a shader that compiles quickly.
+ */
+export const STUDIO_PATH_VERTEX_MAX = 24;
+
+/**
+ * Appends one point to a layer's path, leaving every other path identical.
+ *
+ * At the cap the path stops growing rather than dropping its start: what an
+ * author has already drawn is the part they have decided on.
+ */
 export function appendStudioVertex(
   paths: StudioVertexPaths,
   layerId: string,
   point: StudioVertexPoint,
 ): StudioVertexPaths {
-  return { ...paths, [layerId]: [...readStudioVertexPath(paths, layerId), point] };
+  const existing = readStudioVertexPath(paths, layerId);
+  if (existing.length >= STUDIO_PATH_VERTEX_MAX) return paths;
+
+  return { ...paths, [layerId]: [...existing, point] };
 }
 
 /** Drops a layer's path entirely, which is how a fresh drawing starts. */
@@ -493,6 +511,7 @@ function isEffectivelyVisible(
 export function buildStudioStack(
   record: StudioLayerRecord,
   layers: readonly StudioRuntimeLayer[],
+  paths: StudioVertexPaths = {},
 ): readonly StudioLayerValues[] {
   const byId = new Map(layers.map((layer) => [layer.id, layer]));
 
@@ -500,8 +519,12 @@ export function buildStudioStack(
     .filter((layer) => layer.kind !== "group")
     .map((layer) => {
       const entry = readStudioLayerEntry(record, layer.id);
+      const path = readStudioVertexPath(paths, layer.id);
       return {
         typeId: entry.typeId,
+        // Carried only when there is a path to carry, so a stack of ordinary
+        // layers signs exactly as it did before the pen existed.
+        ...(path.length >= 3 ? { vertices: path } : {}),
         values: {
           ...studioLayerDefaults(entry.typeId),
           ...entry.values,

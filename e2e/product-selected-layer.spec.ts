@@ -2058,6 +2058,43 @@ test("browser: studio pen draws a free path on the canvas", async ({ page }) => 
   await page.mouse.click(corners[0]?.x ?? 0, corners[0]?.y ?? 0);
   await expect(moveHandle).toBeVisible();
   await expect(vertices).toHaveCount(3);
+
+  // And the layer is now that shape: the field draws inside the triangle just
+  // drawn and nowhere else. Read at the centroid, which is inside any triangle,
+  // against a corner of the frame that the path does not reach.
+  await expect
+    .poll(
+      async () =>
+        page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+          const canvas = node as HTMLCanvasElement;
+          const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+          if (!gl) return "nogl";
+          const at = (fx: number, fy: number): string => {
+            const width = 24;
+            const height = 24;
+            const pixels = new Uint8Array(width * height * 4);
+            gl.readPixels(
+              Math.round(canvas.width * fx) - width / 2,
+              Math.round(canvas.height * fy) - height / 2,
+              width,
+              height,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              pixels,
+            );
+            const seen = new Set<string>();
+            for (let index = 0; index < pixels.length; index += 4) {
+              seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+            }
+            return seen.size > 1 ? "field" : "ground";
+          };
+          // fy is flipped: readPixels counts from the bottom and the clicks
+          // above were placed from the top.
+          return `inside=${at(0.5, 1 - 0.44)} outside=${at(0.9, 1 - 0.1)}`;
+        }),
+      { timeout: 10_000 },
+    )
+    .toBe("inside=field outside=ground");
 });
 
 /**

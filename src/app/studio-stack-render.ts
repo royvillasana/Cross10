@@ -25,6 +25,8 @@ import {
 /** One layer's uniform values, keyed by the type's own uniform names. */
 export type StudioLayerValues = Readonly<{
   typeId: StudioLayerTypeId;
+  /** A drawn path, baked into the assembled program (R69). */
+  vertices?: readonly (readonly [number, number])[];
   values: Readonly<Record<string, number | readonly [number, number, number]>>;
 }>;
 
@@ -137,6 +139,11 @@ export function createStudioStackRenderer(
 
       const stack: readonly StudioStackEntry[] = parameters.layers.map((layer) => ({
         typeId: layer.typeId,
+        // Carried into the assembly, not just the upload: a drawn path is
+        // compiled into the program (R69), so dropping it here left the shape
+        // unfilled while every value around it arrived intact. It is also part
+        // of the signature, so the cache re-keys when the path changes.
+        ...(layer.vertices ? { vertices: layer.vertices } : {}),
       }));
       const { program, uniforms } = resolveStack(stack);
 

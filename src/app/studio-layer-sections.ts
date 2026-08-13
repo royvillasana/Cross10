@@ -315,6 +315,9 @@ widthRatio: {
           { label: "Pentagon", value: "pentagon" },
           { label: "Hexagon", value: "hexagon" },
           { label: "Polygon", value: "polygon" },
+          // Offered now that the pen can author one (14.4). R65 kept it out
+          // while nothing could draw it, which was right then and is not now.
+          { label: "Free", value: "free" },
         ],
         performanceReason:
           "Selects among tests of the same two half-extents; the polygon folds its angle into one wedge, so no form is cheaper than another.",

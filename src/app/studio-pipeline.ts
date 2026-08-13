@@ -156,6 +156,20 @@ export const studioPipelineRegistration =
           // per-layer constant, which is a matter for the pending benchmark
           // rather than for the growth class.
           //
+          // **A drawn path is the one that will need a dimension** (14.4). It
+          // is not like the others: the crossing test walks the path once per
+          // pixel, so the work varies with a length the author chooses, up to
+          // `STUDIO_PATH_VERTEX_MAX`. It is bounded and it is per layer, so the
+          // growth class is still linear in stack depth -- but the per-layer
+          // constant is now author-controlled rather than fixed, which is what
+          // a workload dimension exists to declare.
+          //
+          // It is not declared yet, and that is a gap rather than a decision:
+          // a dimension obliges a fixture adapter that can build a path of a
+          // given length, which means driving the pen from the performance
+          // fixture. Named here so the declaration is honest about what it does
+          // not yet cover.
+          //
           // A non-constant `composite` pass at frame frequency raises a kernel
           // benchmark requirement. That requirement is correct rather than
           // unfortunate, and functional delivery leaves it pending: resolving it

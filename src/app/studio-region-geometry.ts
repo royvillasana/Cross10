@@ -217,6 +217,43 @@ export function studioRegionOutlinePoints(
  * `studioPointerToRegionUnits` and shares its one subtlety: the shader's y runs
  * up from the centre and the screen's runs down.
  */
+/**
+ * A point on the canvas as the layer's own frame sees it, which is where a
+ * drawn vertex has to be stored.
+ *
+ * The shader tests a path against `maskLocal` -- the delta from the shape's
+ * centre, turned by its rotation -- so a path stored in absolute field units
+ * lands wherever the centre happens to be rather than where it was drawn. This
+ * is the same transform the mask performs, applied once at authoring time.
+ */
+export function studioPointToShapeFrame(
+  point: StudioScreenPoint,
+  values: StudioRegionValues,
+): readonly [number, number] {
+  const deltaX = point.x - values.centerX;
+  const deltaY = point.y - values.centerY;
+  const angle = ((values.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return [deltaX * cos + deltaY * sin, -deltaX * sin + deltaY * cos];
+}
+
+/** The inverse of `studioPointToShapeFrame`, for drawing a stored vertex. */
+export function studioShapeFrameToPoint(
+  vertex: readonly [number, number],
+  values: StudioRegionValues,
+): readonly [number, number] {
+  const angle = ((values.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return [
+    values.centerX + vertex[0] * cos - vertex[1] * sin,
+    values.centerY + vertex[0] * sin + vertex[1] * cos,
+  ];
+}
+
 export function studioVertexToScreen(
   point: readonly [number, number],
   canvas: StudioCanvasRect,

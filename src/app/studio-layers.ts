@@ -145,6 +145,7 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
       "pentagon",
       "hexagon",
       "polygon",
+      "free",
     ],
     type: "float",
   },
@@ -653,6 +654,21 @@ export const STUDIO_LAYER_TYPE_IDS: readonly StudioLayerTypeId[] = [
 /** One entry in the ordered stack. Index 0 composites first, so it sits lowest. */
 export interface StudioStackEntry {
   readonly typeId: StudioLayerTypeId;
+  /**
+   * A drawn path, in field units relative to the layer's own centre (R69).
+   *
+   * Baked into the assembled source rather than uploaded as uniforms. Both
+   * halves of that matter: a per-layer vertex array would add its length to a
+   * budget that already carries thirty-odd vectors per layer at a declared
+   * depth of sixteen, and the delivered shader is the artifact this product
+   * exists to produce — a baked path travels with it, where uniforms would
+   * leave the shape behind and require a host to supply it.
+   *
+   * The cost is that editing the path compiles a new program, which is the same
+   * trade R52 already took for name-mangling and for the same reason: the
+   * variant cache keys on the stack signature, and the path is part of it.
+   */
+  readonly vertices?: readonly (readonly [number, number])[];
 }
 
 /** Mangled uniform name for a layer's parameter. R52. */
@@ -674,7 +690,19 @@ export function studioLayerUniforms(
  * order is part of the key. An engine-shaped key would collide across both.
  */
 export function studioStackSignature(stack: readonly StudioStackEntry[]): string {
-  return stack.map((entry) => entry.typeId).join(">") || "empty";
+  return (
+    stack
+      .map((entry) => {
+        // A drawn path is compiled into the program, so two stacks with the
+        // same types and different paths are different programs. Leaving it out
+        // would serve a cached shader for the shape the author just changed.
+        const path = entry.vertices?.length
+          ? `#${entry.vertices.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`).join(";")}`
+          : "";
+        return `${entry.typeId}${path}`;
+      })
+      .join(">") || "empty"
+  );
 }
 
 const VERTEX_SHADER = `#version 300 es
@@ -709,6 +737,45 @@ function declareLayerUniforms(stack: readonly StudioStackEntry[]): string {
     .join("\n");
 }
 
+/**
+ * The point-in-polygon test for one drawn path, emitted as its own function.
+ *
+ * Per layer rather than shared, because each path has its own length and a
+ * shared function would need a size it cannot have. The vertices are literals
+ * (R69), so the loop bound is a compile-time constant, the loop unrolls, and
+ * there is no dynamic indexing.
+ *
+ * The crossing-number rule: walk the edges, count how many cross a ray cast
+ * from the point, odd means inside. It holds for any simple polygon rather than
+ * only convex ones, which a pen draws plenty of.
+ */
+function pathFunction(entry: StudioStackEntry, index: number): string {
+  const vertices = entry.vertices ?? [];
+  if (vertices.length < 3) return "";
+
+  const literals = vertices
+    .map(([x, y]) => `vec2(${x.toFixed(5)}, ${y.toFixed(5)})`)
+    .join(", ");
+
+  return `
+float studioPathInside${index}(vec2 point) {
+  vec2 path[${vertices.length}] = vec2[${vertices.length}](${literals});
+  bool inside = false;
+  for (int index = 0; index < ${vertices.length}; index += 1) {
+    vec2 a = path[index];
+    vec2 b = path[index == 0 ? ${vertices.length - 1} : index - 1];
+    if (
+      (a.y > point.y) != (b.y > point.y) &&
+      point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside ? 1.0 : 0.0;
+}
+`;
+}
+
 function compositeLayer(entry: StudioStackEntry, index: number): string {
   const type = STUDIO_LAYER_TYPES[entry.typeId];
   const args = type.uniforms
@@ -719,6 +786,7 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
   const weight = `${name("opacity")} * layerReach`;
 
   const aspect = `max(${name("maskAspect")}, 0.01)`;
+  const hasPath = (entry.vertices?.length ?? 0) >= 3;
 
   return `  {
     // The layer is confined to a shape placed on the frame, and the sense
@@ -759,6 +827,12 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
         )),
         1.0
       );
+    } else if (maskForm > 6.5) {
+      // A drawn path (R69). Tested against the shape's own frame, so moving or
+      // turning the layer moves and turns what was drawn; size and aspect do
+      // not scale it, because a path is authored geometry rather than an extent
+      // — the way to change it is to draw it again or move a vertex.
+      maskInside = ${hasPath ? `studioPathInside${index}(maskLocal)` : "1.0"};
     } else {
       // The named polygons carry their own side count so that choosing one
       // cannot be contradicted by the count control; only the polygon form reads it.
@@ -856,6 +930,7 @@ ${stack.map((entry, index) => compositeLayer(entry, index)).join("\n")}
     preamble,
     CHUNK_LAYER_SUPPORT,
     ...usedTypes.map((typeId) => STUDIO_LAYER_TYPES[typeId].chunk),
+    ...stack.map((entry, index) => pathFunction(entry, index)),
     main,
   ].join("\n");
 }

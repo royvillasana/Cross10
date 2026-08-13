@@ -3,7 +3,9 @@ import {
   pruneStudioLayerRecord,
   readStudioLayerRecord,
   readStudioCursor,
+  readStudioVertexPaths,
   STUDIO_CURSOR_TARGET,
+  STUDIO_VERTEX_PATH_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
   type StudioRuntimeLayer,
 } from "./studio-stack-state";
@@ -66,7 +68,14 @@ function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
     values[name] = studioColorToLinear(value) ?? FALLBACK_COLOR;
   }
 
-  return { typeId: layer.typeId, values };
+  // The path passes through untouched: it is geometry in field units, not a
+  // colour, and dropping it here would have left every drawn shape unfilled
+  // while every other value arrived intact.
+  return {
+    typeId: layer.typeId,
+    values,
+    ...(layer.vertices ? { vertices: layer.vertices } : {}),
+  };
 }
 
 /**
@@ -98,7 +107,11 @@ export function buildStudioSceneParameters(
     // Reading the export switch here would tie them together and make one of the
     // two coverage claims false.
     includeBackground,
-    layers: buildStudioStack(pruned, state.layers).map(toLinearLayerValues),
+    layers: buildStudioStack(
+      pruned,
+      state.layers,
+      readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
+    ).map(toLinearLayerValues),
   };
 }
 

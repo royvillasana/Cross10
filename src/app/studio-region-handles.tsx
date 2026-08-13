@@ -19,7 +19,9 @@ import {
   studioRegionDisplayValues,
   studioRegionHandleAnchor,
   studioRegionOutlinePoints,
+  studioPointToShapeFrame,
   studioRegionScreenRect,
+  studioShapeFrameToPoint,
   studioVertexToScreen,
   studioResizeRegion,
   type StudioCanvasRect,
@@ -248,10 +250,20 @@ export function StudioRegionHandles({
       const first = existing[0];
 
       if (first && existing.length >= 3) {
-        const screen = studioVertexToScreen(first, canvasRect);
+        const screen = studioVertexToScreen(
+          studioShapeFrameToPoint(first, current),
+          canvasRect,
+        );
         const near =
           Math.hypot(screen.x - event.clientX, screen.y - event.clientY) <= 12;
         if (near) {
+          // Closing commits the drawing: the layer becomes the free form, which
+          // is the only way the shape it just drew can be the shape it renders.
+          dispatch({
+            target: "selectedLayer.maskShape",
+            type: "controls.setValue",
+            value: "free",
+          });
           dispatch({
             target: STUDIO_PEN_TARGET,
             type: "controls.setValue",
@@ -264,10 +276,16 @@ export function StudioRegionHandles({
       dispatch({
         target: STUDIO_VERTEX_PATH_TARGET,
         type: "controls.setValue",
-        value: appendStudioVertex(paths, penLayerId, [point.x, point.y]),
+        // Stored in the shape's own frame, which is the frame the mask tests
+        // against. Absolute units would put the path wherever the centre is.
+        value: appendStudioVertex(
+          paths,
+          penLayerId,
+          studioPointToShapeFrame(point, current),
+        ),
       });
     },
-    [canvasRect, dispatch, penLayerId, values],
+    [canvasRect, current, dispatch, penLayerId, values],
   );
 
   const commit = React.useCallback(
@@ -376,7 +394,7 @@ export function StudioRegionHandles({
     y: (point.y - overlayFrame.top) / scale,
   });
   const penPoints = vertexPath.map((point) =>
-    toLocal(studioVertexToScreen(point, canvasRect)),
+    toLocal(studioVertexToScreen(studioShapeFrameToPoint(point, shown), canvasRect)),
   );
   const outline = studioRegionOutlinePoints(shown, canvasRect)
     .map(
