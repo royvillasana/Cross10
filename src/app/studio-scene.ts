@@ -4,6 +4,7 @@ import {
   readStudioLayerRecord,
   readStudioCursor,
   readStudioVertexPaths,
+  type StudioLayerMedia,
   STUDIO_CURSOR_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
@@ -74,6 +75,7 @@ function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
   return {
     typeId: layer.typeId,
     values,
+    ...(layer.image ? { image: layer.image } : {}),
     ...(layer.vertices ? { vertices: layer.vertices } : {}),
   };
 }
@@ -87,6 +89,7 @@ function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
 export function buildStudioSceneParameters(
   state: StudioSceneStateSlice,
   includeBackground: boolean,
+  images: ReadonlyMap<string, StudioLayerMedia> = new Map(),
 ): StudioStackSceneParameters {
   const record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
   const pruned = pruneStudioLayerRecord(
@@ -111,6 +114,7 @@ export function buildStudioSceneParameters(
       pruned,
       state.layers,
       readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
+      images,
     ).map(toLinearLayerValues),
   };
 }

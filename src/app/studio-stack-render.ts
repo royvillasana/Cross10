@@ -25,6 +25,13 @@ import {
 /** One layer's uniform values, keyed by the type's own uniform names. */
 export type StudioLayerValues = Readonly<{
   typeId: StudioLayerTypeId;
+  /**
+   * Decoded media for an image layer, already loaded by the canvas.
+   *
+   * A source rather than a texture: the renderer owns GL objects, and handing
+   * it a texture made elsewhere would put their lifetime in two places.
+   */
+  image?: TexImageSource | null;
   /** A drawn path, baked into the assembled program (R69). */
   vertices?: readonly (readonly [number, number])[];
   values: Readonly<Record<string, number | readonly [number, number, number]>>;
@@ -128,10 +135,75 @@ export function createStudioStackRenderer(
     return program;
   }
 
+  /**
+   * The texture for one layer, created once and re-uploaded when its source
+   * changes.
+   *
+   * Keyed by layer index rather than by asset, which is the same key the
+   * texture unit uses: a layer that changes its picture keeps its texture and
+   * its unit, and only the pixels change. Textures are freed with the renderer,
+   * so a stack edit does not leak one per frame.
+   *
+   * A layer with no media yet binds a one-pixel transparent texture rather than
+   * nothing: an unbound sampler reads as undefined, which on some drivers is
+   * whatever was last in that unit -- another layer's picture.
+   */
+  const textures = new Map<number, WebGLTexture>();
+  let blankTexture: WebGLTexture | null = null;
+
+  const resolveTexture = (
+    index: number,
+    source: TexImageSource | null | undefined,
+  ): WebGLTexture | null => {
+    if (!source) {
+      if (!blankTexture) {
+        blankTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, blankTexture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          1,
+          1,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          new Uint8Array([0, 0, 0, 0]),
+        );
+      }
+      return blankTexture;
+    }
+
+    let texture = textures.get(index);
+    if (!texture) {
+      const created = gl.createTexture();
+      if (!created) return null;
+      texture = created;
+      textures.set(index, texture);
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // Clamped and linear: a picture placed on the frame is not a tile, and the
+    // body already returns nothing outside the picture's own bounds.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    return texture;
+  };
+
   return {
     dispose() {
       for (const entry of compiled.values()) gl.deleteProgram(entry.program);
       compiled.clear();
+      // Textures are the renderer's, so they go with it. Left behind they
+      // would outlive the context that can free them.
+      for (const texture of textures.values()) gl.deleteTexture(texture);
+      textures.clear();
+      if (blankTexture) gl.deleteTexture(blankTexture);
+      blankTexture = null;
     },
     gl,
     render(parameters, width, height) {
@@ -171,6 +243,15 @@ export function createStudioStackRenderer(
         for (const uniform of studioLayerUniforms(layer.typeId)) {
           const target = location(studioLayerUniformName(index, uniform.name));
           if (!target) continue;
+
+          if (uniform.type === "sampler2D") {
+            // One texture unit per layer index, so two image layers cannot
+            // collide on unit zero and show each other's picture.
+            gl.activeTexture(gl.TEXTURE0 + index);
+            gl.bindTexture(gl.TEXTURE_2D, resolveTexture(index, layer.image));
+            gl.uniform1i(target, index);
+            continue;
+          }
 
           // A value the layer omits falls back to the registry default rather
           // than to zero: an unset colour reading as black would look like a

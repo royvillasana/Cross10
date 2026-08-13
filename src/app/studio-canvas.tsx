@@ -5,6 +5,7 @@ import * as React from "react";
 import { shouldIncludeToolcraftPreviewBackground } from "@/toolcraft/runtime";
 import {
   useToolcraftDispatch,
+  useToolcraftMediaPresentationUrls,
   useToolcraftPipelinePass,
   useToolcraftProductSceneFrame,
   useToolcraftSelector,
@@ -14,7 +15,11 @@ import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
 import { StudioRegionHandles } from "./studio-region-handles";
-import { STUDIO_CURSOR_AWAY, STUDIO_CURSOR_TARGET } from "./studio-stack-state";
+import {
+  STUDIO_CURSOR_AWAY,
+  STUDIO_CURSOR_TARGET,
+  type StudioLayerMedia,
+} from "./studio-stack-state";
 import {
   buildStudioSceneParameters,
   readStudioRenderScale,
@@ -68,14 +73,87 @@ export function StudioCanvas(): React.JSX.Element {
   // external-store subscription.
   const state = useToolcraftSelector((current) => current);
   const renderScale = readStudioRenderScale(state);
+
+  /**
+   * Uploaded pictures, decoded once and keyed by the layer that owns them.
+   *
+   * The runtime owns the media: `useToolcraftMediaPresentationUrls` is the
+   * surface it offers a product, and an asset already carries the layer it
+   * belongs to, so nothing here re-implements import, storage or ownership.
+   * What this adds is the one thing a shader needs and a URL is not: decoded
+   * pixels.
+   *
+   * Decoded off the render path deliberately. `createImageBitmap` is async, and
+   * doing it inside the draw would either block the frame or make the first one
+   * blank; instead the map fills in and the pass redraws when it changes.
+   */
+  const mediaAssets = state.mediaAssets ?? [];
+  const presentationUrls = useToolcraftMediaPresentationUrls(mediaAssets);
+  const [images, setImages] = React.useState<ReadonlyMap<string, StudioLayerMedia>>(
+    () => new Map(),
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const wanted = mediaAssets.filter(
+      (asset) => asset.assetKind === "image" && presentationUrls.has(asset.id),
+    );
+
+    void Promise.all(
+      wanted.map(async (asset) => {
+        const url = presentationUrls.get(asset.id);
+        if (!url) return null;
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          return [
+            asset.layerId,
+            {
+              image: await createImageBitmap(blob),
+              // Carried from the asset, so the runtime's own rotate and flip
+              // buttons drive what this renderer draws.
+              ...(asset.assetKind === "image" && asset.transform
+                ? { transform: asset.transform }
+                : {}),
+            },
+          ] as const;
+        } catch {
+          // A picture that will not decode is a picture the layer does not
+          // have. The layer still draws, with nothing where the image would be,
+          // rather than the canvas failing around it.
+          return null;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setImages(new Map(entries.filter((entry) => entry !== null)));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // Keyed on the ids and their urls: the asset array is rebuilt by the store
+    // on unrelated edits, and decoding on each would re-upload every texture.
+  }, [
+    mediaAssets
+      .map(
+        (asset) =>
+          `${asset.id}:${presentationUrls.get(asset.id) ?? ""}:${
+            asset.assetKind === "image" ? JSON.stringify(asset.transform ?? {}) : ""
+          }`,
+      )
+      .join("|"),
+  ]);
+
   const parameters = useStableStudioSceneParameters(
     React.useMemo(
       () =>
         buildStudioSceneParameters(
           state,
           shouldIncludeToolcraftPreviewBackground({ state }),
+          images,
         ),
-      [state],
+      [images, state],
     ),
   );
 

@@ -26,8 +26,15 @@
  * compile without carrying the studio with it.
  */
 
-/** A GLSL scalar or vector a per-layer uniform can hold. */
-export type StudioLayerUniformType = "float" | "vec3";
+/**
+ * What a per-layer uniform holds.
+ *
+ * `sampler2D` is the odd one and behaves differently everywhere: its value is
+ * not in the layer's value map, because a texture is not a number the record
+ * can carry. It is bound from the scene's decoded media instead, one texture
+ * unit per layer index, and the value map has nothing to say about it.
+ */
+export type StudioLayerUniformType = "float" | "sampler2D" | "vec3";
 
 export interface StudioLayerUniform {
   /** Default in the same units the control exposes. */
@@ -71,7 +78,7 @@ export interface StudioLayerType {
   readonly uniforms: readonly StudioLayerUniform[];
 }
 
-export type StudioLayerTypeId = "gradient" | "stripes";
+export type StudioLayerTypeId = "gradient" | "image" | "stripes";
 
 /**
  * Carried by every layer regardless of type.
@@ -545,6 +552,52 @@ vec4 studioGradientBody(
 }
 `;
 
+const CHUNK_IMAGE_BODY = `
+vec4 studioImageBody(
+  vec2 fragmentPosition,
+  vec2 resolution,
+  vec2 cursor,
+  float rotation,
+  float flipX,
+  float flipY,
+  sampler2D image
+) {
+  // Centred and normalised against height, like every other body, so the
+  // picture turns about the middle of the frame rather than about a corner.
+  vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
+
+  // Turning the sampling coordinate rather than the picture, which is the same
+  // trick the mask uses: the texture stays axis-aligned and what moves is where
+  // each pixel reads from.
+  float radians = rotation * 0.017453292519943295;
+  vec2 turned = vec2(
+    centered.x * cos(radians) + centered.y * sin(radians),
+    -centered.x * sin(radians) + centered.y * cos(radians)
+  );
+
+  // Folded after the turn, so a flip mirrors the picture as it now stands
+  // rather than mirroring the frame it was drawn in.
+  turned.x = mix(turned.x, -turned.x, step(0.5, flipX));
+  turned.y = mix(turned.y, -turned.y, step(0.5, flipY));
+
+  // Back to texture space. The vertical flip is the coordinate systems
+  // disagreeing rather than a transform: an image's rows run down from its top
+  // and the frame's run up from its centre.
+  vec2 uv = vec2(
+    turned.x * max(resolution.y, 1.0) / max(resolution.x, 1.0) + 0.5,
+    0.5 - turned.y
+  );
+
+  // Outside the picture is nothing rather than a stretched edge, so a rotated
+  // image shows the layers beneath it at the corners instead of a smear.
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+    return vec4(0.0);
+  }
+
+  return texture(image, uv);
+}
+`;
+
 export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerType>> =
   {
     gradient: {
@@ -586,6 +639,20 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
         { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
         { defaultValue: [0, 0, 1], name: "colorD", type: "vec3" },
+      ],
+    },
+    image: {
+      chunk: CHUNK_IMAGE_BODY,
+      entryPoint: "studioImageBody",
+      id: "image",
+      label: "Image",
+      uniforms: [
+        { defaultValue: 0, name: "imageRotation", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "imageFlipX", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "imageFlipY", type: "float" },
+        // Last, and valueless: the texture is bound from decoded media rather
+        // than read out of the record.
+        { defaultValue: 0, name: "image", type: "sampler2D" },
       ],
     },
     stripes: {
@@ -649,6 +716,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
 export const STUDIO_LAYER_TYPE_IDS: readonly StudioLayerTypeId[] = [
   "stripes",
   "gradient",
+  "image",
 ];
 
 /** One entry in the ordered stack. Index 0 composites first, so it sits lowest. */

@@ -462,6 +462,45 @@ export function collectStudioSelectedLayerEdit(
   return { typeId: entry.typeId, values: next };
 }
 
+/** An uploaded picture and the transform the runtime holds for it. */
+export type StudioLayerMedia = Readonly<{
+  image: TexImageSource;
+  transform?: Readonly<{
+    flipHorizontal?: boolean;
+    flipVertical?: boolean;
+    rotationDeg?: number;
+  }>;
+}>;
+
+/**
+ * The image fields for one layer, taken from the runtime's asset rather than
+ * from the product's record.
+ *
+ * Rotate and flip belong to the media, not to the layer: the runtime's own
+ * media control dispatches `media.transform` and stores the result on the
+ * asset, so reading it here is what makes those buttons drive this renderer.
+ * Holding a second copy in the layer record would be a product-authored
+ * transform surface wearing a shader's clothes, and the two would drift the
+ * first time either was edited alone.
+ */
+function studioMediaLayerFields(
+  media: StudioLayerMedia | undefined,
+): Readonly<Record<string, never>> | {
+  image: TexImageSource;
+  values: Record<string, number>;
+} {
+  if (!media) return {};
+
+  return {
+    image: media.image,
+    values: {
+      imageFlipX: media.transform?.flipHorizontal ? 1 : 0,
+      imageFlipY: media.transform?.flipVertical ? 1 : 0,
+      imageRotation: media.transform?.rotationDeg ?? 0,
+    },
+  };
+}
+
 /** One entry of the runtime layer list, as much of it as the stack reads. */
 export type StudioRuntimeLayer = Readonly<{
   displayName?: string;
@@ -512,6 +551,7 @@ export function buildStudioStack(
   record: StudioLayerRecord,
   layers: readonly StudioRuntimeLayer[],
   paths: StudioVertexPaths = {},
+  images: ReadonlyMap<string, StudioLayerMedia> = new Map(),
 ): readonly StudioLayerValues[] {
   const byId = new Map(layers.map((layer) => [layer.id, layer]));
 
@@ -525,6 +565,10 @@ export function buildStudioStack(
         // Carried only when there is a path to carry, so a stack of ordinary
         // layers signs exactly as it did before the pen existed.
         ...(path.length >= 3 ? { vertices: path } : {}),
+        // Keyed by layer id because the runtime already keys media that way:
+        // an asset carries the layer it belongs to, so no product-owned map
+        // stands between an upload and the layer that shows it.
+        ...studioMediaLayerFields(images.get(layer.id)),
         values: {
           ...studioLayerDefaults(entry.typeId),
           ...entry.values,
