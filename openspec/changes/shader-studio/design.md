@@ -393,3 +393,39 @@ The merge surfaced one interaction the two halves disagreed about. The infinity 
 Resolved the way every design tool resolves it: **inside a selected shape a drag moves the shape; outside it a drag pans the view.** Nothing in the product changed for this; the proof that panned from dead centre now pans from bare canvas, which is what an author does anyway.
 
 Worth naming because it is the first place where the canvas has two owners at once, and 14.4's pen will be the second. A mode that wants the whole canvas — the pen does — has to say so rather than assume it.
+
+## R67 -- an engine reads a field, it does not build one
+
+The port R57 deferred, decided while doing it. Croix10's six engines are field *generators*: each one owns its geometry and produces the whole picture from uniforms. R64 asks for them as "a per-layer axis beside the layer kind", and those two shapes do not fit together as written -- an engine that builds its own field *is* a layer kind, and registering them that way would give the product eight kinds and no second axis at all.
+
+The resolution is to separate what a technique *is* from what it *draws on*. A Cruz-Diez technique is a way of colouring a field with edges in it; the field itself is what a layer kind already provides. So an engine is a colour operation applied to the field the body has just resolved, reading the values that field already computed -- the band index, the distance to the boundary, the two inks either side.
+
+### Three engines, because three of the six are already the product's own model
+
+Reading the six chunks against the layer stack, only three are techniques the stack cannot already express:
+
+- **Induction chromatique** -- the complement of the local colour along every boundary. Ported.
+- **Physichromie** -- each strip presenting more of its neighbour as the viewer moves off head-on, with the side faces occluding. Ported.
+- **Chromointerference** -- a second printed structure at a different pitch, beating against the first. Ported.
+
+The other three are already here under other names, and porting them would have been duplication rather than delivery:
+
+- **Couleur additive** is a band field whose separators are windows onto the support. That is `selectedLayer.separator`, delivered in group 4 -- and in a *stack*, what shows through a window is the layer beneath, which is the more truthful reading of the technique than a background colour was.
+- **Transchromie** is sheets of transparent colour laid over one another, where the overlaps carry colours no sheet contains. That is the layer stack with multiply blending, in linear light, which is exactly what `studioBlend` already does.
+- **Chromosaturation** is a full-field wash with no band structure. That is a gradient layer.
+
+Recording this rather than shipping three near-duplicate engines is the point: the layer stack absorbed half of Croix10's engine registry by being a better model of the same thing.
+
+### The amount is the identity at zero
+
+All three engines share one control, and its contract is that **zero changes nothing**. That is what makes the amount comparable across techniques rather than being three unrelated numbers wearing one label, and it means an engine can be chosen and then dialled in rather than taking over the moment it is selected.
+
+It also caught a bug in the port. Physichromie first read its amount as a viewer *angle*, centred so that the default sat at the midpoint -- where every band presents the average of itself and its neighbour, which for two inks is a flat grey field. The technique was destroying its subject at rest. Read as a displacement from head-on, zero is the field untouched and the sweep goes one way.
+
+### The engine is not gated by the layer kind, and that is why the gradient has one
+
+The first attempt gated the engine to stripes, on the ground that Cruz-Diez's techniques are stripe techniques. Two framework rules disagreed, and between them they made a better product decision than the intent had:
+
+R34 puts a gated control in the section holding its gate, which would have put the engine controls in `Layer Pattern`; the ten-control rule then rejected that section at twelve. The only way out is an engine that is *not* gated by the kind -- which means the gradient must honour it too, which means the axis is genuinely beside the kind rather than inside one branch of it. Which is what R64 asked for in the first place.
+
+A ramp has no band edges, so what stands in for the boundary is the seam between consecutive palette slots -- where a gradient's induced colour actually appears.
