@@ -492,3 +492,52 @@ test("browser: studio image transform turns what the layer draws", async ({ page
     .toBe("topLeft=white topRight=blue");
 });
 
+test("browser: studio image moves and grows with its layer, not under it", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  writeImportFixture();
+
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+  });
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await importStudioImage(page);
+
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .toBe("topLeft=red topRight=blue");
+
+  // Drag the layer by its body. The picture belongs to the layer, so it goes
+  // with it: the same two points now read bare ground, and the picture's own
+  // quadrants are found where the layer was dragged to.
+  //
+  // A picture mapped to the frame instead would have stayed exactly where it
+  // was while a window slid over it -- which is what this proves against.
+  const canvas = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to drag on.");
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const shift = Math.round(box.height * 0.22);
+
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.move(centre.x + (shift * step) / 8, centre.y);
+  }
+  await page.mouse.up();
+
+  // The picture travelled with the layer, and the reading says so precisely:
+  // the right-hand sample was the picture's *blue* quadrant and is now its
+  // *red* one, because the picture's left half was carried into that point.
+  // The left-hand sample fell off the picture entirely.
+  //
+  // A picture mapped to the frame would have done neither: the mask would have
+  // slid right over a stationary image, leaving blue where blue was and ground
+  // where the mask no longer reached.
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .toBe("topLeft=other topRight=red");
+});
+

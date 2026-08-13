@@ -557,50 +557,52 @@ vec4 studioImageBody(
   vec2 fragmentPosition,
   vec2 resolution,
   vec2 cursor,
+  vec2 shapeLocal,
+  float shapeHalfWidth,
+  float shapeHalfHeight,
   float rotation,
   float flipX,
   float flipY,
   sampler2D image
 ) {
-  // Centred and normalised against height, like every other body, so the
-  // picture turns about the middle of the frame rather than about a corner.
-  vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
-
-  // Turning the sampling coordinate rather than the picture, which is the same
-  // trick the mask uses: the texture stays axis-aligned and what moves is where
-  // each pixel reads from.
+  // The picture lives in the *layer's* frame, not the canvas's.
   //
-  // Negated, because those two are opposites: turning where a pixel reads from
-  // by +90 turns the picture it shows by -90. Without this, the runtime's
-  // "90° Right" turned the picture left -- the transform reached the frame and
-  // arrived backwards, which is worse than not arriving.
-  float radians = -rotation * 0.017453292519943295;
-  vec2 turned = vec2(
-    centered.x * cos(radians) + centered.y * sin(radians),
-    -centered.x * sin(radians) + centered.y * cos(radians)
+  // This is the difference between moving a picture and moving a window over
+  // one. \`shapeLocal\` is the coordinate the mask already built -- measured from
+  // the shape's centre and turned by the shape's rotation -- so dividing by the
+  // shape's own half-extents puts the picture inside the shape and nowhere
+  // else. Drag the layer and the picture goes with it; pull a handle and the
+  // picture grows; turn the layer and the picture turns.
+  //
+  // Mapping to the frame instead is what made a moved layer look like a mask
+  // sliding over a stationary image, because that is exactly what it was.
+  vec2 fitted = vec2(
+    shapeLocal.x / max(shapeHalfWidth, 0.0001),
+    shapeLocal.y / max(shapeHalfHeight, 0.0001)
   );
 
-  // Folded after the turn, so the mirror runs along the *picture's* own axes
-  // rather than the screen's: with a rotation on, "flip horizontal" trades the
-  // picture's left and right, which may read as vertical on screen.
-  //
-  // That is the asset-property reading and it is the one to keep. The transform
+  // The asset's own transform, applied inside that frame: turning the sampling
+  // coordinate turns the picture the other way, hence the negation.
+  float radians = -rotation * 0.017453292519943295;
+  vec2 turned = vec2(
+    fitted.x * cos(radians) + fitted.y * sin(radians),
+    -fitted.x * sin(radians) + fitted.y * cos(radians)
+  );
+
+  // Folded after the turn, so the mirror runs along the picture's own axes
+  // rather than the screen's. That is the asset-property reading: the transform
   // is stored on the asset, so it has to mean the same thing to everything that
-  // draws it; mirroring in screen space would make this renderer disagree with
-  // every other consumer of the same metadata as soon as a rotation was on.
+  // draws it.
   turned.x = mix(turned.x, -turned.x, step(0.5, flipX));
   turned.y = mix(turned.y, -turned.y, step(0.5, flipY));
 
-  // Back to texture space. The vertical flip is the coordinate systems
+  // Into texture space. The vertical flip is the two coordinate systems
   // disagreeing rather than a transform: an image's rows run down from its top
-  // and the frame's run up from its centre.
-  vec2 uv = vec2(
-    turned.x * max(resolution.y, 1.0) / max(resolution.x, 1.0) + 0.5,
-    0.5 - turned.y
-  );
+  // and the shape's run up from its centre.
+  vec2 uv = vec2(turned.x * 0.5 + 0.5, 0.5 - turned.y * 0.5);
 
   // Outside the picture is nothing rather than a stretched edge, so a rotated
-  // image shows the layers beneath it at the corners instead of a smear.
+  // picture shows the layers beneath it at the corners instead of a smear.
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
     return vec4(0.0);
   }
@@ -955,7 +957,15 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       composite.a
     );
 
-    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor${args ? `, ${args}` : ""});
+    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor${
+      // Only the image type takes the shape's frame. The procedural bodies are
+      // fields over the whole canvas that the mask then confines, which is the
+      // right model for them -- a stripe field does not "belong to" its shape
+      // the way a picture does.
+      entry.typeId === "image"
+        ? `, maskLocal, maskWidth, ${name("maskSize")}`
+        : ""
+    }${args ? `, ${args}` : ""});
     composite = studioComposite(composite, layer, ${weight}, ${name("blendMode")});
   }`;
 }
