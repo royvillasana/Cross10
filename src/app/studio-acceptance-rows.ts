@@ -72,6 +72,25 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName:
+      "composites an image layer where the panel puts it, above and below procedural layers",
+    browser: true,
+    browserTestName:
+      "browser: studio image layer composites above, below, and between procedural layers",
+    componentType: "layers",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "An imported picture is a layer like any other in the stack: a procedural layer above it hides it where the two meet, moving the picture up shows it over that layer instead, and with one procedural layer above and one below, a single frame carries all three — the top layer over the picture on one side, the picture over the bottom layer in the middle, and the bottom layer alone where the picture does not reach.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "layers.imageComposite",
+    kind: "runtime",
+    layerCoverage: "reorder",
+    target: "selectedLayer.type",
+    userAction:
+      "Import a picture, add procedural layers above and below it, and move the picture through the stack from the panel rows.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares grouped layers move and hide as one",
     browser: true,
     browserTestName: "browser: studio layer group moves and hides its members together",

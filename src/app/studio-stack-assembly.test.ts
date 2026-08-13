@@ -15,6 +15,7 @@ import { buildStudioStack, type StudioRuntimeLayer } from "./studio-stack-state"
 
 const record = {
   bottom: { typeId: "stripes", values: {} },
+  middle: { typeId: "image", values: {} },
   top: { typeId: "gradient", values: {} },
 } as const;
 
@@ -28,6 +29,7 @@ function callOrder(layers: readonly StudioRuntimeLayer[]): readonly string[] {
     [
       { call: source.indexOf("studioStripesBody(fragmentPosition"), type: "stripes" },
       { call: source.indexOf("studioGradientBody(fragmentPosition"), type: "gradient" },
+      { call: source.indexOf("studioImageBody(fragmentPosition"), type: "image" },
     ]
       .filter((entry) => entry.call > -1)
       .sort((left, right) => left.call - right.call)
@@ -55,6 +57,31 @@ describe("assembled shader order", () => {
         { id: "bottom", visible: true },
       ]),
     ).toEqual(["gradient", "stripes"]);
+  });
+
+  it("composites an image layer where the panel puts it, above and below procedural layers", () => {
+    // The scenario the whole stack was built for: a picture is a layer like any
+    // other, so it takes its place among the procedural ones rather than
+    // sitting above or below them as a special case. Read as a sandwich
+    // because that is the arrangement neither "always first" nor "always last"
+    // could produce.
+    expect(
+      callOrder([
+        { id: "bottom", visible: true },
+        { id: "middle", visible: true },
+        { id: "top", visible: true },
+      ]),
+    ).toEqual(["stripes", "image", "gradient"]);
+
+    // And it moves with a drag rather than being pinned to a position in the
+    // registry: the same three layers in another order emit in that order.
+    expect(
+      callOrder([
+        { id: "middle", visible: true },
+        { id: "top", visible: true },
+        { id: "bottom", visible: true },
+      ]),
+    ).toEqual(["image", "gradient", "stripes"]);
   });
 
   it("gives a group no place in the assembled stack", () => {

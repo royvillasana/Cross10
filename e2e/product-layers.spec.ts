@@ -5,6 +5,7 @@ import zlib from "node:zlib";
 
 import { expect, type Page } from "@playwright/test";
 
+import { dragCanvasHandle } from "./canvas-handle-helpers";
 import {
   expectToolcraftLayerGrouping,
   expectToolcraftLayerReorder,
@@ -12,15 +13,18 @@ import {
   expectToolcraftLayerVisibility,
 } from "./browser-layer-evidence-helpers";
 import {
+  addStudioLayer,
   dragStudioLayerRow,
   openStudioGroupedStack,
   openStudioTwoLayerStack,
   readStudioLayerIds,
   readStudioStackSignature,
   selectStudioLayer,
+  setStudioColorHex,
   STUDIO_PRODUCT_OUTPUT,
   toggleStudioLayerVisibility,
 } from "./studio-product-helpers";
+import { createToolcraftBrowserProofSession } from "./browser-proof-session";
 import { test } from "./toolcraft-product-test";
 
 /**
@@ -541,3 +545,169 @@ test("browser: studio image moves and grows with its layer, not under it", async
     .toBe("topLeft=other topRight=red");
 });
 
+
+/**
+ * The order the frame is in, read at three places that tell it apart.
+ *
+ * Each layer in the fixture below is a flat colour of its own -- a stripes
+ * layer with both inks set the same -- so a sample says which layer reached
+ * that pixel rather than merely that something did. The picture keeps its own
+ * four colours and is reported as one thing, because which quadrant landed
+ * where is the subject of other proofs and not of this one.
+ *
+ * The three places are measured from where the shapes actually sit rather than
+ * guessed: a layer arrives with a half-extent of a quarter of the frame's
+ * height (R65) and the frame is 16:9, so a centred shape spans 0.36 to 0.64
+ * across and a 300px drag carries one about 0.16 of the width. Moving one shape
+ * right and one left leaves exactly three readable places -- one where the top
+ * layer covers the picture, one where the picture covers the bottom layer, and
+ * one where the bottom layer draws alone.
+ */
+async function readStudioStackOrder(page: Page): Promise<string> {
+  return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl) return "nogl";
+
+    const at = (fx: number): string => {
+      const pixel = new Uint8Array(4);
+      // readPixels counts from the bottom and the picture's red and blue
+      // quadrants are its top half, so the row read is above the middle.
+      gl.readPixels(
+        Math.round(canvas.width * fx),
+        Math.round(canvas.height * 0.6),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      const [red, green, blue] = [pixel[0] ?? 0, pixel[1] ?? 0, pixel[2] ?? 0];
+      if (green > 140 && red < 120 && blue < 120) return "under";
+      if (red > 140 && blue > 140 && green < 120) return "over";
+      if (red > 140 || blue > 140 || green > 140) return "picture";
+      return "ground";
+    };
+
+    return `left=${at(0.4)} mid=${at(0.55)} right=${at(0.72)}`;
+  });
+}
+
+/**
+ * The same three places, read inside the page for the reorder helper.
+ *
+ * A second copy of the reading rather than a shared function, because this one
+ * is serialized into the page and closes over nothing. The duplication is the
+ * price of that, and the alternative -- a helper that resolves at compile time
+ * and is undefined in the browser -- is not one.
+ */
+const STACK_ORDER = (
+  root: HTMLElement,
+): { layerIds: string[]; outputSignature: string } => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.round(canvas.width * fx),
+        Math.round(canvas.height * 0.6),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      const [red, green, blue] = [pixel[0] ?? 0, pixel[1] ?? 0, pixel[2] ?? 0];
+      if (green > 140 && red < 120 && blue < 120) return "under";
+      if (red > 140 && blue > 140 && green < 120) return "over";
+      if (red > 140 || blue > 140 || green > 140) return "picture";
+      return "ground";
+    };
+
+    outputSignature = `left=${at(0.4)} mid=${at(0.55)} right=${at(0.72)}`;
+  }
+
+  return {
+    layerIds: Array.from(root.querySelectorAll("[data-layer-id]")).map(
+      (row) => row.getAttribute("data-layer-id") ?? "",
+    ),
+    outputSignature,
+  };
+};
+
+test("browser: studio image layer composites above, below, and between procedural layers", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  writeImportFixture();
+
+  // From an empty stack, so every layer in the frame is one this test put there.
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+  });
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  const session = await createToolcraftBrowserProofSession(page);
+
+  await importStudioImage(page);
+  await expect
+    .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
+    .toHaveLength(1);
+  const imageLayerId = (await readStudioLayerIds(page))[0] ?? "";
+
+  // Below: a procedural layer added over the picture hides it where the two
+  // meet. Both inks the same, so the layer is a flat colour and a sample says
+  // which layer reached the pixel rather than only that something did.
+  await addStudioLayer(page);
+  const underLayerId =
+    (await readStudioLayerIds(page)).find((id) => id !== imageLayerId) ?? "";
+  await setStudioColorHex(page, "First colour", "#00CC00");
+  await setStudioColorHex(page, "Second colour", "#00CC00");
+  await expect
+    .poll(async () => readStudioStackOrder(page), { timeout: 15_000 })
+    .toBe("left=under mid=under right=ground");
+
+  // Above: the same two layers in the other order, reordered through the panel
+  // rows because that is the only reorder affordance the product has. Wrapped in
+  // the reorder evidence helper, which is stricter than the reading alone -- it
+  // requires the same set of layers before and after, a different order, and a
+  // different frame, so a proof cannot pass by having deleted one of them.
+  const rowsBefore = await readStudioLayerIds(page);
+  await expectToolcraftLayerReorder(
+    session.observe(STACK_ORDER),
+    session.controlAction("selectedLayer.type", async () => {
+      await dragStudioLayerRow(page, underLayerId, imageLayerId);
+    }),
+    {
+      layerIds: [...rowsBefore].reverse(),
+      outputSignature: "left=picture mid=picture right=ground",
+    },
+    { requirementId: "layers.imageComposite", target: "selectedLayer.type" },
+  );
+
+  // Between: a third layer over the picture, and the two procedural shapes
+  // moved apart so all three are visible at once. The green one goes right
+  // until it reaches past the picture's edge; the magenta one goes left until
+  // it stops short of the middle.
+  await selectStudioLayer(page, imageLayerId);
+  await addStudioLayer(page);
+  await setStudioColorHex(page, "First colour", "#CC00CC");
+  await setStudioColorHex(page, "Second colour", "#CC00CC");
+  await dragCanvasHandle(page, "studio-region-move", { x: -300, y: 0 });
+
+  await selectStudioLayer(page, underLayerId);
+  await dragCanvasHandle(page, "studio-region-move", { x: 300, y: 0 });
+
+  // One frame carrying the whole order: the top layer covers the picture on the
+  // left, the picture covers the bottom layer in the middle, and the bottom
+  // layer draws alone on the right where the picture does not reach. No pair of
+  // these three readings could be produced by a stack in a different order.
+  await expect
+    .poll(async () => readStudioStackOrder(page), { timeout: 15_000 })
+    .toBe("left=over mid=picture right=under");
+});

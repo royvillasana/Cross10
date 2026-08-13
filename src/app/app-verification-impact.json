@@ -29,6 +29,7 @@
         "export.image-format",
         "export.image-resolution",
         "layers.grouping",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
         "layers.visibility",
@@ -71,6 +72,7 @@
     {
       "acceptanceIds": [
         "canvas.render-scale",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.visibility",
         "selectedLayer.count"
@@ -92,6 +94,7 @@
         "export.image-format",
         "export.image-resolution",
         "layers.grouping",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
         "layers.visibility",
@@ -112,6 +115,7 @@
     {
       "acceptanceIds": [
         "layers.grouping",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
         "layers.visibility",
@@ -150,6 +154,7 @@
         "canvas.infinity-export",
         "canvas.infinity-mode",
         "canvas.render-scale",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
         "layers.visibility"
@@ -212,6 +217,7 @@
     },
     {
       "acceptanceIds": [
+        "layers.imageComposite",
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
@@ -290,6 +296,7 @@
         "background.color",
         "background.include",
         "canvas.render-scale",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.visibility",
         "selectedLayer.angle",
@@ -346,6 +353,7 @@
     {
       "acceptanceIds": [
         "layers.grouping",
+        "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
         "layers.visibility",
