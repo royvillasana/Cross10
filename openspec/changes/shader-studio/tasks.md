@@ -88,7 +88,7 @@ The largest divergence from Croix10, where an engine is one monolithic variant w
 - [x] 2.8e Wire `appComposition`: `canvasContent`, `rendererPipelineRegistration`, `sceneBoundsProvider`, and an `exportRenderer` that draws through the same renderer as preview so the two cannot drift
 - [x] 2.8f Switch `docs/toolcraft/agent-worklog.md` to `Mode: product` with the first Decision Trail entry — the Verification field must match one of the accepted literals exactly, not a results narrative
 - [x] 2.9 Browser proofs for both rows, plus an app-owned proof that the assembled shader reflects the same order the panel shows. Layer coverage **must drive real LayersPanel rows and buttons**, never `layers.*` command dispatch (`component-contracts.runtime.ts:297`)
-- [ ] 2.10 Run `npm run verify:delivery` — **first protected delivery**, and the point at which product mode is satisfied
+- [ ] 2.10 Run `npm run verify:delivery` — **first protected delivery**, and the point at which product mode is satisfied. **Attempted; blocked on authorization, not on the product.** The perf specs it runs require fixture selector, resolution mode, nonce, pass ids, path ids, request authority hash and source hash *together*: `TOOLCRAFT_PERFORMANCE_FIXTURE_RESOLUTION_MODE=strict-development` clears the first gate and lands on the second. Those credentials come from an authorized operator or CI. Do not manufacture a nonce or an authority hash to make the gate green — the worklog already records the honest position: resolving it needs an authorized performance run, not an authored timing value
 
 ## 3. Remaining layer types
 
@@ -227,6 +227,10 @@ Each gated control then needs applicability requirements with their own browser 
 **Verify both suites, every time.** `npm test` runs `node --test scripts/*.test.mjs` and then `vitest run src`. Grepping only the first one is how nine failures were reported green in this project. Check `# fail` from the node run *and* the `Tests` line from vitest. For the browser suite use `npm run test:browser:stable`, never a bare `playwright test` -- the bare form pulls in the perf and kernel specs, which need `TOOLCRAFT_PERFORMANCE_FIXTURE_RESOLUTION_MODE` and fail without it.
 
 **Known-failing before you start**, so they are not mistaken for new breakage: `finds built-in controls through every module form` (a checker self-test running against a temp fixture, unrelated to product code), and `app-performance.gates.test.ts` (shells out to Playwright, needs the perf environment). The stable browser suite fails five framework specs -- three orientation, one runtime-requirements, one media upload -- all present at the branch point.
+
+**A workload dimension has two homes, and the suites only watch one.** Adding or renaming a dimension re-identifies every performance path, and the path ids appear in *two* files: the scenarios in `src/app/app-performance.ts` and the adapters in `e2e/app-performance-path-adapters.ts`. Update both in the same commit.
+
+Nothing in the stable suites will tell you if you forget. The perf specs are excluded from `test:browser:stable` by design, and the unit gate that would catch it (`app-performance.gates.test.ts`) is the documented failure that shells out to Playwright and needs the performance environment. `polygon-sides` and `path-vertices` each drifted this way with every suite green; `npm run verify:delivery` is what found it, and `npx playwright test --grep "browser perf: toolcraft adapter catalog"` is the cheap local check that would have.
 
 **Measure before writing any expectation.** Every proof in this project that was written from intuition failed; every one written after dumping what the renderer actually produced passed first or second try. Write a throwaway probe spec, print the real pixels, then write the expectation. Delete the probe.
 
