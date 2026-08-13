@@ -17,10 +17,13 @@ import {
   studioMoveRegion,
   studioPointerToRegionUnits,
   studioRegionDisplayValues,
-  studioRegionHandleAnchor,
+  studioRegionHandlePoint,
   studioRegionOutlinePoints,
+  studioPointerRotation,
   studioPointToShapeFrame,
   studioRegionScreenRect,
+  studioRotateRegion,
+  studioRotationHandlePoint,
   studioShapeFrameToPoint,
   studioVertexToScreen,
   studioResizeRegion,
@@ -54,16 +57,25 @@ const REGION_TARGETS = {
 /**
  * Read for the outline only, never written by a gesture.
  *
- * The nodes still drive the extent -- size, aspect and placement -- because
- * that is the geometry a drag has always written. What the form and the
- * rotation change is what is *drawn* over it, which until 14.3 was an
- * axis-aligned rectangle whatever the layer actually was.
+ * The nodes drive the extent -- size, aspect and placement -- and the grip
+ * drives the turn. What the form does not have is a gesture: which named form
+ * a layer takes is a choice among a vocabulary, not a spatial judgement, so it
+ * stays a control and is read here only to draw the right outline over it.
  */
 const OUTLINE_TARGETS = {
-  rotation: "selectedLayer.maskRotation",
   shape: "selectedLayer.maskShape",
   sides: "selectedLayer.maskSides",
 } as const;
+
+/**
+ * The turn, written by the rotation grip (15.2).
+ *
+ * Its own constant rather than a fifth entry in `REGION_TARGETS` because the
+ * extent four are written together on every drag -- a resize moves the centre
+ * as well as the size -- and the turn is written on its own. Folding it in
+ * would make every move drag rewrite a rotation it did not change.
+ */
+const ROTATION_TARGET = "selectedLayer.maskRotation";
 
 /**
  * What a gesture knows when it starts.
@@ -84,6 +96,7 @@ type DragState = {
       readonly kind: "move";
     }
   | { readonly handle: StudioRegionHandleId; readonly kind: "resize" }
+  | { readonly grabRotation: number; readonly kind: "rotate" }
 );
 
 function readNumber(values: Readonly<Record<string, unknown>>, target: string): number {
@@ -205,7 +218,7 @@ export function StudioRegionHandles({
     aspect: readNumber(values, REGION_TARGETS.aspect),
     centerX: readNumber(values, REGION_TARGETS.centerX),
     centerY: readNumber(values, REGION_TARGETS.centerY),
-    rotation: readNumber(values, OUTLINE_TARGETS.rotation),
+    rotation: readNumber(values, ROTATION_TARGET),
     shape:
       typeof values[OUTLINE_TARGETS.shape] === "string"
         ? (values[OUTLINE_TARGETS.shape] as string)
@@ -288,26 +301,28 @@ export function StudioRegionHandles({
     [canvasRect, current, dispatch, penLayerId, values],
   );
 
-  const commit = React.useCallback(
-    (next: StudioRegionValues, label: string): void => {
-      const group = `studio-region-${gestureRef.current}`;
-      const write = (target: string, value: number): void => {
-        dispatch({
-          history: "merge",
-          historyGroup: group,
-          label,
-          target,
-          type: "controls.setValue",
-          value,
-        });
-      };
-
-      write(REGION_TARGETS.size, next.size);
-      write(REGION_TARGETS.aspect, next.aspect);
-      write(REGION_TARGETS.centerX, next.centerX);
-      write(REGION_TARGETS.centerY, next.centerY);
+  const write = React.useCallback(
+    (target: string, value: number, label: string): void => {
+      dispatch({
+        history: "merge",
+        historyGroup: `studio-region-${gestureRef.current}`,
+        label,
+        target,
+        type: "controls.setValue",
+        value,
+      });
     },
     [dispatch],
+  );
+
+  const commit = React.useCallback(
+    (next: StudioRegionValues, label: string): void => {
+      write(REGION_TARGETS.size, next.size, label);
+      write(REGION_TARGETS.aspect, next.aspect, label);
+      write(REGION_TARGETS.centerX, next.centerX, label);
+      write(REGION_TARGETS.centerY, next.centerY, label);
+    },
+    [write],
   );
 
   /**
@@ -324,6 +339,20 @@ export function StudioRegionHandles({
    */
   const applyDrag = React.useCallback(
     (drag: DragState, pointer: { readonly x: number; readonly y: number }): void => {
+      if (drag.kind === "rotate") {
+        write(
+          ROTATION_TARGET,
+          studioRotateRegion({
+            canvas: drag.canvas,
+            grabRotation: drag.grabRotation,
+            pointer,
+            values: drag.origin,
+          }).rotation ?? 0,
+          "Turn shape",
+        );
+        return;
+      }
+
       if (drag.kind === "move") {
         commit(
           studioMoveRegion({
@@ -347,7 +376,7 @@ export function StudioRegionHandles({
         "Resize region",
       );
     },
-    [commit],
+    [commit, write],
   );
 
   const applyDragRef = React.useRef(applyDrag);
@@ -402,6 +431,7 @@ export function StudioRegionHandles({
         `${(point.x - overlayFrame.left) / scale},${(point.y - overlayFrame.top) / scale}`,
     )
     .join(" ");
+  const grip = toLocal(studioRotationHandlePoint(shown, canvasRect));
   const local = {
     height: rect.height / scale,
     left: (rect.left - overlayFrame.left) / scale,
@@ -433,6 +463,37 @@ export function StudioRegionHandles({
       };
       setDragging(true);
     };
+
+  const beginRotate = (event: React.PointerEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+    // As with the other two: the gesture belongs to the layer, not to the view
+    // the shell pans behind it.
+    event.stopPropagation();
+    const canvas = canvasRef.current;
+    const live = canvas?.getBoundingClientRect();
+    const rectNow = live
+      ? { height: live.height, left: live.left, top: live.top, width: live.width }
+      : canvasRect;
+    if (!rectNow) return;
+    gestureRef.current += 1;
+    const origin = studioRegionDisplayValues(current, rectNow);
+    dragRef.current = {
+      canvas: rectNow,
+      // What the shape's angle is over the pointer's, held for the drag. The
+      // grip sits off the edge rather than under the cursor, so without this
+      // the shape would snap its north edge to the pointer on grab.
+      grabRotation:
+        (origin.rotation ?? 0) -
+        studioPointerRotation({
+          canvas: rectNow,
+          pointer: { x: event.clientX, y: event.clientY },
+          values: origin,
+        }),
+      kind: "rotate",
+      origin,
+    };
+    setDragging(true);
+  };
 
   const beginMove = (event: React.PointerEvent<HTMLButtonElement>): void => {
     event.preventDefault();
@@ -509,13 +570,19 @@ export function StudioRegionHandles({
           height: `${local.height}px`,
           left: `${local.left}px`,
           top: `${local.top}px`,
+          // The hit area turns with the shape it grabs. CSS turns clockwise and
+          // the shader's rotation counts the other way, so the sign is flipped
+          // here exactly as the outline flips its y.
+          transform: `rotate(${-(shown.rotation ?? 0)}deg)`,
           width: `${local.width}px`,
         }}
         type="button"
       />
       )}
       {(drawing ? [] : STUDIO_REGION_HANDLES).map((handle) => {
-        const anchor = studioRegionHandleAnchor(handle);
+        // Placed on the shape rather than on a box around it, so a node on a
+        // turned shape sits where that node actually is.
+        const point = toLocal(studioRegionHandlePoint(handle, shown, canvasRect));
         return (
           <button
             aria-label={`Resize region ${handle}`}
@@ -525,13 +592,24 @@ export function StudioRegionHandles({
             key={handle}
             onPointerDown={beginResize(handle)}
             style={{
-              left: `${local.left + ((anchor.x + 1) / 2) * local.width}px`,
-              top: `${local.top + ((anchor.y + 1) / 2) * local.height}px`,
+              left: `${point.x}px`,
+              top: `${point.y}px`,
             }}
             type="button"
           />
         );
       })}
+      {drawing ? null : (
+        <button
+          aria-label="Turn shape"
+          className={styles.grip}
+          data-testid="studio-region-rotate"
+          data-toolcraft-canvas-handle=""
+          onPointerDown={beginRotate}
+          style={{ left: `${grip.x}px`, top: `${grip.y}px` }}
+          type="button"
+        />
+      )}
     </div>
   );
 }

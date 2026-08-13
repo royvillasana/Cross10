@@ -536,6 +536,30 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName:
+      "studioRotateRegion turns the shape to follow the grip, carrying the angle it was grabbed at",
+    browser: true,
+    browserTestName: "browser: studio rotation grip turns the layer's shape on the canvas",
+    canvasHandle: {
+      exportCleanTestName: "browser: studio region handles stay out of the exported artifact",
+      outputObservable:
+        "The layer's shape swings about its own centre, so a triangle's apex leaves the top of the extent and appears at the side it was turned towards.",
+      testId: "studio-region-rotate",
+      writesTarget: "controls.setValue",
+    },
+    componentType: "canvas-handle",
+    evidence: "product-output",
+    expectedObservable:
+      "Dragging the round grip above the shape turns the selected layer's shape about its own centre, and the extent nodes turn with it so a corner is still a corner of the shape.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.regionHandle.rotate",
+    interactionId: "shape-shaping",
+    kind: "canvas-handle",
+    target: "selectedLayer.maskRotation",
+    userAction: "Drag the round grip that sits above the shape on the canvas.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the region shape offers a vocabulary of named forms",
     browser: true,
     browserTestName: "browser: studio region shape switches the rectangle for an ellipse",

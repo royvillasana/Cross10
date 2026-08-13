@@ -6,7 +6,11 @@ import {
   getCanvasHandle,
 } from "./canvas-handle-helpers";
 import { inspectToolcraftImageDownload } from "./image-artifact-inspection";
-import { openStudioSingleLayer, setStudioSlider } from "./studio-product-helpers";
+import {
+  openStudioSingleLayer,
+  setStudioSelectValue,
+  setStudioSlider,
+} from "./studio-product-helpers";
 import { expect, test } from "./toolcraft-product-test";
 
 /**
@@ -214,6 +218,114 @@ test("browser: studio region side node widens the layer without heightening it",
   const box = await readRegionBox(page);
   expect(box.halfWidth).toBeGreaterThan(box.halfHeight);
   expect(box.halfHeight).toBeCloseTo(0.25, 2);
+});
+
+/**
+ * Which way a shape with an orientation is pointing.
+ *
+ * A turn is invisible on a shape at equal extents — a square is the same square
+ * a quarter turn later — so the proof is made on a triangle, whose apex is the
+ * one place it reaches and therefore says which way it faces. Read at nine
+ * tenths of the half-extent along each direction, matching the polygon reading
+ * the shape vocabulary is proved with, so the two are directly comparable.
+ *
+ * The horizontal offset is derived from the backing's own proportions rather
+ * than written as a number: the fractions are of width and height separately,
+ * and the field measures both against height. Left and right at a fraction of
+ * width would sit at a different radius from the apex and read a different
+ * shape than the one being asked about.
+ */
+async function readShapeReach(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector(
+      "[data-toolcraft-product-output]",
+    ) as HTMLCanvasElement | null;
+    const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!canvas || !gl) return "absent";
+
+    const at = (fx: number, fy: number): string => {
+      const width = 40;
+      const height = 6;
+      const x = Math.min(
+        Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const y = Math.min(
+        Math.max(Math.round(canvas.height * fy) - height / 2, 0),
+        canvas.height - height,
+      );
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const colours = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        colours.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      return colours.size > 1 ? "field" : "ground";
+    };
+
+    // `readPixels` counts from the bottom of the backing and the field counts
+    // upward from its centre, so the apex sits at the larger fraction.
+    const across = 0.225 * (canvas.height / canvas.width);
+    return [
+      `apex=${at(0.5, 0.5 + 0.225)}`,
+      `left=${at(0.5 - across, 0.5)}`,
+      `right=${at(0.5 + across, 0.5)}`,
+    ].join(" ");
+  });
+}
+
+test("browser: studio rotation grip turns the layer's shape on the canvas", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  await setStudioSelectValue(page, "selectedLayer.maskShape", "Triangle");
+
+  // Point-up, as every polygon form arrives: the apex is the only one of the
+  // three directions the shape reaches.
+  await expect
+    .poll(async () => readShapeReach(page), { timeout: 15_000 })
+    .toBe("apex=field left=ground right=ground");
+
+  // Measured: the frame lays out at 1920x1080 CSS pixels and a drag maps one
+  // for one, so the grip sits 0.25 of a unit plus its 28px gap — 298px — above
+  // the centre. Carrying it to 298px left of the centre is a quarter turn, and
+  // the reading tolerates a few degrees either side of it.
+  await dragCanvasHandle(
+    page,
+    "studio-region-rotate",
+    { x: -298, y: 298 },
+    {
+      requirementId: "selectedLayer.regionHandle.rotate",
+      target: "selectedLayer.maskRotation",
+    },
+  );
+
+  // The apex left the top and arrived at the left, which is a turn about the
+  // shape's own centre rather than a move: a shape that had travelled would
+  // have taken its apex with it and left neither direction reaching.
+  await expect
+    .poll(async () => readShapeReach(page), { timeout: 15_000 })
+    .toBe("apex=ground left=field right=ground");
+
+  // And the extent nodes turned with it. The north node is the one the grip
+  // stands off, so on a shape turned a quarter it sits level with the centre
+  // and to its left — where, until the nodes were placed on the shape rather
+  // than on an upright box around it, it stayed stubbornly above.
+  const turned = await page.evaluate(() => {
+    const node = document.querySelector('[data-testid="studio-region-node-north"]');
+    const output = document.querySelector("[data-toolcraft-product-output]");
+    if (!node || !output) return { x: NaN, y: NaN };
+    const box = node.getBoundingClientRect();
+    const frame = output.getBoundingClientRect();
+    return {
+      x: (box.left + box.width / 2 - (frame.left + frame.width / 2)) / frame.height,
+      y: (box.top + box.height / 2 - (frame.top + frame.height / 2)) / frame.height,
+    };
+  });
+  expect(turned.x).toBeLessThan(-0.2);
+  expect(Math.abs(turned.y)).toBeLessThan(0.06);
 });
 
 test("browser: studio region handles stay out of the exported artifact", async ({

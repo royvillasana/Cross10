@@ -80,7 +80,27 @@
   position: absolute;
 }
 
+/*
+ * The rotation grip (15.2): round where the extent nodes are square, because it
+ * does a different thing to the shape. Same size and the same stroke, so it
+ * still reads as one of the shape's own handles rather than as a decoration.
+ */
+.grip {
+  background: rgb(255 255 255);
+  border: 1px solid rgb(30 30 30);
+  border-radius: 50%;
+  cursor: grab;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  touch-action: none;
+  width: 12px;
+}
+
 .body:focus-visible,
+.grip:focus-visible,
 .node:focus-visible {
   outline: 2px solid rgb(120 180 255);
   outline-offset: 2px;

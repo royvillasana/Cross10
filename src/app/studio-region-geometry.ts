@@ -54,8 +54,18 @@ export type StudioScreenRect = {
 export const STUDIO_REGION_LIMITS = {
   aspect: { max: 4, min: 0.25 },
   center: { max: 1, min: -1 },
+  rotation: { max: 180, min: -180 },
   size: { max: 0.8, min: 0.01 },
 } as const;
+
+/**
+ * How far past the shape's own edge the rotation grip sits, in CSS pixels.
+ *
+ * A screen distance rather than a field one: the grip is something to aim at
+ * with a pointer, and a gap measured in field units would close to nothing on a
+ * small shape and drift half a frame away on a large one.
+ */
+export const STUDIO_ROTATION_HANDLE_GAP = 28;
 
 /**
  * What the handles show for a layer that has no region yet.
@@ -324,12 +334,133 @@ export function studioRegionHandleAnchor(handle: StudioRegionHandleId): {
 }
 
 /**
+ * Where a node sits on screen, which is on the shape rather than on a box
+ * drawn around it.
+ *
+ * The nodes were placed from the axis-aligned screen rectangle until the
+ * rotation grip made turning a shape a gesture rather than a slider. That was
+ * survivable while rotation was rare and deliberate, and is not now: a node
+ * drawn at the corner of an upright box on a shape that is turned forty
+ * degrees is pointing at pixels the shape does not occupy, and grabbing it
+ * resizes along an axis the author cannot see.
+ */
+export function studioRegionHandlePoint(
+  handle: StudioRegionHandleId,
+  values: StudioRegionValues,
+  canvas: StudioCanvasRect,
+): StudioScreenPoint {
+  const anchor = studioRegionHandleAnchor(handle);
+  // The anchor's y is a screen direction and the shape's frame runs up, so the
+  // node's own y is the negated anchor.
+  const local: readonly [number, number] = [
+    anchor.x * values.size * values.aspect,
+    -anchor.y * values.size,
+  ];
+
+  return studioVertexToScreen(studioShapeFrameToPoint(local, values), canvas);
+}
+
+/**
+ * Where the rotation grip sits: off the shape's north edge, turned with it.
+ *
+ * Placed along the line from the centre through that edge rather than straight
+ * up the screen, so the grip stays the same part of the shape at every angle —
+ * which is what lets the gesture read as turning *this* shape rather than
+ * dragging an unrelated dot around it.
+ */
+export function studioRotationHandlePoint(
+  values: StudioRegionValues,
+  canvas: StudioCanvasRect,
+): StudioScreenPoint {
+  const edge = studioRegionHandlePoint("north", values, canvas);
+  const centre = studioVertexToScreen([values.centerX, values.centerY], canvas);
+  const deltaX = edge.x - centre.x;
+  const deltaY = edge.y - centre.y;
+  const length = Math.hypot(deltaX, deltaY);
+
+  // A shape with no extent has no direction to leave along; straight up the
+  // screen is the reading that matches an unrotated shape.
+  if (length === 0) return { x: edge.x, y: edge.y - STUDIO_ROTATION_HANDLE_GAP };
+
+  return {
+    x: edge.x + (deltaX / length) * STUDIO_ROTATION_HANDLE_GAP,
+    y: edge.y + (deltaY / length) * STUDIO_ROTATION_HANDLE_GAP,
+  };
+}
+
+/** Degrees folded onto the slider's own domain, so -190 reads as 170. */
+function foldRotation(degrees: number): number {
+  const folded = ((degrees + 180) % 360 + 360) % 360 - 180;
+  return folded === -180 ? 180 : folded;
+}
+
+/**
+ * The angle the pointer stands at, measured the way `maskRotation` measures.
+ *
+ * Zero is the shape's north edge, and the count runs the way the shader turns:
+ * its y runs up, so a positive rotation is counter-clockwise both in the field
+ * and — after the one flip the screen conversion performs — on screen.
+ */
+export function studioPointerRotation({
+  canvas,
+  pointer,
+  values,
+}: {
+  readonly canvas: StudioCanvasRect;
+  readonly pointer: { readonly x: number; readonly y: number };
+  readonly values: StudioRegionValues;
+}): number {
+  const here = studioPointerToRegionUnits(pointer, canvas);
+  const deltaX = here.x - values.centerX;
+  const deltaY = here.y - values.centerY;
+  if (deltaX === 0 && deltaY === 0) return values.rotation ?? 0;
+
+  return foldRotation((Math.atan2(deltaY, deltaX) * 180) / Math.PI - 90);
+}
+
+/**
+ * The rotation a grip drag asks for.
+ *
+ * Carried by the offset between the pointer's angle and the shape's when the
+ * drag began, for the same reason a move drag carries its grab offset: the
+ * grip sits off the edge rather than under the cursor, and a shape that
+ * snapped its north edge to the pointer would jump the moment it was grabbed.
+ */
+export function studioRotateRegion({
+  canvas,
+  grabRotation,
+  pointer,
+  values,
+}: {
+  readonly canvas: StudioCanvasRect;
+  readonly grabRotation: number;
+  readonly pointer: { readonly x: number; readonly y: number };
+  readonly values: StudioRegionValues;
+}): StudioRegionValues {
+  return {
+    ...values,
+    rotation: clamp(
+      foldRotation(studioPointerRotation({ canvas, pointer, values }) + grabRotation),
+      STUDIO_REGION_LIMITS.rotation.min,
+      STUDIO_REGION_LIMITS.rotation.max,
+    ),
+  };
+}
+
+/**
  * The region a resize drag asks for.
  *
  * The dragged node moves to the pointer and the opposite node stays put, which
  * is what makes a corner drag resize rather than move: the centre follows to
  * the midpoint of the two. An axis a handle does not carry is left exactly as
  * it was, so dragging a side cannot change the height by rounding.
+ *
+ * Measured in the shape's own frame rather than in the field's. The two are the
+ * same thing at rest, and once a shape is turned they are not: the half-extents
+ * the mask tests are along the shape's axes, so a drag resolved against the
+ * frame's axes would feed a width to a control that means something else. In
+ * that frame the node the author grabbed is the one that moves and the opposite
+ * one holds, at every angle.
  */
 export function studioResizeRegion({
   canvas,
@@ -343,29 +474,37 @@ export function studioResizeRegion({
   readonly values: StudioRegionValues;
 }): StudioRegionValues {
   const anchor = studioRegionHandleAnchor(handle);
-  const here = studioPointerToRegionUnits(pointer, canvas);
+  const here = studioPointToShapeFrame(
+    studioPointerToRegionUnits(pointer, canvas),
+    values,
+  );
 
   const halfWidth = values.size * values.aspect;
   const halfHeight = values.size;
-  // The edge that stays put during the drag.
-  const fixedX = values.centerX - anchor.x * halfWidth;
-  // The anchor's y is a screen direction and the region's is a shader one, so
-  // the opposite edge sits at plus the anchor rather than minus it.
-  const fixedY = values.centerY + anchor.y * halfHeight;
+  // The edge that stays put during the drag, in the shape's own frame — where
+  // the centre is the origin, so the opposite edge is just the negated node.
+  const fixedX = -anchor.x * halfWidth;
+  // The anchor's y is a screen direction and the shape's frame runs up, so the
+  // opposite edge sits at plus the anchor rather than minus it.
+  const fixedY = anchor.y * halfHeight;
 
   let nextHalfHeight = halfHeight;
-  let nextCenterY = values.centerY;
+  // Offsets from the shape's own centre, so an axis the handle does not carry
+  // stays at zero and the centre does not move along it.
+  let localY = 0;
   if (anchor.y !== 0) {
-    nextHalfHeight = Math.abs(here.y - fixedY) / 2;
-    nextCenterY = (here.y + fixedY) / 2;
+    nextHalfHeight = Math.abs(here[1] - fixedY) / 2;
+    localY = (here[1] + fixedY) / 2;
   }
 
   let nextHalfWidth = halfWidth;
-  let nextCenterX = values.centerX;
+  let localX = 0;
   if (anchor.x !== 0) {
-    nextHalfWidth = Math.abs(here.x - fixedX) / 2;
-    nextCenterX = (here.x + fixedX) / 2;
+    nextHalfWidth = Math.abs(here[0] - fixedX) / 2;
+    localX = (here[0] + fixedX) / 2;
   }
+
+  const [nextCenterX, nextCenterY] = studioShapeFrameToPoint([localX, localY], values);
 
   const size = clamp(
     nextHalfHeight,
@@ -374,6 +513,7 @@ export function studioResizeRegion({
   );
 
   return {
+    ...values,
     aspect: clamp(
       nextHalfWidth / size,
       STUDIO_REGION_LIMITS.aspect.min,

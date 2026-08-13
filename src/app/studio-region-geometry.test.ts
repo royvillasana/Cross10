@@ -3,12 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   STUDIO_REGION_LIMITS,
   studioMoveRegion,
+  studioPointerRotation,
   studioPointerToRegionUnits,
   studioRegionDisplayValues,
   studioRegionHandleAnchor,
+  studioRegionHandlePoint,
   studioRegionOutlinePoints,
   studioRegionScreenRect,
   studioResizeRegion,
+  studioRotateRegion,
+  studioRotationHandlePoint,
   type StudioCanvasRect,
   type StudioRegionValues,
 } from "./studio-region-geometry";
@@ -175,6 +179,117 @@ describe("studioMoveRegion", () => {
 
     expect(grabbed.centerX).toBeCloseTo(0.1, 10);
     expect(grabbed.centerY).toBeCloseTo(-0.2, 10);
+  });
+});
+
+describe("the nodes on a turned shape", () => {
+  const TURNED: StudioRegionValues = { ...CENTRED, rotation: 90 };
+
+  it("puts each node on the shape rather than on an upright box around it", () => {
+    // A quarter turn sends the north node to the west of the centre. Drawn from
+    // the screen rectangle it would have stayed straight above it, pointing at
+    // pixels the shape no longer occupies.
+    const north = studioRegionHandlePoint("north", TURNED, CANVAS);
+
+    expect(north.x).toBeCloseTo(330, 6);
+    expect(north.y).toBeCloseTo(230, 6);
+  });
+
+  it("holds the opposite node still through a corner drag, at any angle", () => {
+    // The claim a resize rests on, made where it used to break: measured
+    // against the frame's axes, a drag on a turned shape moved both corners.
+    const before = studioRegionHandlePoint("northWest", TURNED, CANVAS);
+    const next = studioResizeRegion({
+      canvas: CANVAS,
+      handle: "southEast",
+      // Further out along the shape's own diagonal, past the node at (510, 140).
+      pointer: { x: 570, y: 80 },
+      values: TURNED,
+    });
+    const after = studioRegionHandlePoint("northWest", next, CANVAS);
+
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+    expect(next.size).toBeGreaterThan(TURNED.size);
+    // The drag resizes; it does not quietly re-aim the shape.
+    expect(next.rotation).toBe(90);
+  });
+});
+
+describe("the rotation grip", () => {
+  it("sits off the shape's north edge, clear of the node already there", () => {
+    const grip = studioRotationHandlePoint(CENTRED, CANVAS);
+    const north = studioRegionHandlePoint("north", CENTRED, CANVAS);
+
+    expect(grip.x).toBeCloseTo(north.x, 6);
+    // Screen y runs down, so "further out" from a north edge is a smaller y.
+    expect(north.y - grip.y).toBeCloseTo(28, 6);
+  });
+
+  it("travels with the shape, so it stays the same part of it", () => {
+    const grip = studioRotationHandlePoint({ ...CENTRED, rotation: 90 }, CANVAS);
+
+    // A quarter turn carries the grip round to the west, at the same distance.
+    expect(grip.x).toBeCloseTo(302, 6);
+    expect(grip.y).toBeCloseTo(230, 6);
+  });
+
+  it("reads the pointer's angle the way the shader counts rotation", () => {
+    // Zero is straight up, and the count runs counter-clockwise: the shader's y
+    // runs up, so a positive turn carries the north edge towards the west.
+    expect(
+      studioPointerRotation({ canvas: CANVAS, pointer: { x: 420, y: 140 }, values: CENTRED }),
+    ).toBeCloseTo(0, 6);
+    expect(
+      studioPointerRotation({ canvas: CANVAS, pointer: { x: 330, y: 230 }, values: CENTRED }),
+    ).toBeCloseTo(90, 6);
+    expect(
+      studioPointerRotation({ canvas: CANVAS, pointer: { x: 510, y: 230 }, values: CENTRED }),
+    ).toBeCloseTo(-90, 6);
+  });
+});
+
+describe("studioRotateRegion", () => {
+  it("turns the shape to follow the grip, carrying the angle it was grabbed at", () => {
+    const grabbed = studioRotateRegion({
+      canvas: CANVAS,
+      // Grabbed at rest and dragged a quarter turn: the shape follows the grip.
+      grabRotation: 0,
+      pointer: { x: 330, y: 230 },
+      values: CENTRED,
+    });
+
+    expect(grabbed.rotation).toBeCloseTo(90, 6);
+    // A turn is a turn: nothing about the extent moves with it.
+    expect(grabbed.size).toBe(CENTRED.size);
+    expect(grabbed.aspect).toBe(CENTRED.aspect);
+    expect(grabbed.centerX).toBe(CENTRED.centerX);
+
+    // And the offset is carried rather than snapped, so a shape already turned
+    // does not jump its north edge to the pointer the moment it is grabbed.
+    const offset = studioRotateRegion({
+      canvas: CANVAS,
+      grabRotation: 30,
+      pointer: { x: 420, y: 140 },
+      values: { ...CENTRED, rotation: 30 },
+    });
+    expect(offset.rotation).toBeCloseTo(30, 6);
+  });
+
+  it("cannot ask for a value the shader's rotation could not hold", () => {
+    // Past half a turn the angle folds rather than running off the end: 90 + 150
+    // is the same shape as -120, and only one of the two is a value the domain
+    // this writes into accepts.
+    const folded = studioRotateRegion({
+      canvas: CANVAS,
+      grabRotation: 150,
+      pointer: { x: 330, y: 230 },
+      values: CENTRED,
+    });
+
+    expect(folded.rotation).toBeCloseTo(-120, 6);
+    expect(folded.rotation ?? 0).toBeLessThanOrEqual(STUDIO_REGION_LIMITS.rotation.max);
+    expect(folded.rotation ?? 0).toBeGreaterThanOrEqual(STUDIO_REGION_LIMITS.rotation.min);
   });
 });
 
