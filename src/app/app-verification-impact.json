@@ -57,6 +57,8 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
+        "gallery.apply",
+        "gallery.entry",
         "persistence.reload"
       ],
       "kind": "functional",
@@ -93,6 +95,8 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
+        "gallery.apply",
+        "gallery.entry",
         "layers.grouping",
         "layers.imageComposite",
         "layers.reorder",
@@ -186,6 +190,14 @@
     },
     {
       "acceptanceIds": [
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-gallery-sections.ts"
+    },
+    {
+      "acceptanceIds": [
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
@@ -260,6 +272,14 @@
       "passIds": [
         "layer-stack"
       ]
+    },
+    {
+      "acceptanceIds": [
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-presets.ts"
     },
     {
       "acceptanceIds": [

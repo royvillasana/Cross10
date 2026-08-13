@@ -3,6 +3,7 @@ import { defineToolcraft } from "@/toolcraft/runtime";
 import { appIdentity } from "./app-identity";
 import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
+import { STUDIO_GALLERY_SECTIONS } from "./studio-gallery-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
 import {
   STUDIO_CURSOR_TARGET,
@@ -40,6 +41,9 @@ export const appSchema = defineToolcraft({
   panels: {
     controls: {
       sections: [
+        // First, because it is where a composition starts: an entry sets a
+        // stack and every control below stays live over it (R58).
+        ...STUDIO_GALLERY_SECTIONS,
         ...STUDIO_BACKGROUND_SECTIONS,
         ...STUDIO_LAYER_SECTIONS,
         ...STUDIO_EXPORT_SECTIONS,

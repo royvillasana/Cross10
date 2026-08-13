@@ -14,6 +14,7 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
+import { findStudioPreset, planStudioPresetApplication } from "./studio-presets";
 import { createStudioStackRenderer } from "./studio-stack-render";
 
 /**
@@ -97,6 +98,23 @@ function handleStudioPanelAction({
       state.values[STUDIO_VERTEX_PATH_TARGET],
     )) {
       dispatch(command);
+    }
+    return;
+  }
+
+  if (action.value === "apply-preset") {
+    // The gallery is an applicator, not a mode (R58): this replaces the stack
+    // and stores nothing about having done so. The entry the picker names is
+    // read at the moment of the press rather than followed, which is what makes
+    // the select a picker rather than a switch.
+    const preset = findStudioPreset(state.values["gallery.entry"]);
+    if (!preset) return;
+
+    for (const command of planStudioPresetApplication({
+      layerIds: (state.layers ?? []).map((layer) => layer.id),
+      preset,
+    })) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
     }
     return;
   }

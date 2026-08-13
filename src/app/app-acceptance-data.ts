@@ -8,6 +8,7 @@ import { appSchema } from "./app-schema";
 import {
   studioBackgroundAcceptanceRows,
   studioExportAcceptanceRows,
+  studioGalleryAcceptanceRows,
   studioLayerAcceptanceRows,
 } from "./studio-acceptance-rows";
 
@@ -127,6 +128,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     userAction:
       "Build a two-layer stack, edit both layers, move and collapse Controls, wait for persistence, and reload the page.",
   },
+  ...studioGalleryAcceptanceRows,
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
   ...studioExportAcceptanceRows,
@@ -141,6 +143,16 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
  */
 export const appControlSectionInventory: readonly ToolcraftControlSectionInventoryEntry[] =
   [
+    {
+      entity: "Gallery",
+      entityId: "gallery",
+      groupingReason:
+        "Where a composition starts: the library of built-in stacks and the action that applies the one chosen. Two controls rather than one, because a select that applied on change would persist a claim about the stack that the first edit makes false (R58/R71) -- named as a picker, its value stays true whatever happens next.",
+      id: "gallery",
+      targets: ["gallery.entry", "gallery.actions"],
+      title: "Gallery",
+      workflowStage: "start",
+    },
     {
       entity: "Background",
       entityId: "background",

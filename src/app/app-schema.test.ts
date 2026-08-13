@@ -39,6 +39,7 @@ describe("appSchema", () => {
     // also why it carries no inventory entry of its own.
     expect(sections.map((section) => section.title)).toEqual([
       "Setup",
+      "Gallery",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide
       // into explicit workflow stages, and the kind gate moves with the

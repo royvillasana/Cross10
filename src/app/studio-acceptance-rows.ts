@@ -21,6 +21,58 @@ import type { ToolcraftComponentAcceptance } from "./acceptance/types";
 const SELECTED_LAYER_FIXTURE =
   "Shader Studio with a two-layer stack, a stripes layer below a gradient layer, the stripes layer selected";
 
+/**
+ * The gallery's two rows (R71).
+ *
+ * They are two because the operation is two: naming an entry changes nothing on
+ * the canvas, and applying it replaces the stack. A single row over a select
+ * that applied on change would have been one claim covering both, and the
+ * reason there is no such select is that its value would persist as a statement
+ * about a stack the next edit contradicts.
+ */
+export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "names every entry in the library exactly once",
+    browser: true,
+    browserTestName: "browser: studio gallery applies a composition and leaves every control live",
+    componentType: "select",
+    // Naming an entry is a choice, not a render: what it changes is what the
+    // action beside it will apply. The rendered claim belongs to that action's
+    // row, and splitting them this way is what keeps each honest.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Choosing a different composition in the gallery changes which entry Apply will bring in, and changes nothing on the canvas until it is pressed.",
+    fixture: "Shader Studio with the default stack",
+    id: "gallery.entry",
+    kind: "control",
+    // Every entry, and it is not ceremony: a preset that failed to render
+    // would look exactly like one nobody had proved, and the library is the
+    // one place in this product where ten separate compositions are asserted
+    // to be compositions at all.
+    optionCoverage: "each-visible-item",
+    target: "gallery.entry",
+    userAction: "Choose a different composition in the gallery.",
+  },
+  {
+    actionCoverage: ["apply-preset"],
+    automated: true,
+    automatedTestName:
+      "replaces the stack with the preset's own layers, and writes a record for exactly those",
+    browser: true,
+    browserTestName: "browser: studio gallery applies a composition and leaves every control live",
+    componentType: "actions",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Pressing Apply replaces the stack with the chosen composition's layers -- the panel lists them under their own names and the canvas draws them -- and every control stays live over the result, so editing the selected layer immediately after moves the picture the preset just set.",
+    fixture: "Shader Studio with the default stack",
+    id: "gallery.apply",
+    kind: "control",
+    target: "gallery.actions",
+    userAction: "Choose a composition in the gallery and press Apply, then edit a control.",
+  },
+];
+
 export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
