@@ -1,12 +1,14 @@
-# Toolcraft 0.0.18 — framework issues found building Croix10
+# Toolcraft 0.0.18 — framework issues found building Croix10 and Shader Studio
 
-Report for `@pixel-point/toolcraft` maintainers. Every issue below was reproduced in a
-generated app (`croix10`, WebGL2 raster product, timeline enabled in `playback` mode) on
-macOS 15.5 / Node 22 / 8-core machine. `0.0.18` is `latest`, so none of these can be
-resolved by upgrading.
+Report for `@pixel-point/toolcraft` maintainers. Issues 1–5 were reproduced in a generated
+app (`croix10`, WebGL2 raster product, timeline enabled in `playback` mode) on macOS 15.5 /
+Node 22 / 8-core machine. Issue 6 was found generating a second app (`shader-studio`) from
+the same version. `0.0.18` is `latest`, so none of these can be resolved by upgrading.
 
 Issues 1 and 2 have local workarounds and are annoyances. **Issues 3 and 4 are
 contradictions between two framework-owned files that no product change can resolve.**
+**Issue 6 makes a freshly generated app fail its own integrity check before a line of
+product code is written.**
 
 They do not block `verify:delivery` — the delivery executor greps only the titles derived
 from the product's own acceptance matrix, so a framework self-test is never selected. They
@@ -158,9 +160,48 @@ its own fixture and never reads the generated app, failing on an untouched scaff
 
 ---
 
-## Current effect on this app
+## 6. The scaffolder installs skills as symlinks its own integrity check forbids
 
-Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
+Severity: **blocks a generated app at generation time**, before any product code exists.
+
+`npx @pixel-point/toolcraft@0.0.18 create <name>` reports success and exits 0. The very next
+command a generated app is meant to run then fails:
+
+```
+Toolcraft verification inputs must not contain symbolic links: .claude/skills/brainstorming
+```
+
+Six skills are installed as symlinks — `brainstorming`, `browser`, `figma`,
+`figma-implement-design`, `systematic-debugging`, `writing-plans` — and the integrity check
+rejects symbolic links anywhere in its verification inputs. So the scaffolder's skill
+installer and the scaffolder's integrity check disagree about the same directory, and the
+default output of `create` is invalid against its own gate.
+
+This is version- or environment-dependent rather than universal: `croix10`, generated from
+the same version, has zero symlinks in that directory. Whatever selects between a symlink
+and a copy is not something the generated app controls.
+
+**Workaround**, applied in `shader-studio`, which restores a passing integrity check:
+
+```bash
+cd .claude/skills
+for link in *; do
+  if [ -L "$link" ]; then
+    target=$(readlink "$link"); rm "$link"; cp -R "$target" "$link"
+  fi
+done
+```
+
+**Suggested fix**: have the skill installer copy rather than link, or exclude
+`.claude/skills` from verification inputs. Either one closes the contradiction; the first is
+preferable, since a skill directory that is verified is a skill directory that cannot be
+swapped underneath a signed app.
+
+---
+
+## Current effect on these apps
+
+**Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
 
 ```
 217 passed, 4 failed (13.1m)   —   0 ECONNRESET
@@ -174,3 +215,8 @@ with 50 browser proofs passing in 14.8m, and `verify:receipt` reports the delive
 current and valid. So the practical cost of issues 3 and 4 is not a blocked delivery — it is
 that a generated app can never show a green browser suite, which is the signal a developer
 actually watches while working.
+
+**Shader Studio.** Hit issue 6 on generation. With the workaround above applied, the
+integrity check passes at 650 files and code health passes. Issues 1–4 are expected to apply
+here identically once this app declares a timeline, which is why the same `tools/` preload
+and `test:browser:stable` script were carried across rather than rediscovered.

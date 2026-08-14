@@ -1,0 +1,121 @@
+/*
+ * The overlay is fixed to the viewport and positioned from the canvas's own
+ * bounding rectangle, rather than absolutely inside a wrapper. A wrapper would
+ * mean putting an element between the runtime's scene surface and the canvas it
+ * positions, and the canvas is the product's output element -- not something to
+ * reparent for the sake of a coordinate system.
+ */
+.overlay {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 5;
+}
+
+/* Only while a gesture is running, so the overlay never swallows a click that
+   was meant for the canvas or the panel behind it. */
+.dragging {
+  pointer-events: auto;
+}
+
+/*
+ * The shape's own outline (14.3), drawn as a path rather than as a border on
+ * the body. A border can only be a rectangle, and most of the forms are not one
+ * -- a diamond wore a rectangle's outline until this existed, and a rotated
+ * shape wore an unrotated one.
+ */
+.outline {
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.outlineShape {
+  fill: none;
+  stroke: rgb(255 255 255 / 70%);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The path as it is being drawn, and the vertices already placed. */
+.penPath {
+  fill: rgb(120 180 255 / 12%);
+  stroke: rgb(120 180 255);
+  stroke-dasharray: 5 3;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.vertex {
+  background: rgb(120 180 255);
+  border: 1px solid rgb(10 20 40);
+  border-radius: 50%;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  pointer-events: none;
+  position: absolute;
+  width: 9px;
+}
+
+/* The one that closes the path, so it reads as a target rather than a mark. */
+.vertexFirst {
+  background: rgb(255 255 255);
+  height: 13px;
+  margin: -7px 0 0 -7px;
+  width: 13px;
+}
+
+.body {
+  background: transparent;
+  /* The outline above draws the shape; the body is the hit area for moving it. */
+  border: 1px dashed rgb(255 255 255 / 18%);
+  cursor: move;
+  touch-action: none;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+}
+
+/*
+ * The rotation grip (15.2): round where the extent nodes are square, because it
+ * does a different thing to the shape. Same size and the same stroke, so it
+ * still reads as one of the shape's own handles rather than as a decoration.
+ */
+.grip {
+  background: rgb(255 255 255);
+  border: 1px solid rgb(30 30 30);
+  border-radius: 50%;
+  cursor: grab;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  touch-action: none;
+  width: 12px;
+}
+
+.body:focus-visible,
+.grip:focus-visible,
+.node:focus-visible {
+  outline: 2px solid rgb(120 180 255);
+  outline-offset: 2px;
+}
+
+.node {
+  background: rgb(255 255 255);
+  border: 1px solid rgb(30 30 30);
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: none;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  width: 12px;
+}

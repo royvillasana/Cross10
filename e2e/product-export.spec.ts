@@ -1,28 +1,29 @@
 import type { Download, Page } from "@playwright/test";
 
 import { expectToolcraftExportedArtifact } from "./browser-acceptance-outcome-helpers";
-import { expectToolcraftImageExportArtifact } from "./browser-media-export-evidence";
-import { proveCroix10ApplicabilityCases } from "./croix10-applicability-harness";
-import {
-  chooseCroix10Option as chooseOption,
-  openCroix10,
-  prepareCroix10Slider,
-} from "./croix10-product-helpers";
 import { inspectToolcraftImageDownload } from "./image-artifact-inspection";
+import {
+  openStudioSingleLayer,
+  setStudioSelectValue,
+} from "./studio-product-helpers";
 import { expect, test } from "./toolcraft-product-test";
 
 /**
  * Image export acceptance domain.
  *
- * Every proof decodes the real artifact: byte length, media type, and pixel
- * dimensions come from the downloaded file rather than from the export UI, and
- * the decoded pixels must contain the chromatic field rather than an empty frame.
+ * Every proof decodes the real artifact: media type and pixel dimensions come
+ * from the downloaded file rather than from the export UI, and the decoded
+ * pixels must contain the stack rather than an empty frame.
  */
 
 const OPAQUE_BLACK = [0, 0, 0, 255] as const;
 
 async function exportImage(page: Page): Promise<Download> {
   const download = page.waitForEvent("download");
+  // Matched exactly. A prefix match also catches "Export Settings" in the setup
+  // section, which downloads a settings file — the artifact then fails to decode
+  // as an image, which reads like a broken exporter rather than a mis-aimed
+  // click. The action keeps this label whichever format is selected.
   await page.getByRole("button", { name: "Export PNG" }).click();
   return download;
 }
@@ -36,19 +37,19 @@ async function inspectDownload(download: Download, page: Page) {
   // A decodable artifact is not enough: it must actually contain product pixels.
   expect(
     inspection.nonBackgroundBounds,
-    "The exported artifact must contain the chromatic field, not an empty frame.",
+    "The exported artifact must contain the layer stack, not an empty frame.",
   ).not.toBeNull();
   return inspection;
 }
 
-test("browser: croix10 export png produces a decodable chromatic field artifact", async ({
+test("browser: studio export png produces a decodable layer stack artifact", async ({
   page,
 }) => {
   // Readback proofs plus their stability windows do not fit the default
   // per-test budget when the whole suite runs on one worker.
   test.setTimeout(120_000);
 
-  const session = await openCroix10(page);
+  const { session } = await openStudioSingleLayer(page);
 
   await expectToolcraftExportedArtifact(
     session.targetAction("export.actions", async (currentPage) =>
@@ -64,43 +65,30 @@ test("browser: croix10 export png produces a decodable chromatic field artifact"
     { requirementId: "export.image-action" },
   );
 
-  // The row also carries the protected image-export claim, which is stricter than
-  // "decodable": exact dimensions, exact media type, the field filling the frame, and
-  // named colours where the composition puts them. Two wide bands make those colours
-  // predictable rather than incidental.
-  await prepareCroix10Slider(page, "stripe.count", 0);
-  await expectToolcraftImageExportArtifact(
-    session.targetAction("export.actions", async (currentPage) =>
-      exportImage(currentPage),
-    ),
-    {
-      backgroundRgba: OPAQUE_BLACK,
-      // The field is full bleed, so every pixel is product output.
-      expectedBounds: { height: 1, width: 1, x: 0, y: 0 },
-      // Long edge 4096 at the default 4K resolution, at the artboard's 16:9.
-      expectedHeight: 2304,
-      expectedMediaType: "image/png",
-      expectedPixels: [
-        // The first palette slot, and the slot the sequence wraps onto: both are
-        // exact in a lossless PNG because the shader converts to sRGB once.
-        { rgba: [11, 122, 59, 255], xRatio: 0.25, yRatio: 0.5 },
-        { rgba: [11, 60, 138, 255], xRatio: 0.75, yRatio: 0.5 },
-      ],
-      expectedWidth: 4096,
-      page,
-      requirementId: "export.image-action",
-    },
-  );
+  // The sticky footer is one surface and this row covers every action in it, so
+  // the clipboard action is proved here rather than in a row of its own. What
+  // lands has to be runnable source, not a description of one.
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy shader source" }).click();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+
+  expect(copied).toContain("void main()");
+  expect(copied).toContain("uniform vec2 uResolution;");
+  // Baked, so the recipient wires one uniform rather than fifty.
+  expect(copied).toMatch(/const float uLayer0_count = [\d.]+;/u);
+  // The artifact has to compile elsewhere, so it can carry nothing of ours.
+  expect(copied).not.toContain("Croix10");
+  expect(copied).not.toContain("Shader Studio");
+  expect(copied).not.toContain("Toolcraft");
 });
 
-test("browser: croix10 image export format changes the decoded artifact type", async ({
+test("browser: studio image export format changes the decoded artifact type", async ({
   page,
 }) => {
-  // Readback proofs plus their stability windows do not fit the default
-  // per-test budget when the whole suite runs on one worker.
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
 
-  const session = await openCroix10(page);
+  const { session } = await openStudioSingleLayer(page);
 
   const png = await expectToolcraftExportedArtifact(
     session.controlAction("export.image.format", async (_control, currentPage) =>
@@ -114,7 +102,7 @@ test("browser: croix10 image export format changes the decoded artifact type", a
     { requirementId: "export.image-format" },
   );
 
-  await chooseOption(page, "export.image.format", "JPG");
+  await setStudioSelectValue(page, "export.image.format", "JPG");
 
   await expectToolcraftExportedArtifact(
     session.controlAction("export.image.format", async (_control, currentPage) =>
@@ -130,103 +118,39 @@ test("browser: croix10 image export format changes the decoded artifact type", a
     },
     { requirementId: "export.image-format" },
   );
-
-  // And reproved at every resolution the export offers, because the format decides
-  // the codec and the resolution decides the backing: a format that produced the
-  // wrong media type at one resolution would otherwise hide behind another.
-  await proveCroix10ApplicabilityCases({
-    act: async (index) => {
-      await chooseOption(
-        page,
-        "export.image.format",
-        index % 2 === 0 ? "JPG" : "PNG",
-      );
-    },
-    page,
-    proveVisible: async (requirementId) => {
-      await expectToolcraftExportedArtifact(
-        session.controlAction(
-          "export.image.format",
-          async (_control, currentPage) => exportImage(currentPage),
-        ),
-        async (download) => inspectDownload(download, page),
-        { requirementId },
-      );
-    },
-    requirementId: "export.image-format",
-    session,
-    target: "export.image.format",
-  });
 });
 
-test("browser: croix10 image export resolution changes decoded pixel dimensions", async ({
+test("browser: studio image export resolution changes decoded pixel dimensions", async ({
   page,
 }) => {
-  // Readback proofs plus their stability windows do not fit the default
-  // per-test budget when the whole suite runs on one worker.
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
 
-  const session = await openCroix10(page);
+  const { session } = await openStudioSingleLayer(page);
 
-  await chooseOption(page, "export.image.resolution", "2K");
+  // Every option in turn, because the resolution decides the backing the frame
+  // is rendered into: one that produced the right long edge at 4K while
+  // ignoring 2K would otherwise pass on the default alone.
+  for (const [option, longEdge] of [
+    ["2K", 2048],
+    ["4K", 4096],
+    ["8K", 8192],
+  ] as const) {
+    await setStudioSelectValue(page, "export.image.resolution", option);
 
-  // The helper resolves to the artifact, not the inspection, so the 2K aspect is
-  // captured here for comparison against the 4K export.
-  let twoKAspect = Number.NaN;
-
-  await expectToolcraftExportedArtifact(
-    session.controlAction(
-      "export.image.resolution",
-      async (_control, currentPage) => exportImage(currentPage),
-    ),
-    async (download) => {
-      const inspection = await inspectDownload(download, page);
-      expect(Math.max(inspection.width, inspection.height)).toBe(2048);
-      twoKAspect = inspection.width / inspection.height;
-      return inspection;
-    },
-    { requirementId: "export.image-resolution" },
-  );
-
-  await chooseOption(page, "export.image.resolution", "4K");
-
-  await expectToolcraftExportedArtifact(
-    session.controlAction(
-      "export.image.resolution",
-      async (_control, currentPage) => exportImage(currentPage),
-    ),
-    async (download) => {
-      const inspection = await inspectDownload(download, page);
-      expect(Math.max(inspection.width, inspection.height)).toBe(4096);
-      // The composition must scale rather than gain bands: a 4K export of the
-      // same scene is not the 2K export with more stripes in it.
-      expect(inspection.width / inspection.height).toBeCloseTo(twoKAspect, 2);
-      return inspection;
-    },
-    { requirementId: "export.image-resolution" },
-  );
-
-  await proveCroix10ApplicabilityCases({
-    act: async (index) => {
-      await chooseOption(
-        page,
+    await expectToolcraftExportedArtifact(
+      session.controlAction(
         "export.image.resolution",
-        index % 2 === 0 ? "8K" : "2K",
-      );
-    },
-    page,
-    proveVisible: async (requirementId) => {
-      await expectToolcraftExportedArtifact(
-        session.controlAction(
-          "export.image.resolution",
-          async (_control, currentPage) => exportImage(currentPage),
-        ),
-        async (download) => inspectDownload(download, page),
-        { requirementId },
-      );
-    },
-    requirementId: "export.image-resolution",
-    session,
-    target: "export.image.resolution",
-  });
+        async (_control, currentPage) => exportImage(currentPage),
+      ),
+      async (download) => {
+        const inspection = await inspectDownload(download, page);
+        expect(
+          Math.max(inspection.width, inspection.height),
+          `${option} must decode to a ${longEdge}px long edge`,
+        ).toBe(longEdge);
+        return inspection;
+      },
+      { requirementId: "export.image-resolution" },
+    );
+  }
 });

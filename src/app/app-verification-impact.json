@@ -5,526 +5,397 @@
       "acceptanceIds": [
         "background.color",
         "background.include",
-        "canvas.infinity-image-export",
+        "canvas.infinity-export",
         "canvas.infinity-mode",
+        "canvas.render-scale",
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
+        "layers.selection",
         "persistence.reload",
-        "presets.active",
-        "presets.load",
-        "randomize.action",
-        "randomize.lock-immersion",
-        "randomize.lock-palette",
-        "randomize.lock-planes",
-        "randomize.lock-stripe",
-        "randomize.shortcut"
+        "selectedLayer.type"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-acceptance-data.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "layers.grouping",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "persistence.reload",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-acceptance.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "gallery.apply",
+        "gallery.entry",
+        "persistence.reload"
       ],
       "kind": "functional",
       "path": "src/app/app-composition.tsx"
     },
     {
       "acceptanceIds": [
+        "persistence.reload"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-identity.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.render-scale",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.visibility",
+        "selectedLayer.count"
+      ],
+      "kind": "performance",
+      "path": "src/app/app-performance.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include",
-        "bands.separator-width",
+        "canvas.infinity-export",
+        "canvas.infinity-mode",
         "canvas.render-scale",
-        "engine.active",
+        "export.image-action",
         "export.image-format",
         "export.image-resolution",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "palette.slots",
+        "gallery.apply",
+        "gallery.entry",
+        "layers.grouping",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
         "persistence.reload",
-        "presets.active",
-        "presets.load",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "randomize.action",
-        "randomize.lock-immersion",
-        "randomize.lock-palette",
-        "randomize.lock-planes",
-        "randomize.lock-stripe",
-        "randomize.shortcut",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "timeline.playback",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
       ],
       "kind": "functional",
       "path": "src/app/app-schema.ts"
     },
     {
       "acceptanceIds": [
-        "background.color",
-        "background.include",
-        "bands.separator-width",
-        "canvas.render-scale",
-        "engine.active",
-        "export.image-format",
-        "export.image-resolution",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "palette.slots",
-        "persistence.reload",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
+        "layers.grouping",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
       ],
       "kind": "functional",
-      "path": "src/app/croix10-applicability.ts"
+      "path": "src/app/studio-acceptance-rows.ts"
     },
     {
       "acceptanceIds": [
-        "persistence.reload"
+        "background.color",
+        "background.include"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-background-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.render-scale"
       ],
       "kind": "presentation",
-      "path": "src/app/croix10-canvas.module.css"
-    },
-    {
-      "acceptanceIds": [
-        "canvas.render-scale",
-        "persistence.reload",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "randomize.shortcut",
-        "stripe.count",
-        "timeline.playback"
-      ],
-      "kind": "performance",
-      "passIds": [
-        "chromatic-field"
-      ],
-      "path": "src/app/croix10-canvas.tsx"
-    },
-    {
-      "acceptanceIds": [
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-colour-sections.ts"
-    },
-    {
-      "acceptanceIds": [
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-engine-sections.ts"
-    },
-    {
-      "acceptanceIds": [
-        "background.color",
-        "bands.separator-width",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "palette.slots",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-parameters.ts"
-    },
-    {
-      "acceptanceIds": [
-        "canvas.infinity-mode",
-        "canvas.render-scale",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "persistence.reload",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "timeline.playback",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "performance",
-      "passIds": [
-        "chromatic-field"
-      ],
-      "path": "src/app/croix10-pipeline.ts"
-    },
-    {
-      "acceptanceIds": [
-        "presets.active",
-        "presets.load"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-presets.ts"
-    },
-    {
-      "acceptanceIds": [
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-proximity.ts"
-    },
-    {
-      "acceptanceIds": [
-        "randomize.action",
-        "randomize.lock-immersion",
-        "randomize.lock-palette",
-        "randomize.lock-planes",
-        "randomize.lock-stripe",
-        "randomize.shortcut"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-randomize.ts"
-    },
-    {
-      "acceptanceIds": [
-        "background.color",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.slots",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.count",
-        "timeline.playback",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "performance",
-      "passIds": [
-        "chromatic-field"
-      ],
-      "path": "src/app/croix10-render.ts"
+      "path": "src/app/studio-canvas.module.css"
     },
     {
       "acceptanceIds": [
         "background.color",
         "background.include",
-        "bands.separator-width",
-        "canvas.infinity-image-export",
+        "canvas.infinity-export",
         "canvas.infinity-mode",
         "canvas.render-scale",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "palette.slots",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "timeline.playback",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "functional",
-      "path": "src/app/croix10-scene.ts"
-    },
-    {
-      "acceptanceIds": [
-        "bands.separator-width",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
+        "history.undo",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility"
       ],
       "kind": "performance",
+      "path": "src/app/studio-canvas.tsx",
       "passIds": [
-        "chromatic-field"
-      ],
-      "path": "src/app/croix10-shaders-ramp.ts"
+        "layer-stack"
+      ]
     },
     {
       "acceptanceIds": [
-        "bands.separator-width",
-        "engine.active",
-        "immersion.balance",
-        "immersion.driftCycles",
-        "immersion.spread",
-        "induction.frequency",
-        "induction.fringe-intensity",
-        "induction.fringe-width",
-        "interference.angle-offset",
-        "interference.blend-mode",
-        "interference.driftCycles",
-        "interference.enabled",
-        "interference.phase-offset",
-        "interference.pitch-ratio",
-        "interference.width-ratio",
-        "palette.cycling-offset",
-        "proximity.enabled",
-        "proximity.falloff",
-        "proximity.radius",
-        "proximity.strength",
-        "ramp.driftCycles",
-        "ramp.gradient",
-        "ramp.interpolationSpace",
-        "ramp.phase",
-        "ramp.source",
-        "shape.kind",
-        "shape.mode",
-        "shape.size",
-        "shape.strength",
-        "stripe.angle",
-        "stripe.count",
-        "stripe.jitter-amount",
-        "stripe.jitter-frequency",
-        "stripe.mirror",
-        "stripe.phase",
-        "stripe.width-ratio",
-        "transchromie.blend-mode",
-        "transchromie.planes",
-        "viewer.angle",
-        "viewer.parallax"
-      ],
-      "kind": "performance",
-      "passIds": [
-        "chromatic-field"
-      ],
-      "path": "src/app/croix10-shaders.ts"
-    },
-    {
-      "acceptanceIds": [
-        "randomize.shortcut"
+        "background.color",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB"
       ],
       "kind": "functional",
-      "path": "src/app/croix10-shortcuts.ts"
+      "path": "src/app/studio-color.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.infinity-export",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-export-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-gallery-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.jitterVariation",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-layer-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "history.undo",
+        "layers.selection",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.jitterVariation",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-layer-sync.ts"
+    },
+    {
+      "acceptanceIds": [
+        "layers.imageComposite",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.jitterVariation",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-layers.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.render-scale",
+        "export.image-action",
+        "export.image-format",
+        "export.image-resolution",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-pipeline.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-presets.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-region-geometry.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-region-handles.module.css"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.regionHandle.corner",
+        "selectedLayer.regionHandle.move",
+        "selectedLayer.regionHandle.rotate",
+        "selectedLayer.regionHandle.side",
+        "stack.pen"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-region-handles.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.render-scale",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.visibility",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.jitterVariation",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-scene.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "stack.pen",
+        "stack.pen.shortcut"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-shortcuts.ts"
+    },
+    {
+      "acceptanceIds": [
+        "export.image-action"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-source.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-stack-render.ts",
+      "passIds": [
+        "layer-stack"
+      ]
+    },
+    {
+      "acceptanceIds": [
+        "layers.grouping",
+        "layers.imageComposite",
+        "layers.reorder",
+        "layers.selection",
+        "layers.visibility",
+        "persistence.reload",
+        "selectedLayer.angle",
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
+        "selectedLayer.count",
+        "selectedLayer.opacity",
+        "selectedLayer.phase",
+        "selectedLayer.rampType",
+        "selectedLayer.type",
+        "selectedLayer.widthRatio"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-stack-state.ts"
     }
   ]
 }
