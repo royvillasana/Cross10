@@ -252,6 +252,13 @@ export function StudioCanvas(): React.JSX.Element {
       frame = 0;
       if (!pending) return;
       dispatch({
+        // Where the pointer is is not an edit, so it is not on the undo stack.
+        // Recorded, it was worse than untidy: the pointer moves whenever a
+        // button is clicked, so every click on Undo pushed a fresh cursor patch
+        // for that same Undo to pop, and no layer command underneath it could
+        // ever be reached. R68 commits the position so the export bakes what
+        // the author saw; nothing in that asks for it to be undoable.
+        history: "skip",
         target: STUDIO_CURSOR_TARGET,
         type: "controls.setValue",
         value: [...pending],

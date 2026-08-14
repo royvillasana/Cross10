@@ -10,7 +10,10 @@ import {
 } from "./studio-product-helpers";
 import { STUDIO_PRESETS } from "../src/app/studio-presets";
 import { expectToolcraftAcceptanceOutcome } from "./browser-acceptance-outcome-helpers";
-import { expectToolcraftProductObservableToChange } from "./product-observable-helpers";
+import {
+  expectToolcraftProductObservableToChange,
+  getToolcraftProductObservableSnapshot,
+} from "./product-observable-helpers";
 import { test } from "./toolcraft-product-test";
 
 /**
@@ -56,6 +59,33 @@ async function readStudioColourVariety(page: Page): Promise<number> {
     }
     return seen.size;
   });
+}
+
+/**
+ * Waits until the frame stops changing.
+ *
+ * The evidence helper requires a baseline that holds still before the action --
+ * rightly, since a canvas that was already moving could produce a "change" that
+ * had nothing to do with the press. Under a loaded suite the first frames after
+ * a fixture is built are still settling, so the wait is explicit rather than
+ * assumed: two consecutive reads that agree.
+ */
+async function settleStudioOutput(page: Page): Promise<void> {
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await getToolcraftProductObservableSnapshot(page));
+        if (recent.length > 3) recent.shift();
+        // Three in a row rather than two, and over a window rather than back to
+        // back: the frames that move under a loaded suite are the ones a
+        // resize or a first draw is still catching up with, and two adjacent
+        // reads can agree in the gap between them.
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [300], timeout: 30_000 },
+    )
+    .toBe(true);
 }
 
 async function applyStudioPreset(page: Page, label: string): Promise<void> {
@@ -125,6 +155,7 @@ test("browser: studio gallery applies a composition and leaves every control liv
 
   await setStudioSelectValue(page, "gallery.entry", first.label);
 
+  await settleStudioOutput(page);
   await expectToolcraftProductObservableToChange(
     session,
     session.controlAction("gallery.actions", async () => {

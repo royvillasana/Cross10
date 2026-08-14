@@ -9,6 +9,7 @@ import {
   studioBackgroundAcceptanceRows,
   studioExportAcceptanceRows,
   studioGalleryAcceptanceRows,
+  studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
 } from "./studio-acceptance-rows";
 
@@ -129,6 +130,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
       "Build a two-layer stack, edit both layers, move and collapse Controls, wait for persistence, and reload the page.",
   },
   ...studioGalleryAcceptanceRows,
+  ...studioHistoryAcceptanceRows,
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
   ...studioExportAcceptanceRows,

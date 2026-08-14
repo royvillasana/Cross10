@@ -22,6 +22,34 @@ const SELECTED_LAYER_FIXTURE =
   "Shader Studio with a two-layer stack, a stripes layer below a gradient layer, the stripes layer selected";
 
 /**
+ * History, which the runtime owns and this product had broken.
+ *
+ * A row for a runtime capability is unusual and earns its place here: the undo
+ * stack is shared, so whether Undo works at all is decided by what *this*
+ * product puts on it. Nothing else in the table would have caught it -- every
+ * other row asserts an edit reaching the frame, and an edit that cannot be
+ * taken back reaches the frame perfectly well.
+ */
+export const studioHistoryAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "keeps every derived write out of the undo stack",
+    browser: true,
+    browserTestName: "browser: studio undo reverts an edit, a layer, and a layer's values",
+    componentType: "toolbar",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "One press of Undo takes back one edit: a slider returns to the value it had, a layer that was added is gone again, and a layer that was deleted comes back as itself -- with the settings it had rather than as a fresh layer wearing its name.",
+    fixture: "Shader Studio with a layer edited, one added, and one deleted",
+    id: "history.undo",
+    kind: "runtime",
+    target: "history.undo",
+    userAction:
+      "Edit a slider and press Undo; add a layer and press Undo; delete an edited layer and press Undo.",
+  },
+];
+
+/**
  * The gallery's two rows (R71).
  *
  * They are two because the operation is two: naming an entry changes nothing on

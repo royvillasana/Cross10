@@ -9,7 +9,6 @@ import {
   STUDIO_LAYER_TYPE_TARGET,
   collectStudioSelectedLayerEdit,
   projectStudioLayerEntry,
-  pruneStudioLayerRecord,
   readStudioLayerEntry,
   readStudioLayerRecord,
   retypeStudioLayerEntry,
@@ -45,12 +44,31 @@ export function useStudioLayerSync(): void {
   const values = state.values as Readonly<Record<string, unknown>>;
   const record = readStudioLayerRecord(values[STUDIO_LAYER_RECORD_TARGET]);
 
+  /**
+   * The record follows the controls; it is never an edit of its own.
+   *
+   * `history: "skip"`, and this is load-bearing rather than tidy. Every write
+   * here is derived from a change that is *already* in history -- the runtime
+   * records the control edit, and this is the consequence of it -- so recording
+   * it again puts a second patch on the stack for one author action. That is
+   * what made Undo inert across the whole app: the sync's patch sat on top, an
+   * undo popped it, the sync immediately re-derived it from controls the undo
+   * had not touched, and the stack treadmilled. The button was never disabled
+   * and nothing ever moved.
+   *
+   * Skipping it is not a loss of undo coverage. Undo pops the control edit, the
+   * controls revert, and this runs once more to fold the reverted values back
+   * into the record -- so the render follows, one undo per edit, with no patch
+   * of its own.
+   *
+   * `label` and `group` are kept in the signature because the callers read
+   * better for naming what they are doing, and because a future write that
+   * genuinely *is* an edit would need them.
+   */
   const writeRecord = React.useCallback(
-    (next: StudioLayerRecord, label: string, group: string): void => {
+    (next: StudioLayerRecord, _label: string, _group: string): void => {
       dispatch({
-        history: "merge",
-        historyGroup: group,
-        label,
+        history: "skip",
         target: STUDIO_LAYER_RECORD_TARGET,
         type: "controls.setValue",
         value: next,
@@ -70,10 +88,13 @@ export function useStudioLayerSync(): void {
     if (lastSyncedLayerId.current !== selectedLayerId) {
       const entry = readStudioLayerEntry(record, selectedLayerId);
       for (const assignment of projectStudioLayerEntry(entry)) {
+        // Skipped for the same reason the record write is: loading a layer's
+        // values into the controls is what selecting it *means*, not a second
+        // edit beside it. Recorded, an undo would revert the controls to the
+        // previous layer's values while that layer stayed selected -- which the
+        // next pass would fold straight into it.
         dispatch({
-          history: "merge",
-          historyGroup: `studio-layer-select:${selectedLayerId}`,
-          label: "Select layer",
+          history: "skip",
           target: assignment.target,
           type: "controls.setValue",
           value: assignment.value,
@@ -105,13 +126,15 @@ export function useStudioLayerSync(): void {
     }
   }, [dispatch, record, selectedLayerId, values, writeRecord]);
 
-  React.useEffect(() => {
-    // Orphans are pruned on read rather than on delete, so a delete the product
-    // never observed cannot leak an entry forever.
-    const liveIds = layers.map((layer) => layer.id);
-    const pruned = pruneStudioLayerRecord(record, liveIds);
-    if (Object.keys(pruned).length !== Object.keys(record).length) {
-      writeRecord(pruned, "Remove layer", "studio-layer-prune");
-    }
-  }, [layers, record, writeRecord]);
+  // A deleted layer's entry is deliberately *not* removed here.
+  //
+  // It was, until undo started working. Deleting a layer prunes nothing the
+  // renderer reads -- `buildStudioSceneParameters` prunes against the live
+  // layer list every frame, so an orphan draws nothing -- and pruning the
+  // stored record turned an undone delete into a layer restored with its
+  // settings wiped: the runtime brought the layer back and the values it had
+  // were already gone. Between a record that remembers a layer the author
+  // removed and an undo that silently resets one, the memory is the cheaper
+  // mistake: an entry is a few dozen numbers, and applying a preset replaces
+  // the record wholesale, which collects them.
 }
