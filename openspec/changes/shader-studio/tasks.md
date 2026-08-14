@@ -166,7 +166,22 @@ Croix10's surface is the floor, not the ceiling. Each control carried across sti
   - Two values could not be carried as written: Croix10 asks for 220 and 340 bands and this field's count stops at 200, which is the Nyquist limit against pixel pitch rather than a performance bound
 - [x] 5.3 **Selection sets a starting state and leaves every control live** — proved by applying `Additive Bands` and then cutting its band count, which moves the picture the preset just set. Read as the number of distinct colours across a row, so an edit that merely turned the field could not have passed it
 - [x] 5.5 **Acceptance rows and browser proofs.** Two rows, because the operation is two: naming an entry is a command side effect that draws nothing, applying it changes the product's output. The proof walks **all ten** entries rather than sampling — `optionCoverage: "each-visible-item"` — and each has to list its own rows, assemble its own stack, and put more than two colours on the frame. A preset that failed to render would otherwise look exactly like one nobody had proved. `npm run verify:delivery` is the 2.10 gate
-  - **A defect this found and did not cause: layer commands are not effectively undoable.** Adding one layer by hand and pressing the toolbar's own Undo ten times leaves it in place, with nothing of the gallery involved. So the gallery's row claims what can be seen and says nothing about undo. The likely cause is the layer sync committing a patch of its own after every change, so each undo pops that instead of the layer command underneath — worth confirming before it is fixed, and worth fixing before any feature leans on undo
+  - **A defect this found and did not cause**, now fixed below. The gallery's row still claims only what its own proof sees; undo has a row of its own
+
+### Undo, which this product had broken — fixed
+
+Found while proving the gallery, and worse than the first reading: undo did nothing **anywhere** in the app, for any edit, and the button was never even disabled. Not a runtime fault — the reducer restores layers and values from a patch correctly. Two product causes, both derived state on a shared stack:
+
+- **The layer sync recorded its record write**, which is the consequence of a control edit the runtime had already recorded. One edit, two patches: an undo popped the sync's, the sync re-derived it from controls the undo had not touched, and the stack treadmilled
+- **The canvas recorded the pointer position**, which changes whenever a button is clicked — including the Undo button trying to pop it, so no layer command underneath could ever be reached
+
+Both are `history: "skip"` now. A third thing went with them: deleting a layer pruned its record entry, so an undone delete restored the row with its settings wiped — which reads as working right up until you look at what came back. The renderer already prunes against the live layer list every frame, so keeping the entry costs nothing, and applying a preset replaces the record wholesale, which collects them.
+
+Guarded per dispatch rather than per module: a source test walks both modules and requires every `controls.setValue` to say `skip`, while requiring the product's own commands to stay recorded — undoing a preset has to put back the record its stack was rendered from. The browser proof presses Undo once for each of the three shapes an author undoes: a value, a layer that arrived, and a layer that went, which has to come back as itself.
+
+**Known limitation.** Undoing an edit made while a *different* layer is selected writes the reverted value into the selected layer: a reverted patch does not say which layer it belonged to, and the record follows the controls (R56). Undo is correct for the layer you are on. Fixing it properly means the record becoming the single store rather than a follower, which is a change to R56 rather than a patch to the sync.
+
+**A note on the suite, since it cost time here.** The evidence helpers require the canvas to hold still before a measured action, and under a loaded run the first frames after a fixture is built are still settling. Idle output is stable — twelve reads, one hash — so the fix is an explicit settle before the action (three consecutive equal reads), not a longer timeout. Both proofs written here do that, and they pass in a loaded run of every product spec
 - [x] 5.4 Resolve open question 4: whether the gallery needs its own persistence, and record the answer in `design.md`
 - [ ] 5.5 Acceptance rows and browser proofs; run `npm run verify:delivery`
 
