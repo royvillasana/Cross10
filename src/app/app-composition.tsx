@@ -1,20 +1,37 @@
 import type { ToolcraftAppComposition } from "@/toolcraft/runtime/react";
 
 import { appSchema } from "./app-schema";
-import { Croix10Canvas } from "./croix10-canvas";
-import { croix10PipelineRegistration } from "./croix10-pipeline";
-import { findCroix10Preset } from "./croix10-presets";
-import { buildCroix10RandomizeAssignments } from "./croix10-randomize";
-import { createCroix10Renderer } from "./croix10-render";
-import { CROIX10_SCENE_RECT, readCroix10SceneParameters } from "./croix10-scene";
+import { StudioCanvas } from "./studio-canvas";
+import { studioPipelineRegistration } from "./studio-pipeline";
+import { buildStudioSceneParameters, studioSceneRect } from "./studio-scene";
+import { studioAssembleDeliverableSource } from "./studio-source";
+import {
+  planStudioLayerDuplication,
+  planStudioPenDrawing,
+  STUDIO_VERTEX_PATH_TARGET,
+  readStudioLayerEntry,
+  readStudioLayerRecord,
+  STUDIO_LAYER_RECORD_TARGET,
+  writeStudioLayerEntry,
+} from "./studio-stack-state";
+import { findStudioPreset, planStudioPresetApplication } from "./studio-presets";
+import { createStudioStackRenderer } from "./studio-stack-render";
 
 /**
- * The export frame renders the same field through the same renderer as preview,
- * into a product-owned offscreen surface, then composites into the 2D context the
- * runtime supplies. The runtime still owns backing allocation for the artifact,
- * background, encoding, download, and progress; this only contributes pixels.
+ * The export frame draws the same stack through the same renderer as preview,
+ * into a product-owned offscreen surface, then composites into the 2D context
+ * the runtime supplies.
+ *
+ * Same renderer, deliberately: preview and export both call
+ * `createStudioStackRenderer` over `buildStudioSceneParameters`, so the assembled
+ * program, the uniform order, and the linear-light compositing cannot drift
+ * between what an author sees and what they get. A second export path would be a
+ * second chance to disagree.
+ *
+ * The runtime still owns backing allocation for the artifact, background,
+ * encoding, download, and progress; this only contributes pixels.
  */
-function renderCroix10ExportFrame({
+function renderStudioExportFrame({
   context,
   frame,
   pixelRatio,
@@ -39,11 +56,12 @@ function renderCroix10ExportFrame({
   });
   if (!gl) return;
 
-  const renderer = createCroix10Renderer(gl);
+  const renderer = createStudioStackRenderer(gl);
   try {
-    // Background is composited by the runtime for artifacts, so the product frame
-    // draws the field alone and lets the runtime own artifact background rules.
-    renderer.render(readCroix10SceneParameters(state, false), width, height);
+    // Background is composited by the runtime for artifacts, so the product
+    // frame draws the stack alone and lets the runtime own artifact background
+    // rules — which is what keeps the transparent-image coverage claim true.
+    renderer.render(buildStudioSceneParameters(state, false), width, height);
     // Drawn in scene coordinates; the runtime context already carries the
     // artifact transform, so the offscreen surface only supplies resolution.
     context.drawImage(surface, 0, 0, sceneWidth, sceneHeight);
@@ -53,60 +71,148 @@ function renderCroix10ExportFrame({
 }
 
 /**
- * Preset load and Randomize, both as ordinary control edits.
+ * Copies the assembled shader source to the clipboard.
  *
- * Each writes its targets through `controls.setValue` under one shared history
- * group, so the whole batch is a single undo step and nothing about persistence,
- * reset, or Settings Transfer needs to know these commands exist. Neither writes any
- * product-owned scene format: a preset is a map of schema targets, and randomize
- * derives its values from the schema's own declared domains.
+ * Built from the same scene the renderer draws, so what is copied is the frame
+ * on screen rather than a re-derivation of it.
+ *
+ * The real Promise is returned rather than awaited and discarded: the runtime
+ * owns the sticky footer indicator, and handing it an already-resolved Promise
+ * would report the copy finished before the clipboard write had.
+ *
+ * Deliberately not an export action. It writes no artifact and downloads
+ * nothing, so the recorded image-and-video artifact intent is untouched.
  */
-function handleCroix10PanelAction({
+function handleStudioPanelAction({
   action,
   dispatch,
   state,
-}: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]): void {
-  if (action.value === "load-preset") {
-    const preset = findCroix10Preset(state.values["presets.active"]);
-    if (!preset) return;
-    for (const [target, value] of Object.entries(preset.values)) {
-      dispatch({
-        history: "merge",
-        historyGroup: `croix10-preset:${preset.id}`,
-        label: `Load ${preset.label}`,
-        target,
-        type: "controls.setValue",
-        value,
-      });
+}: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]):
+  | Promise<void>
+  | void {
+  if (action.value === "draw-shape") {
+    // The same plan the P shortcut carries out (15.4), so the button and the
+    // key are one operation rather than two implementations of it.
+    for (const command of planStudioPenDrawing(
+      state.selectedLayerId ?? "",
+      state.values[STUDIO_VERTEX_PATH_TARGET],
+    )) {
+      dispatch(command);
     }
     return;
   }
 
-  if (action.value === "randomize") {
-    const assignments = buildCroix10RandomizeAssignments(state);
-    for (const assignment of assignments) {
-      dispatch({
-        history: "merge",
-        historyGroup: "croix10-randomize",
-        label: "Randomize",
-        target: assignment.target,
-        type: "controls.setValue",
-        value: assignment.value,
-      });
+  if (action.value === "apply-preset") {
+    // The gallery is an applicator, not a mode (R58): this replaces the stack
+    // and stores nothing about having done so. The entry the picker names is
+    // read at the moment of the press rather than followed, which is what makes
+    // the select a picker rather than a switch.
+    const preset = findStudioPreset(state.values["gallery.entry"]);
+    if (!preset) return;
+
+    for (const command of planStudioPresetApplication({
+      layerIds: (state.layers ?? []).map((layer) => layer.id),
+      preset,
+    })) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
+    }
+    return;
+  }
+
+  if (action.value === "duplicate-layer") {
+    duplicateStudioSelectedLayer({ dispatch, state });
+    return;
+  }
+
+  if (action.value !== "copy-source") return;
+
+  return navigator.clipboard.writeText(
+    studioAssembleDeliverableSource(buildStudioSceneParameters(state, true)),
+  );
+}
+
+/**
+ * Copies the selection, with everything that makes it what it is.
+ *
+ * A layer and a group are the same operation over a different block: a layer is
+ * a block of one, a group is itself plus everything under it. The plan works
+ * that out — including rewiring each member's parent onto the copied group —
+ * and this only carries it out, which is what keeps the interesting part
+ * testable without a runtime.
+ *
+ * Two kinds of write, because a layer lives in two places (R56). The runtime
+ * owns identity, order, name, visibility and parentage, so each copy is created
+ * through `layers.add` with an explicit draft id. The product owns every value
+ * hung off an id, so the record entries are written together in one edit at the
+ * end. Either half alone is a bug that looks like a feature: only the first
+ * gives plain new layers wearing copies' names, only the second writes values
+ * no layer has.
+ *
+ * The record is read once, before any dispatch: adding layers does not touch
+ * it, so the values written are still the ones the sources had. Groups get no
+ * entry — a group organises, it does not render.
+ *
+ * The copy is inserted directly after the block it came from, so it composites
+ * where the author was already looking, and the copied source is selected
+ * afterwards because the thing you just made is the thing you want to edit.
+ */
+function duplicateStudioSelectedLayer({
+  dispatch,
+  state,
+}: {
+  dispatch: Parameters<
+    NonNullable<ToolcraftAppComposition["onPanelAction"]>
+  >[0]["dispatch"];
+  state: Parameters<NonNullable<ToolcraftAppComposition["onPanelAction"]>>[0]["state"];
+}): void {
+  const sourceId = state.selectedLayerId ?? "";
+  const steps = planStudioLayerDuplication(state.layers ?? [], sourceId);
+  if (steps.length === 0) return;
+
+  let record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
+
+  for (const step of steps) {
+    dispatch({
+      insertIndex: step.insertIndex,
+      layer: {
+        id: step.copyId,
+        ...(step.isGroup ? { kind: "group" as const } : {}),
+        name: step.name,
+        ...(step.parentGroupId ? { parentGroupId: step.parentGroupId } : {}),
+        visible: step.visible,
+      },
+      type: "layers.add",
+    });
+
+    if (!step.isGroup) {
+      record = writeStudioLayerEntry(
+        record,
+        step.copyId,
+        readStudioLayerEntry(record, step.sourceId),
+      );
     }
   }
+
+  dispatch({
+    target: STUDIO_LAYER_RECORD_TARGET,
+    type: "controls.setValue",
+    value: record,
+  });
+  dispatch({ layerId: steps[0]?.copyId ?? sourceId, type: "layers.select" });
 }
 
 export const appComposition: ToolcraftAppComposition = {
-  canvasContent: <Croix10Canvas />,
-  onPanelAction: handleCroix10PanelAction,
+  canvasContent: <StudioCanvas />,
+  onPanelAction: handleStudioPanelAction,
   exportRenderer: {
     baseFileName: "croix10",
-    renderFrame: renderCroix10ExportFrame,
+    renderFrame: renderStudioExportFrame,
   },
   modelPresentation: { mode: "runtime" },
+  // A product renderer replaces generic image/file preview. It does not suppress
+  // runtime model layers, which this product has none of anyway.
   renderDefaultCanvasMedia: false,
-  rendererPipelineRegistration: croix10PipelineRegistration,
+  rendererPipelineRegistration: studioPipelineRegistration,
   schema: appSchema,
-  sceneBoundsProvider: () => [CROIX10_SCENE_RECT],
+  sceneBoundsProvider: ({ state }) => [studioSceneRect(state)],
 };
