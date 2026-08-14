@@ -559,8 +559,10 @@ export function buildStudioStack(
   layers: readonly StudioRuntimeLayer[],
   paths: StudioVertexPaths = {},
   images: ReadonlyMap<string, StudioLayerMedia> = new Map(),
+  pointerSubject: string = STUDIO_POINTER_PER_LAYER,
 ): readonly StudioLayerValues[] {
   const byId = new Map(layers.map((layer) => [layer.id, layer]));
+  const everyLayerFollows = pointerSubject === STUDIO_POINTER_EVERY_LAYER;
 
   return layers
     .filter((layer) => layer.kind !== "group")
@@ -598,6 +600,10 @@ export function buildStudioStack(
                 imageRotation: media.transform?.rotationDeg ?? 0,
               }
             : {}),
+          // The stack-level choice widens the per-layer switch rather than
+          // replacing it: "every layer" turns it on everywhere, and turning it
+          // back to "per layer" restores exactly the layers the author had set.
+          ...(everyLayerFollows ? { engineCursor: 1 } : {}),
           visible: isEffectivelyVisible(layer, byId) ? 1 : 0,
         },
       };
@@ -653,6 +659,30 @@ export type StudioStackSnapshot = Readonly<{
   layers: readonly StudioStackSnapshotLayer[];
   selectedLayerId: string | null;
 }>;
+
+/**
+ * Which layers the pointer moves.
+ *
+ * A stack-level question rather than a per-layer one, which is why it is not a
+ * second switch beside the per-layer `engineCursor`. "Every layer" is not a
+ * value any one layer can hold -- a layer only knows about itself -- and writing
+ * the per-layer switch onto all of them instead would put N edits on the undo
+ * stack for one decision, and lose which of them the author had set by hand.
+ *
+ * Folded in at projection instead: a layer follows the pointer if its own
+ * switch says so *or* the stack says every layer does. The per-layer switch
+ * keeps its meaning and the stack-level choice overrides nothing permanently.
+ */
+export const STUDIO_POINTER_SUBJECT_TARGET = "stack.pointerSubject";
+
+export const STUDIO_POINTER_PER_LAYER = "per-layer";
+export const STUDIO_POINTER_EVERY_LAYER = "every-layer";
+
+export function readStudioPointerSubject(value: unknown): string {
+  return value === STUDIO_POINTER_EVERY_LAYER
+    ? STUDIO_POINTER_EVERY_LAYER
+    : STUDIO_POINTER_PER_LAYER;
+}
 
 export const STUDIO_SNAPSHOT_TARGET = "stack.applySnapshot";
 

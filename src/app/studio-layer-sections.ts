@@ -658,6 +658,31 @@ widthRatio: {
   },
   {
     controls: {
+      // Its own section because its entity is the pointer, not the selected
+      // layer. Every other control in the layer sections edits whichever layer
+      // is selected; this one says which layers a gesture reaches, which is a
+      // claim about the stack and would be a false neighbour among them.
+      subject: {
+        semanticGroup: "pointer",
+        applicability: { mode: "always" },
+        defaultValue: "per-layer",
+        label: "Pointer reaches",
+        options: [
+          { label: "Layers that follow it", value: "per-layer" },
+          { label: "Every layer", value: "every-layer" },
+        ],
+        performanceReason:
+          "Selects between two values already uploaded per layer; no pass, program, or sampling changes.",
+        performanceRole: "responsiveness",
+        target: "stack.pointerSubject",
+        type: "select",
+      },
+    },
+    id: "pointer",
+    title: "Pointer",
+  },
+  {
+    controls: {
       hue: {
         semanticGroup: "treatment",
         applicability: { mode: "always" },

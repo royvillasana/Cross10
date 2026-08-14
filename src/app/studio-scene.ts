@@ -1,5 +1,7 @@
 import {
   buildStudioStack,
+  readStudioPointerSubject,
+  STUDIO_POINTER_SUBJECT_TARGET,
   pruneStudioLayerRecord,
   readStudioLayerRecord,
   readStudioCursor,
@@ -115,6 +117,7 @@ export function buildStudioSceneParameters(
       state.layers,
       readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
       images,
+      readStudioPointerSubject(state.values[STUDIO_POINTER_SUBJECT_TARGET]),
     ).map(toLinearLayerValues),
   };
 }

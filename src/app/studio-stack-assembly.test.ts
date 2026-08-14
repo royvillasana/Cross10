@@ -112,3 +112,65 @@ describe("assembled shader order", () => {
     expect(stack[1].values.visible).toBe(1);
   });
 });
+
+describe("which layers the pointer reaches", () => {
+  const followers: StudioRuntimeLayer[] = [
+    { id: "opted-in", visible: true },
+    { id: "opted-out", visible: true },
+  ];
+  const cursorRecord = {
+    "opted-in": { typeId: "stripes" as const, values: { engineCursor: 1 } },
+    "opted-out": { typeId: "stripes" as const, values: { engineCursor: 0 } },
+  };
+
+  it("leaves each layer to its own switch by default", () => {
+    const stack = buildStudioStack(cursorRecord, followers);
+
+    expect(stack[0]?.values.engineCursor).toBe(1);
+    expect(stack[1]?.values.engineCursor).toBe(0);
+  });
+
+  it("reaches every layer when the stack says so", () => {
+    const stack = buildStudioStack(
+      cursorRecord,
+      followers,
+      {},
+      new Map(),
+      "every-layer",
+    );
+
+    expect(stack[0]?.values.engineCursor).toBe(1);
+    expect(stack[1]?.values.engineCursor).toBe(1);
+  });
+
+  it("gives the layers back their own switches when it stops", () => {
+    // The stack-level choice widens, it does not overwrite. A version that
+    // wrote the switch onto every layer would lose which of them the author had
+    // set by hand, and narrowing again would leave them all following.
+    const stack = buildStudioStack(
+      cursorRecord,
+      followers,
+      {},
+      new Map(),
+      "per-layer",
+    );
+
+    expect(stack[0]?.values.engineCursor).toBe(1);
+    expect(stack[1]?.values.engineCursor).toBe(0);
+  });
+
+  it("treats an unknown subject as per-layer rather than as everything", () => {
+    // Persisted state is not trusted, and the safe reading is the narrower one:
+    // a bad value that widened the reach would move layers the author never
+    // asked it to.
+    const stack = buildStudioStack(
+      cursorRecord,
+      followers,
+      {},
+      new Map(),
+      "nonsense",
+    );
+
+    expect(stack[1]?.values.engineCursor).toBe(0);
+  });
+});

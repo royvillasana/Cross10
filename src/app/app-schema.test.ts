@@ -64,6 +64,10 @@ describe("appSchema", () => {
       // engine carries its own gate, so it is a stage of its own rather than a
       // twelfth control in the kind's section.
       "Layer Engine",
+      // Its own section because its entity is the pointer rather than the
+      // selected layer: it says which layers a gesture reaches, which is a
+      // claim about the stack and not a property any one layer can hold.
+      "Pointer",
       "Layer Treatment",
       "Image Export",
       "Export",

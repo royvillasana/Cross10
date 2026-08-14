@@ -2753,3 +2753,139 @@ test("browser: studio layer flip folds only the selected layer", async ({
     { requirementId: "selectedLayer.flipY", target: "selectedLayer.flipY" },
   );
 });
+
+/**
+ * The same field reading as `CURSOR_FIELD`, reported against the stack-level
+ * subject rather than the layer's own switch.
+ *
+ * A separate reader because the control being proved is a different one: the
+ * transition helper requires the control's value to move, and the per-layer
+ * switch does not move when the stack-level subject does. Serialised into the
+ * page, so it closes over nothing.
+ */
+const POINTER_REACH = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector<HTMLCanvasElement>(
+    "[data-toolcraft-product-output]",
+  );
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    const at = (fx: number): string => {
+      const width = 120;
+      const x = Math.min(
+        Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+        canvas.width - width,
+      );
+      const pixels = new Uint8Array(width * 4);
+      gl.readPixels(
+        x,
+        Math.floor(canvas.height / 2),
+        width,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+      const seen = new Set<string>();
+      for (let index = 0; index < pixels.length; index += 4) {
+        seen.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+      }
+      return seen.size > 8 ? "induced" : "plain";
+    };
+
+    outputSignature = `left=${at(0.4)} right=${at(0.6)}`;
+  }
+
+  const reach = root
+    .querySelector('[data-toolcraft-control-target="stack.pointerSubject"]')
+    ?.querySelector('[role="combobox"]');
+
+  return {
+    controlValue: {
+      follow:
+        root
+          .querySelector(
+            '[data-toolcraft-control-target="selectedLayer.engineCursor"] [role="switch"]',
+          )
+          ?.getAttribute("aria-checked") ?? "absent",
+      reach: (reach?.textContent ?? "").replace(/[^A-Za-z]/gu, ""),
+    },
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio pointer subject reaches every layer", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSelectValue(page, "selectedLayer.engine", "Induction");
+  await setStudioSlider(page, "Engine amount", 1);
+
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to aim a pointer at.");
+  const aim = async (fraction: number): Promise<void> => {
+    await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
+    // One commit per frame, so the value the shader reads is a frame behind the
+    // move that produced it.
+    await page.waitForTimeout(200);
+  };
+
+  await aim(0.4);
+
+  // The layer's own switch stays off throughout. That is the whole point: what
+  // is being proved is that the stack-level choice reaches a layer that never
+  // opted in, and a fixture that opted in first would prove nothing.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(POINTER_REACH),
+    session.controlAction("stack.pointerSubject", async () => {
+      await setStudioSelectValue(page, "stack.pointerSubject", "Every layer");
+      // Put back after the click, which left the canvas for the sidebar. An
+      // engine following a pointer that has gone reaches nothing anywhere.
+      await aim(0.4);
+    }),
+    {
+      controlValue: { follow: "false", reach: "Everylayer" },
+      outputSignature: "left=induced right=plain",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "stack.pointerSubject", target: "stack.pointerSubject" },
+  );
+
+  // And narrowing it again gives the layer back its own answer.
+  //
+  // That answer is *not* "no effect": a layer that does not follow the pointer
+  // applies its engine evenly across the whole field, which reads as induced on
+  // both sides. Following is what makes the effect local, so the difference
+  // being proved is even-everywhere against strong-where-the-pointer-is -- and
+  // the widened reading must not have written itself onto the layer.
+  await expectToolcraftSelectedLayerControl(
+    session.observe(POINTER_REACH),
+    session.controlAction("stack.pointerSubject", async () => {
+      await setStudioSelectValue(
+        page,
+        "stack.pointerSubject",
+        "Layers that follow it",
+      );
+      await aim(0.4);
+    }),
+    {
+      controlValue: { follow: "false", reach: "Layersthatfollowit" },
+      outputSignature: "left=induced right=induced",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "stack.pointerSubject", target: "stack.pointerSubject" },
+  );
+});

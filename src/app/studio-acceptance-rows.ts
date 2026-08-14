@@ -101,6 +101,29 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
   },
 ];
 
+export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares the pointer subject widens which layers follow it",
+    browser: true,
+    browserTestName: "browser: studio pointer subject reaches every layer",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "With the subject set to every layer, moving the pointer across the canvas changes a layer whose own Follow the pointer switch is off; setting it back to layers that follow it leaves that layer still again, and a layer whose switch is on keeps following either way.",
+    fixture: "Croix10 with a two-layer stack, one layer following the pointer and one not",
+    id: "stack.pointerSubject",
+    kind: "control",
+    // Both readings have to be shown, because the whole control is the
+    // difference between them: a proof that only widened the reach would pass
+    // while narrowing it again did nothing.
+    optionCoverage: "each-visible-item",
+    target: "stack.pointerSubject",
+    userAction:
+      "Set Pointer reaches to Every layer, move the pointer over the canvas, then set it back.",
+  },
+];
+
 export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
