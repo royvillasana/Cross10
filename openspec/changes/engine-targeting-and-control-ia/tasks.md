@@ -9,8 +9,8 @@
 - [x] 2.3 Add a restore action to `app-composition.tsx` that rebuilds the snapshot's layer list through `layers.add`, writes back the per-layer record, and restores the selection.
 - [ ] 2.4 Scope the restore to the application it belongs to: stop offering it once the user has edited past the application, so restore never silently discards later work.
 - [x] 2.5 Decide and implement whether the snapshot persists across reload (see design Open Questions); whichever is chosen, make the restore action's availability match it.
-- [ ] 2.6 Acceptance rows and a browser proof: apply over a known stack, restore, and assert the previous layer list returns layer for layer with its own values and selection.
-- [ ] 2.7 Browser proof that a single restore is enough regardless of stack size (one layer replaced by five).
+- [x] 2.6 Acceptance rows and a browser proof: apply over a known stack, restore, and assert the previous layer list returns layer for layer with its own values and selection.
+- [x] 2.7 Browser proof that a single restore is enough regardless of stack size (one layer replaced by five).
 
 ## 3. Close the hole in the history test
 

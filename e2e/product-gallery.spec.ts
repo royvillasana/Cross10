@@ -113,14 +113,17 @@ test("browser: studio gallery applies a composition and leaves every control liv
   const entries = STUDIO_PRESETS;
   expect(entries.length, "the library should offer every built-in composition").toBeGreaterThan(1);
 
-  // **Undo is not asserted here, and the reason is a defect rather than a
-  // choice.** Applying a preset is several runtime layer commands, and layer
-  // commands are not effectively undoable in this app at all: adding a single
-  // layer by hand and pressing the toolbar's own Undo ten times leaves it in
-  // place. That is pre-existing and independent of the gallery -- measured on a
-  // plain `Add layer` with nothing of this feature involved -- so this proof
-  // claims what it can see and the defect is recorded in the change's tasks
-  // rather than papered over with an assertion that would pass by not looking.
+  // **Undo is still not asserted here, and the reason is still a framework
+  // defect rather than a choice.** Applying a preset is several runtime layer
+  // commands, and `layers.*` carries no `history` or `historyGroup` -- only
+  // `controls.setValue` and `canvas.applySettings` do -- so the deletes and adds
+  // are separate entries and no press count reaches the stack underneath.
+  // Recorded as issue 7 in `docs/upstream/toolcraft-0.0.18-issues.md`.
+  //
+  // What *is* asserted, in the proof below this one, is the product's own answer
+  // to it: the stack is snapshotted before the application and one press of
+  // Restore brings it back. That is the recoverable behaviour a user needs;
+  // undo remains the framework's to fix.
 
   // The first application carries the row's evidence: choosing an entry is one
   // claim and applying it is another, so each is made through the recipe that
@@ -204,4 +207,65 @@ test("browser: studio gallery applies a composition and leaves every control liv
     .poll(async () => readStudioColourVariety(page), { timeout: 15_000 })
     .toBeLessThan(beforeEdit);
 
+});
+
+test("browser: studio gallery restores the stack an application replaced", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  await openStudioSingleLayer(page);
+
+  // The stack the author had. Names as well as ids, because a restore that
+  // rebuilt the right number of layers under the wrong names would still have
+  // lost the thing the author recognises.
+  const authorIds = await readStudioLayerIds(page);
+  const authorNames = await readStudioLayerNames(page);
+  expect(authorIds, "the fixture starts from one layer of the author's own").toHaveLength(1);
+
+  const wide = STUDIO_PRESETS.find((preset) => preset.layers.length > 1);
+  if (!wide) throw new Error("the library needs an entry of more than one layer");
+
+  await applyStudioPreset(page, wide.label);
+  await expect
+    .poll(async () => readStudioLayerNames(page), { timeout: 15_000 })
+    .toEqual(wide.layers.map((layer) => layer.name));
+
+  // One press, not one per layer. The defect being fixed is that undo needed
+  // N+M presses and still did not arrive, so a restore that scaled with the
+  // stack would not have been a fix.
+  await page
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name: "Restore previous" })
+    .first()
+    .click();
+
+  await expect
+    .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
+    .toEqual(authorIds);
+  expect(
+    await readStudioLayerNames(page),
+    "the restored stack should carry the author's own names",
+  ).toEqual(authorNames);
+
+  // And it draws. A stack whose rows returned but whose values did not would
+  // list correctly and render nothing, which is the failure a row count alone
+  // cannot see.
+  await expect
+    .poll(async () => readStudioColourVariety(page), { timeout: 15_000 })
+    .toBeGreaterThan(1);
+
+  // No intermediate resting state: restoring again does nothing, because the
+  // snapshot was cleared by the restore that used it. Offering it twice would
+  // let a second press rebuild a stack the author had already come back from.
+  await page
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name: "Restore previous" })
+    .first()
+    .click();
+
+  expect(
+    await readStudioLayerIds(page),
+    "a spent snapshot should restore nothing",
+  ).toEqual(authorIds);
 });
