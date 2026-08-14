@@ -262,6 +262,41 @@ should be retired when the commands accept grouping.
 
 ---
 
+## 8. `app-controls.spec.ts` requires the generic media preview a custom renderer must suppress
+
+The generated starter suite asserts that dropping a file on the canvas shows the runtime's
+own preview of it:
+
+```ts
+// e2e/app-controls.spec.ts
+await page.getByRole("application", { name: "Canvas viewport" })
+  .dispatchEvent("drop", { dataTransfer: upload });
+await expect(page.getByRole("img", { name: "starter-fixture.svg" })).toBeVisible();
+```
+
+Any product with a custom renderer that draws the uploaded media itself must set
+`renderDefaultCanvasMedia: false` — otherwise the runtime composites the raw source on top
+of the product's own rendering of that same source, and adds the generic frame to the
+scene-bounds union, so the artifact contains the picture twice. That is not an optional
+preference; it is what a media-consuming renderer is for.
+
+Setting it is therefore correct, and it makes this self-test unsatisfiable. The two cannot
+both hold: the test wants the generic `img` element, and the flag exists to remove it.
+
+Same shape as issues 3 and 4 — a framework self-test that a legitimate product
+configuration can never pass — and with the same cost, which is that the whole-suite signal
+is permanently red for the products most likely to need the flag.
+
+**Suggested fix:** skip or invert this assertion when the composition sets
+`renderDefaultCanvasMedia: false`. The runtime already knows the value; the test does not
+consult it.
+
+**Local workaround:** none applied. The test is framework-owned and the flag is required, so
+the failure is recorded here and excluded by inspection rather than by a grep filter that
+would also hide real product regressions.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

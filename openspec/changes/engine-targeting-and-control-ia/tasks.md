@@ -19,12 +19,12 @@
 
 ## 4. Author the new section inventory
 
-- [ ] 4.1 Write the full target-by-target `appControlSectionInventory` before any schema edit, with `groupingReason` stating the user's task rather than the module.
-- [ ] 4.2 Put every colour target of one layer in a single section, closing the current Selected Layer / Layer Palette split.
-- [ ] 4.3 Put the layer kind and the media that kind requires in the same or adjacent sections, closing the current Layer Pattern / Layer Media gap.
-- [ ] 4.4 Give the layer's geometry one section and reserve slots in it for flip.
-- [ ] 4.5 Check the cut against the ten-control cap, the banned-title list, the R33 gating-condition rule, layer-kind label collisions, and the rule that sections sharing an `entityId` are adjacent.
-- [ ] 4.6 Update the acceptance rows that name section titles or positions.
+- [x] 4.1 Write the full target-by-target `appControlSectionInventory` before any schema edit, with `groupingReason` stating the user's task rather than the module.
+- [x] 4.2 Put every colour target of one layer in a single section, closing the current Selected Layer / Layer Palette split.
+- [x] 4.3 Put the layer kind and the media that kind requires in the same or adjacent sections, closing the current Layer Pattern / Layer Media gap.
+- [x] 4.4 Give the layer's geometry one section and reserve slots in it for flip.
+- [x] 4.5 Check the cut against the ten-control cap, the banned-title list, the R33 gating-condition rule, layer-kind label collisions, and the rule that sections sharing an `entityId` are adjacent.
+- [x] 4.6 Update the acceptance rows that name section titles or positions.
 
 ## 5. Technique as context, engine as application
 

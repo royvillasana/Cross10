@@ -45,15 +45,21 @@ describe("appSchema", () => {
       // into explicit workflow stages, and the kind gate moves with the
       // controls it reveals because R34 scopes gating to the section.
       "Layer Pattern",
+      // Directly after the kind, because choosing "Image" is asking for a
+      // picture and the place to supply one should not be three sections away.
+      // A file drop renders as its own surface rather than as a field, so it
+      // stays its own section rather than becoming an eleventh control in a
+      // section already at the cap.
+      "Layer Media",
       // What form the layer takes, independent of what it draws, so it needs
       // neither the kind gate nor a place beside it. Its placement, size and
       // proportion left with 14.1 -- the canvas handles own those -- so what
       // remains is the form itself and how it is turned and read.
       "Layer Shape",
+      // Every ink the layer carries, in one place. The first two used to sit
+      // with the layer's placement, which made "what colours is this" a
+      // question answered in two sections four apart.
       "Layer Palette",
-      // A file drop renders as its own surface rather than as a field, so it is
-      // declared as its own section rather than split out generated.
-      "Layer Media",
       // How the field is coloured, as distinct from what the field is: the
       // engine carries its own gate, so it is a stage of its own rather than a
       // twelfth control in the kind's section.

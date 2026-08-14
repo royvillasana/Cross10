@@ -169,7 +169,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer",
       groupingReason:
-        "What the selected layer is as a whole: how much of it reaches the composite, how it sits, and the two colours every kind of layer carries. None of these depend on the kind, so none of them are gated.",
+        "Placing the layer: how much of it reaches the composite, which way it is turned, and which way round it is folded. An author turning a layer is deciding the same thing as an author folding one, so those controls answer together; the colours moved out to sit with the rest of the palette, because a layer's inks are one question and were being asked in two places. None of these depend on the kind, so none of them are gated.",
       id: "selected-layer",
       targets: [
         "selectedLayer.opacity",
@@ -177,8 +177,6 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.flipX",
         "selectedLayer.flipY",
         "stack.actions",
-        "selectedLayer.colorA",
-        "selectedLayer.colorB",
       ],
       title: "Selected Layer",
       workflowStage: "compose",
@@ -248,9 +246,11 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer-palette",
       groupingReason:
-        "The inks the layer works in and how many of them are in play. Independent of the kind because the slots mean something to both -- extra inks in a stripe rhythm, extra stops in a ramp -- so they are neither gated nor placed beside the gate.",
+        "Choosing the layer's inks -- all of them, in one place. The first two used to sit with the layer's placement and the rest here, so answering \"what colours is this\" meant reading two sections that were four apart. Independent of the kind because the slots mean something to both -- extra inks in a stripe rhythm, extra stops in a ramp -- so they are neither gated nor placed beside the gate.",
       id: "selected-layer-palette",
       targets: [
+        "selectedLayer.colorA",
+        "selectedLayer.colorB",
         "selectedLayer.paletteSlots",
         "selectedLayer.colorC",
         "selectedLayer.colorD",

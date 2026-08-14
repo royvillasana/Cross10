@@ -5,10 +5,27 @@
  * file is the schema assembly, and it holds its line budget only while section
  * bodies live beside the entities they describe.
  *
- * Five sections over one entity, because an entity above ten controls must
+ * Several sections over one entity, because an entity above ten controls must
  * divide into explicit workflow stages. It began as one — at nine controls that
  * was obligatory rather than chosen — and each stage since has been forced by
  * the same rule as the surface grew.
+ *
+ * **How the divisions are cut is not forced, and was wrong.** The rule says an
+ * oversized entity divides; it does not say where, and the earlier cuts followed
+ * the order the controls were built in rather than the order an author asks for
+ * them. Two consequences, both fixed here:
+ *
+ * - The layer's first two colours sat with its placement and the rest sat in
+ *   `Layer Palette`, four sections apart, so "what colours is this layer" was a
+ *   question answered in two places. Every ink is now in one.
+ * - `Layer kind` offers *Image*, and the control that supplies the image was
+ *   three sections below it. `Layer Media` now follows `Layer Pattern`
+ *   immediately, so choosing the kind and feeding it are adjacent.
+ *
+ * What is left in the first section is placement: how much of the layer reaches
+ * the composite, which way it is turned, and which way round it is folded.
+ * Turning and folding are the same kind of question, which is why flip sits with
+ * angle rather than with the field controls it visibly affects.
  *
  * That settles where the gate goes. `selectedLayer.type` has to sit beside the
  * controls it gates (R34, which is scoped to the section rather than the
@@ -166,26 +183,6 @@ export const STUDIO_LAYER_SECTIONS = [
         performanceRole: "responsiveness",
         target: "stack.actions",
         type: "actions",
-      },
-      colorA: {
-        semanticGroup: "colour",
-        applicability: { mode: "always" },
-        defaultValue: "#ffffff",
-        label: "First colour",
-        performanceReason: "A colour uploads as one vec3 read once per pixel.",
-        performanceRole: "responsiveness",
-        target: "selectedLayer.colorA",
-        type: "color",
-      },
-      colorB: {
-        semanticGroup: "colour",
-        applicability: { mode: "always" },
-        defaultValue: "#000000",
-        label: "Second colour",
-        performanceReason: "A colour uploads as one vec3 read once per pixel.",
-        performanceRole: "responsiveness",
-        target: "selectedLayer.colorB",
-        type: "color",
       },
     },
     id: "selected-layer",
@@ -386,6 +383,34 @@ widthRatio: {
   },
   {
     controls: {
+      media: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        assetKind: "image",
+        // A button as well as a drop target. Dropping on the canvas already
+        // worked, but it is not discoverable and it is not reachable from a
+        // file manager the author has not opened -- a control renders the
+        // browse affordance the canvas cannot.
+        //
+        // Still the runtime's import rather than a product one: this declares
+        // the surface, and the runtime reads the file, allocates the asset, and
+        // creates the layer that draws it.
+        label: "Import image",
+        performanceReason:
+          "Decoding happens once per import, off the render path; the draw binds a texture it already has.",
+        performanceRole: "responsiveness",
+        target: "media.image",
+        type: "fileDrop",
+      },
+    },
+    // Its own section because a file drop renders as a surface rather than a
+    // field, and titled so it collides with none of the layer-kind option
+    // labels, which now include "Image" (R33).
+    id: "selected-layer-media",
+    title: "Layer Media",
+  },
+  {
+    controls: {
       maskShape: {
         semanticGroup: "region",
         applicability: { mode: "always" },
@@ -478,6 +503,26 @@ widthRatio: {
   },
   {
     controls: {
+      colorA: {
+        semanticGroup: "colour",
+        applicability: { mode: "always" },
+        defaultValue: "#ffffff",
+        label: "First colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorA",
+        type: "color",
+      },
+      colorB: {
+        semanticGroup: "colour",
+        applicability: { mode: "always" },
+        defaultValue: "#000000",
+        label: "Second colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorB",
+        type: "color",
+      },
       paletteSlots: {
         semanticGroup: "colour",
         applicability: { mode: "always" },
@@ -517,34 +562,6 @@ widthRatio: {
     },
     id: "selected-layer-palette",
     title: "Layer Palette",
-  },
-  {
-    controls: {
-      media: {
-        semanticGroup: "region",
-        applicability: { mode: "always" },
-        assetKind: "image",
-        // A button as well as a drop target. Dropping on the canvas already
-        // worked, but it is not discoverable and it is not reachable from a
-        // file manager the author has not opened -- a control renders the
-        // browse affordance the canvas cannot.
-        //
-        // Still the runtime's import rather than a product one: this declares
-        // the surface, and the runtime reads the file, allocates the asset, and
-        // creates the layer that draws it.
-        label: "Import image",
-        performanceReason:
-          "Decoding happens once per import, off the render path; the draw binds a texture it already has.",
-        performanceRole: "responsiveness",
-        target: "media.image",
-        type: "fileDrop",
-      },
-    },
-    // Its own section because a file drop renders as a surface rather than a
-    // field, and titled so it collides with none of the layer-kind option
-    // labels, which now include "Image" (R33).
-    id: "selected-layer-media",
-    title: "Layer Media",
   },
   {
     controls: {
