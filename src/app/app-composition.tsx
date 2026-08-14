@@ -8,9 +8,12 @@ import { studioAssembleDeliverableSource } from "./studio-source";
 import {
   planStudioLayerDuplication,
   planStudioPenDrawing,
+  planStudioStackRestoration,
+  STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
   readStudioLayerEntry,
   readStudioLayerRecord,
+  readStudioStackSnapshot,
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
@@ -110,9 +113,29 @@ function handleStudioPanelAction({
     const preset = findStudioPreset(state.values["gallery.entry"]);
     if (!preset) return;
 
+    // The snapshot that makes this reversible is emitted by the plan itself,
+    // so a caller cannot apply without capturing first.
     for (const command of planStudioPresetApplication({
-      layerIds: (state.layers ?? []).map((layer) => layer.id),
+      layers: state.layers ?? [],
       preset,
+      record: readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
+      selectedLayerId: state.selectedLayerId ?? null,
+    })) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
+    }
+    return;
+  }
+
+  if (action.value === "restore-stack") {
+    // The other half of the framework gap in issue 7: the runtime cannot fuse
+    // an application's layer commands into one undo entry, so taking one back
+    // is a product action rather than a press of Undo.
+    const snapshot = readStudioStackSnapshot(state.values[STUDIO_SNAPSHOT_TARGET]);
+    if (!snapshot) return;
+
+    for (const command of planStudioStackRestoration({
+      currentLayerIds: (state.layers ?? []).map((layer) => layer.id),
+      snapshot,
     })) {
       dispatch(command as Parameters<typeof dispatch>[0]);
     }

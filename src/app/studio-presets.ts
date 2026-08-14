@@ -1,9 +1,12 @@
 import { type StudioLayerTypeId } from "./studio-layers";
 import {
+  STUDIO_SNAPSHOT_TARGET,
+  captureStudioStackSnapshot,
   collectStudioSelectedLayerEdit,
   studioSelectedLayerTarget,
   type StudioLayerRecord,
   type StudioLayerRecordEntry,
+  type StudioRuntimeLayer,
 } from "./studio-stack-state";
 
 /**
@@ -365,16 +368,41 @@ export function studioPresetLayerEntry(layer: StudioPresetLayer): StudioLayerRec
  * it could be written, and there is no round trip for that inside one gesture.
  */
 export function planStudioPresetApplication({
-  layerIds,
+  layers,
   preset,
+  record: currentRecord,
+  selectedLayerId,
 }: {
-  readonly layerIds: readonly string[];
+  readonly layers: readonly StudioRuntimeLayer[];
   readonly preset: StudioPreset;
+  readonly record: StudioLayerRecord;
+  readonly selectedLayerId: string | null;
 }): readonly Readonly<Record<string, unknown>>[] {
   const commands: Readonly<Record<string, unknown>>[] = [];
 
-  for (const layerId of layerIds) {
-    commands.push({ layerId, type: "layers.delete" });
+  // The snapshot is emitted here rather than by the caller so that it cannot be
+  // forgotten by one. A second caller that planned an application without
+  // capturing first would produce exactly the defect this exists to fix, and it
+  // would look like working code.
+  //
+  // Nothing is captured for an empty stack: there is no work to come back to,
+  // and offering to restore emptiness is noise.
+  if (layers.length > 0) {
+    commands.push({
+      label: `Keep the stack before ${preset.label}`,
+      target: STUDIO_SNAPSHOT_TARGET,
+      type: "controls.setValue",
+      value: captureStudioStackSnapshot({
+        appliedLabel: preset.label,
+        layers,
+        record: currentRecord,
+        selectedLayerId,
+      }),
+    });
+  }
+
+  for (const layer of layers) {
+    commands.push({ layerId: layer.id, type: "layers.delete" });
   }
 
   const record: Record<string, StudioLayerRecordEntry> = {};

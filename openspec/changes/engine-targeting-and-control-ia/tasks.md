@@ -1,20 +1,20 @@
 ## 1. Record the framework gap
 
-- [ ] 1.1 Add a third entry to `docs/upstream/toolcraft-0.0.18-issues.md` matching the two existing defects' format: `layers.add`, `layers.delete`, `layers.select`, and `layers.reorder` in `src/toolcraft/runtime/state/types.ts` carry no `history` or `historyGroup` field, so a multi-layer operation cannot be one undo entry. Cite `planStudioPresetApplication` as the case that needs it and name the product-side snapshot as the local workaround to retire when it lands upstream.
+- [x] 1.1 Add a third entry to `docs/upstream/toolcraft-0.0.18-issues.md` matching the two existing defects' format: `layers.add`, `layers.delete`, `layers.select`, and `layers.reorder` in `src/toolcraft/runtime/state/types.ts` carry no `history` or `historyGroup` field, so a multi-layer operation cannot be one undo entry. Cite `planStudioPresetApplication` as the case that needs it and name the product-side snapshot as the local workaround to retire when it lands upstream.
 
 ## 2. Make the current Apply revertible
 
-- [ ] 2.1 Add a stack snapshot to `studio-stack-state.ts`: layer identities, order, per-layer values from `stack.layerRecord`, and the selected layer id. One snapshot, replaced on each application.
-- [ ] 2.2 Capture the snapshot in `planStudioPresetApplication` before the first `layers.delete` is emitted, so no layer is removed before it is recorded.
-- [ ] 2.3 Add a restore action to `app-composition.tsx` that rebuilds the snapshot's layer list through `layers.add`, writes back the per-layer record, and restores the selection.
+- [x] 2.1 Add a stack snapshot to `studio-stack-state.ts`: layer identities, order, per-layer values from `stack.layerRecord`, and the selected layer id. One snapshot, replaced on each application.
+- [x] 2.2 Capture the snapshot in `planStudioPresetApplication` before the first `layers.delete` is emitted, so no layer is removed before it is recorded.
+- [x] 2.3 Add a restore action to `app-composition.tsx` that rebuilds the snapshot's layer list through `layers.add`, writes back the per-layer record, and restores the selection.
 - [ ] 2.4 Scope the restore to the application it belongs to: stop offering it once the user has edited past the application, so restore never silently discards later work.
-- [ ] 2.5 Decide and implement whether the snapshot persists across reload (see design Open Questions); whichever is chosen, make the restore action's availability match it.
+- [x] 2.5 Decide and implement whether the snapshot persists across reload (see design Open Questions); whichever is chosen, make the restore action's availability match it.
 - [ ] 2.6 Acceptance rows and a browser proof: apply over a known stack, restore, and assert the previous layer list returns layer for layer with its own values and selection.
 - [ ] 2.7 Browser proof that a single restore is enough regardless of stack size (one layer replaced by five).
 
 ## 3. Close the hole in the history test
 
-- [ ] 3.1 Tighten `studio-history.test.ts` so it asserts the layer-list mutations of an application are recoverable, not only that the record write is recorded. The current assertion at line 91 passes over a broken behaviour and must not be able to again.
+- [x] 3.1 Tighten `studio-history.test.ts` so it asserts the layer-list mutations of an application are recoverable, not only that the record write is recorded. The current assertion at line 91 passes over a broken behaviour and must not be able to again.
 - [ ] 3.2 Add a regression proof that no intermediate stack — preset layers removed, previous layers not yet restored — is reachable by the user.
 
 ## 4. Author the new section inventory

@@ -199,6 +199,69 @@ swapped underneath a signed app.
 
 ---
 
+## 7. `layers.*` commands carry no history grouping, so a multi-layer edit cannot be undone
+
+`ToolcraftCommand` in `src/toolcraft/runtime/state/types.ts` gives `history` and
+`historyGroup` to exactly two members:
+
+```ts
+| { history?: ToolcraftHistoryMode; historyGroup?: string; …; type: "controls.setValue" }
+| { history?: ToolcraftHistoryMode; historyGroup?: string; …; type: "canvas.applySettings" }
+```
+
+Every layer command carries neither:
+
+```ts
+| { insertIndex?: number; layer?: ToolcraftLayerDraft; type: "layers.add" }
+| { layerId: string; type: "layers.delete" }
+| { layerId: string; type: "layers.select" }
+| { layers: ToolcraftLayer[]; selectedLayerId?: string | null; type: "layers.reorder" }
+```
+
+Each therefore commits its own patch through `commitToolcraftStatePatch`, and a product has
+no expression for "these commands are one edit".
+
+Any product operation that rebuilds the layer stack is affected. Applying a preset in this
+app dispatches `layers.delete` ×N, `layers.add` ×M, `controls.setValue`, `layers.select`.
+Measured in the deployed build, starting from a one-layer stack and applying a five-layer
+composition:
+
+| Presses of Undo | Resulting stack |
+|---|---|
+| 0 | the applied composition |
+| 1 | the applied composition (unchanged) |
+| 2 | **empty** |
+
+The stack that existed before the application is not reachable at any press count. The
+first Undo unwinds the record write; the second walks into the layer mutations and past the
+previous stack, because the deletes that removed it are separate entries further down.
+
+This is easy to miss from inside a product, and our own test suite missed it. A history test
+asserting that apply writes are recorded rather than skipped passes — the *record* write is
+recorded. The layer-list mutations are not control writes, so the assertion never looked at
+them. A green suite over an unrecoverable operation is the part worth flagging: the gap is
+invisible to the obvious test.
+
+Note that `panels.layers` being runtime-owned is what makes this unavoidable rather than
+merely inconvenient. The runtime owns layer identity, order, name, visibility and parentage,
+so a product cannot route the rebuild through `controls.setValue` instead — restoring values
+onto a layer list whose layers no longer exist restores nothing, and recreating the list
+requires the very `layers.add` calls that cannot be grouped.
+
+**Suggested fix:** accept `history` and `historyGroup` on `layers.add`, `layers.delete`,
+`layers.select`, `layers.reorder`, `layers.moveToGroup`, `layers.rename`,
+`layers.toggleVisibility`, and `layers.toggleCollapsed`, and coalesce commands sharing a
+`historyGroup` into one entry — the same treatment `controls.setValue` already receives.
+
+**Local workaround:** a product-owned snapshot of the stack taken before the application and
+a product-owned restore action, which is what this app now does. It is not a real fix: the
+restore sits beside the global Undo rather than inside it, so a user who reaches for Undo
+after an apply still walks the individual layer mutations. Two undo mechanisms for one
+operation is a UX cost the product is absorbing on the framework's behalf, and the workaround
+should be retired when the commands accept grouping.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

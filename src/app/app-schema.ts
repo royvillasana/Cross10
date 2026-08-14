@@ -10,6 +10,7 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   STUDIO_PEN_TARGET,
   STUDIO_SHAPE_GEOMETRY_TARGETS,
+  STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
 } from "./studio-stack-state";
 
@@ -62,7 +63,12 @@ export const appSchema = defineToolcraft({
       STUDIO_CURSOR_TARGET,
       STUDIO_VERTEX_PATH_TARGET,
       STUDIO_PEN_TARGET,
-      ...STUDIO_SHAPE_GEOMETRY_TARGETS,
+      // The stack an apply overwrote, persisted for the same reason the stack
+      // itself is: a composition survives a reload, so the ability to take back
+      // the apply that replaced one should survive it too. One snapshot, so the
+      // cost is bounded by a single stack's metadata.
+      STUDIO_SNAPSHOT_TARGET,
+          ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],
     key: `toolcraft:${appIdentity.id}:state:v1`,

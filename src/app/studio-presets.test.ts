@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { STUDIO_SNAPSHOT_TARGET } from "./studio-stack-state";
+
 import { STUDIO_LAYER_TYPES } from "./studio-layers";
 import {
   findStudioPreset,
@@ -76,13 +78,24 @@ describe("applying a preset", () => {
   it("replaces the stack with the preset's own layers, and writes a record for exactly those", () => {
     if (!preset) throw new Error("the library needs at least one entry");
     const commands = planStudioPresetApplication({
-      layerIds: ["old-1", "old-2"],
+      layers: [
+        { id: "old-1", visible: true },
+        { id: "old-2", visible: true },
+      ],
       preset,
+      record: {},
+      selectedLayerId: null,
     });
 
-    // Every layer present goes first, so what is left is the preset and not the
+    // The snapshot comes first, before anything is removed. The stack it
+    // records is unreachable by undo -- `layers.*` carries no `historyGroup`
+    // (upstream issue 7) -- so if it is not taken here it is not taken at all.
+    expect(commands[0]?.type).toBe("controls.setValue");
+    expect(commands[0]?.target).toBe(STUDIO_SNAPSHOT_TARGET);
+
+    // Every layer present then goes, so what is left is the preset and not the
     // preset composited over whatever was there.
-    expect(commands.slice(0, 2)).toEqual([
+    expect(commands.slice(1, 3)).toEqual([
       { layerId: "old-1", type: "layers.delete" },
       { layerId: "old-2", type: "layers.delete" },
     ]);
@@ -96,7 +109,11 @@ describe("applying a preset", () => {
     // One record write, holding an entry for each new id and nothing else: a
     // merge would leave a deleted layer's values behind for an undo to restore
     // onto a stack the author never built.
-    const writes = commands.filter((command) => command.type === "controls.setValue");
+    const writes = commands.filter(
+      (command) =>
+        command.type === "controls.setValue" &&
+        command.target !== STUDIO_SNAPSHOT_TARGET,
+    );
     expect(writes).toHaveLength(1);
     expect(Object.keys((writes[0]?.value ?? {}) as Record<string, unknown>)).toEqual(
       preset.layers.map((_layer, index) => `${preset.id}-${index + 1}`),
@@ -112,9 +129,12 @@ describe("applying a preset", () => {
 
   it("adds the preset's layers bottom first, in the order the stack draws them", () => {
     if (!preset) throw new Error("the library needs at least one entry");
-    const added = planStudioPresetApplication({ layerIds: [], preset }).filter(
-      (command) => command.type === "layers.add",
-    );
+    const added = planStudioPresetApplication({
+      layers: [],
+      preset,
+      record: {},
+      selectedLayerId: null,
+    }).filter((command) => command.type === "layers.add");
 
     expect(added.map((command) => command.insertIndex)).toEqual(
       preset.layers.map((_layer, index) => index),

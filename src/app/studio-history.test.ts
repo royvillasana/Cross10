@@ -5,6 +5,12 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
+import { STUDIO_PRESETS, planStudioPresetApplication } from "./studio-presets";
+import {
+  STUDIO_SNAPSHOT_TARGET,
+  readStudioStackSnapshot,
+} from "./studio-stack-state";
+
 const appDir = dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -91,12 +97,80 @@ describe("the undo stack carries edits and nothing else", () => {
   it("leaves an author's own commands recorded", () => {
     // The other half, and the reason this is not a blanket rule: applying a
     // preset and duplicating a layer are edits, so their record writes stay on
-    // the stack. Undoing a preset has to put back the record the previous stack
-    // was rendered from, and a skipped write would leave the restored layers
-    // wearing the preset's values.
+    // the stack.
+    //
+    // **This assertion is weaker than it looks, and used to be read as more.**
+    // It says the record write is recorded, and that is all it says. The layer
+    // list is not a control write at all, so nothing here ever looked at it —
+    // which is how a green suite sat over an apply whose previous stack no
+    // number of Undo presses could reach. What actually covers that is the
+    // test below and `studio-snapshot.test.ts`.
     const modes = readDispatchedHistoryModes("app-composition.tsx");
 
     expect(modes.length).toBeGreaterThan(0);
     expect(modes).toEqual(modes.map(() => null));
+  });
+});
+
+describe("what undo cannot reach, the product holds instead", () => {
+  it("takes the snapshot before the first layer is removed", () => {
+    // The ordering is the whole guarantee. A snapshot taken after the deletes
+    // records a stack that has already gone, and would restore the applied
+    // stack over itself.
+    const preset = STUDIO_PRESETS[0];
+    if (!preset) throw new Error("the library needs at least one entry");
+
+    const commands = planStudioPresetApplication({
+      layers: [{ id: "before", visible: true }],
+      preset,
+      record: { before: { typeId: "stripes", values: { angle: 30 } } },
+      selectedLayerId: "before",
+    });
+
+    const snapshotAt = commands.findIndex(
+      (command) => command.target === STUDIO_SNAPSHOT_TARGET,
+    );
+    const firstDeleteAt = commands.findIndex(
+      (command) => command.type === "layers.delete",
+    );
+
+    expect(snapshotAt).toBeGreaterThanOrEqual(0);
+    expect(firstDeleteAt).toBeGreaterThan(snapshotAt);
+  });
+
+  it("captures what the stack looked like, not merely that there was one", () => {
+    const preset = STUDIO_PRESETS[0];
+    if (!preset) throw new Error("the library needs at least one entry");
+
+    const [snapshotWrite] = planStudioPresetApplication({
+      layers: [{ id: "before", name: "Before", visible: true }],
+      preset,
+      record: { before: { typeId: "stripes", values: { angle: 30 } } },
+      selectedLayerId: "before",
+    });
+
+    const snapshot = readStudioStackSnapshot(snapshotWrite?.value);
+    expect(snapshot?.layers).toHaveLength(1);
+    expect(snapshot?.layers[0]?.entry).toEqual({
+      typeId: "stripes",
+      values: { angle: 30 },
+    });
+    expect(snapshot?.selectedLayerId).toBe("before");
+  });
+
+  it("records no snapshot when there is no work to overwrite", () => {
+    const preset = STUDIO_PRESETS[0];
+    if (!preset) throw new Error("the library needs at least one entry");
+
+    const commands = planStudioPresetApplication({
+      layers: [],
+      preset,
+      record: {},
+      selectedLayerId: null,
+    });
+
+    expect(
+      commands.some((command) => command.target === STUDIO_SNAPSHOT_TARGET),
+    ).toBe(false);
   });
 });

@@ -603,3 +603,193 @@ export function buildStudioStack(
       };
     });
 }
+
+/**
+ * The stack an application is about to overwrite, kept so it can be put back.
+ *
+ * This exists because the runtime cannot express the undo it would otherwise
+ * be. `layers.add`, `layers.delete`, `layers.select` and `layers.reorder` carry
+ * no `history` or `historyGroup` -- only `controls.setValue` and
+ * `canvas.applySettings` do -- so the N deletes and M adds an application emits
+ * are N+M separate entries, and no press count reaches the stack that preceded
+ * them. Documented as issue 7 in `docs/upstream/toolcraft-0.0.18-issues.md`.
+ *
+ * Routing the rebuild through `controls.setValue` instead is not an option:
+ * the runtime owns identity, order, name, visibility and parentage, so
+ * restoring values onto a layer list whose layers are gone restores nothing,
+ * and recreating the list needs the very `layers.add` calls that cannot be
+ * grouped.
+ *
+ * One snapshot, replaced by each application. This is "undo the last
+ * application", not a second history -- a stack of them would be a parallel
+ * undo system, which is the thing the framework should be providing rather than
+ * the product reimplementing.
+ */
+export type StudioStackSnapshotLayer = Readonly<{
+  collapsed: boolean;
+  /** The layer's own values, or null for a group, which holds none. */
+  entry: StudioLayerRecordEntry | null;
+  id: string;
+  isGroup: boolean;
+  name: string;
+  parentGroupId: string | null;
+  visible: boolean;
+}>;
+
+export type StudioStackSnapshot = Readonly<{
+  /** What was applied over it, so the restore can name what it undoes. */
+  appliedLabel: string;
+  layers: readonly StudioStackSnapshotLayer[];
+  selectedLayerId: string | null;
+}>;
+
+export const STUDIO_SNAPSHOT_TARGET = "stack.applySnapshot";
+
+/**
+ * Captures the stack as it stands, before anything is removed.
+ *
+ * Groups are carried with their members' parentage because a restore that
+ * flattened them would return the layers without the arrangement, which is not
+ * the stack the author had.
+ */
+export function captureStudioStackSnapshot({
+  appliedLabel,
+  layers,
+  record,
+  selectedLayerId,
+}: {
+  readonly appliedLabel: string;
+  readonly layers: readonly StudioRuntimeLayer[];
+  readonly record: StudioLayerRecord;
+  readonly selectedLayerId: string | null;
+}): StudioStackSnapshot {
+  return {
+    appliedLabel,
+    layers: layers.map((layer) => ({
+      collapsed: false,
+      entry: record[layer.id] ?? null,
+      id: layer.id,
+      isGroup: layer.kind === "group",
+      name: layer.displayName ?? layer.name ?? layer.id,
+      parentGroupId: layer.parentGroupId ?? null,
+      visible: layer.visible,
+    })),
+    selectedLayerId,
+  };
+}
+
+/** Reads a snapshot out of raw state, discarding anything malformed. */
+export function readStudioStackSnapshot(value: unknown): StudioStackSnapshot | null {
+  if (typeof value !== "object" || value === null) return null;
+  const candidate = value as {
+    appliedLabel?: unknown;
+    layers?: unknown;
+    selectedLayerId?: unknown;
+  };
+  if (!Array.isArray(candidate.layers)) return null;
+
+  const layers: StudioStackSnapshotLayer[] = [];
+  for (const raw of candidate.layers) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const layer = raw as Record<string, unknown>;
+    if (typeof layer.id !== "string" || layer.id === "") continue;
+
+    layers.push({
+      collapsed: layer.collapsed === true,
+      entry: isLayerTypeId((layer.entry as { typeId?: unknown } | null)?.typeId)
+        ? (layer.entry as StudioLayerRecordEntry)
+        : null,
+      id: layer.id,
+      isGroup: layer.isGroup === true,
+      name: typeof layer.name === "string" ? layer.name : layer.id,
+      parentGroupId:
+        typeof layer.parentGroupId === "string" ? layer.parentGroupId : null,
+      visible: layer.visible !== false,
+    });
+  }
+  if (layers.length === 0) return null;
+
+  return {
+    appliedLabel:
+      typeof candidate.appliedLabel === "string" ? candidate.appliedLabel : "",
+    layers,
+    selectedLayerId:
+      typeof candidate.selectedLayerId === "string" ? candidate.selectedLayerId : null,
+  };
+}
+
+/**
+ * The commands that put a snapshot back.
+ *
+ * Parentage is restored by a second pass rather than on the draft, because a
+ * member added before its group exists would carry a parent id that names
+ * nothing. Adding every layer flat and then moving them is order-independent,
+ * which matters when the array the snapshot came from made no promise about
+ * where a group sits relative to its members.
+ *
+ * The record is written whole for exactly the restored ids: merging would leave
+ * the applied stack's values behind, to be picked up by any later layer that
+ * happened to reuse an id.
+ */
+export function planStudioStackRestoration({
+  currentLayerIds,
+  snapshot,
+}: {
+  readonly currentLayerIds: readonly string[];
+  readonly snapshot: StudioStackSnapshot;
+}): readonly Readonly<Record<string, unknown>>[] {
+  const commands: Readonly<Record<string, unknown>>[] = [];
+
+  for (const layerId of currentLayerIds) {
+    commands.push({ layerId, type: "layers.delete" });
+  }
+
+  const record: Record<string, StudioLayerRecordEntry> = {};
+  snapshot.layers.forEach((layer, index) => {
+    if (layer.entry) record[layer.id] = layer.entry;
+    commands.push({
+      insertIndex: index,
+      layer: {
+        collapsed: layer.collapsed,
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible,
+        ...(layer.isGroup ? { kind: "group" as const } : {}),
+      },
+      type: "layers.add",
+    });
+  });
+
+  const byParent = new Map<string, string[]>();
+  for (const layer of snapshot.layers) {
+    if (!layer.parentGroupId) continue;
+    const members = byParent.get(layer.parentGroupId) ?? [];
+    members.push(layer.id);
+    byParent.set(layer.parentGroupId, members);
+  }
+  for (const [parentGroupId, layerIds] of byParent) {
+    commands.push({ layerIds, parentGroupId, type: "layers.moveToGroup" });
+  }
+
+  commands.push({
+    label: `Restore the stack before ${snapshot.appliedLabel || "the last apply"}`,
+    target: STUDIO_LAYER_RECORD_TARGET,
+    type: "controls.setValue",
+    value: record as StudioLayerRecord,
+  });
+
+  // Cleared, because a snapshot that survived its own restore would offer to
+  // restore the stack the user just came back to.
+  commands.push({
+    label: "Clear the apply snapshot",
+    target: STUDIO_SNAPSHOT_TARGET,
+    type: "controls.setValue",
+    value: null,
+  });
+
+  if (snapshot.selectedLayerId) {
+    commands.push({ layerId: snapshot.selectedLayerId, type: "layers.select" });
+  }
+
+  return commands;
+}

@@ -32,12 +32,30 @@ export const STUDIO_GALLERY_SECTIONS = [
         target: "gallery.entry",
         type: "select",
       },
+      // Both buttons on one control, which is not the first shape tried.
+      //
+      // Restore wants to appear only once there is a stack to come back to, and
+      // that is not expressible: an applicability predicate may only name a
+      // rendered control's target, and the snapshot is product-owned state with
+      // no control of its own. A discriminant target written beside the snapshot
+      // was rejected by the schema with "predicate target does not exist".
+      //
+      // So it is always offered and does nothing when nothing is held. The
+      // alternative -- giving the snapshot a rendered control purely so a
+      // predicate could read it -- would put a control in the panel that exists
+      // for the schema rather than for the user.
+      //
+      // Restore exists at all because the runtime cannot express it as undo:
+      // `layers.*` commands carry no `historyGroup`, so an application's deletes
+      // and adds are separate history entries and no press count reaches the
+      // stack underneath. Issue 7 in `docs/upstream/toolcraft-0.0.18-issues.md`.
       apply: {
         semanticGroup: "gallery",
         applicability: { mode: "always" },
-        // One button, so the control's label is the context it acts in rather
-        // than a repeat of the button beside it.
-        actions: [{ label: "Apply", value: "apply-preset" }],
+        actions: [
+          { label: "Apply", value: "apply-preset" },
+          { label: "Restore previous", value: "restore-stack" },
+        ],
         label: "Chosen composition",
         performanceReason:
           "Replaces the stack once through runtime layer commands; the frame is redrawn by the same pass any edit uses.",
