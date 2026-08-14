@@ -82,25 +82,78 @@ Undo rather than inside it. Pressing Undo after an Apply will still walk the
 individual layer mutations. The applicator therefore has to make its own restore
 findable, and the upstream note explains why there are two mechanisms.
 
-### One applicator with an explicit target
+### Technique as context, engine as application — a hierarchy, not a merge
 
-**Chosen.** Merge `Gallery.Composition` and `Layer Engine.Chromatic engine` into a
-single surface: what to apply, where to apply it, and the action. Targets are the
-selected layer, the selected group, and the canvas.
+**Chosen.** Keep two surfaces, but make their relationship explicit. The
+*technique* is what the canvas is working in, chosen from a thumbnail picker and
+replacing the canvas when it changes. An *engine* of that technique is applied to
+a target — the selected layer, the selected group, or an image — and adds to the
+work rather than discarding it.
 
-*Why not keep two controls and rename them?* Renaming reduces the collision but
-keeps two places to look and two mental models for one verb. The user's own
-framing — "one engine application, and we select where to apply that engine" — is
-the simpler model and is the one the spec now carries.
+*This supersedes an earlier decision to merge the two into one applicator.* The
+merge treated the shared `Physichromie` vocabulary as the defect. It is not: the
+two controls name the same phenomenon at two scales, and the defect is that
+nothing said which was which. Collapsing them would have lost a distinction the
+product needs — "set up the canvas" and "apply this to that layer" are different
+verbs with different blast radii, and only one of them should ever ask before
+running.
 
-*Why is the canvas target still a full stack replacement?* Because that is what a
-composition *is*: the gallery entries are stacks, not values (R71). Applying a
-stack to the canvas means becoming that stack. What changes is that this is now
-one of three targets rather than the only behaviour, and that it is revertible.
+*Why is a technique change still a full replacement?* Because that is what a
+technique *is*: the gallery entries are stacks, not values (R71). Changing the
+canvas's technique means becoming that stack. What changes is that it now asks
+first and can be taken back.
 
 **Unavailable rather than disabled.** A group target with no group selected is not
 offered, per the existing "Conditional applicability instead of disabling"
 requirement in `toolcraft-app-shell`.
+
+### The technique picker is `imagePicker`, and the modal is not available
+
+**Chosen.** Present techniques as thumbnails through the built-in `imagePicker`,
+laid out in the control surface.
+
+The requested shape was a large dialogue of cards shown before work begins. That
+specific shape is not available: `component-contracts.media-custom.ts` forbids
+custom controls that "recreate built-in controls, runtime panels, toolbar,
+timeline, layers, canvas, or sticky panel actions", the runtime's `dialog` and
+`alert-dialog` composites are internal and reach no product surface, and
+`shader-authoring` already requires selection to "reuse the runtime-owned control
+surface rather than a product-authored gallery UI".
+
+What survives the constraint is the part that mattered: the user sees what the
+techniques *look like* before choosing one. `imagePicker` is contracted for
+precisely this — "users choose from built-in visual options rather than uploading
+a file" — owns its own 2-to-4 column thumbnail layout, and is a built-in a custom
+control may not recreate. Placing it first in the control surface makes it the
+first thing met, which is the requested behaviour minus the modality.
+
+**Its coverage obligation is unusual and worth naming:** tests "must choose each
+visible ImagePicker item and assert the selected image, texture, gradient, or
+exported pixels change in the product output". Every technique thumbnail
+therefore owes a proof that choosing it changes the render — one per technique,
+not one for the control.
+
+**Where the thumbnails come from** is an open question below; they must not be
+photographs of copyrighted artworks.
+
+### Confirmation as a deliberate second action
+
+**Chosen.** A technique change asks before replacing work, expressed through
+built-in controls as a two-step action rather than a modal.
+
+*Why not a modal?* There is none to raise. Product code cannot author panels or
+dialogs, and the runtime exposes neither composite.
+
+*Why confirm at all, when the change is already revertible?* They answer different
+failures. Revert repairs a mistake after the fact and depends on the user
+realising and finding the action; confirmation prevents the mistake while the
+intent is still fresh. The contract's own note that a Switch must not be used
+"for destructive actions or commands that need confirmation" shows the pattern is
+expected of products.
+
+*Why does applying an engine to a target not confirm?* It adds to the work rather
+than replacing it. Confirming an additive action trains the user to dismiss
+confirmations, which is what makes the destructive one dangerous.
 
 ### Flip as a layer transform, not a media operation
 
@@ -207,3 +260,13 @@ involved, though step 4 touches persisted control keys — see the BREAKING note
 - What is the flip control's kind — two toggles, or one multi-select? Two toggles
   match `flipX`/`flipY` directly; a combined control costs one section slot
   instead of two, which may matter against the ten-control cap.
+- Where do the technique thumbnails come from? They should be renders the product
+  produces from each technique's own stack, which keeps them truthful and free of
+  third-party imagery. Photographs of artworks are not an option: the works are in
+  copyright, and a thumbnail that depicts a painting the tool cannot actually
+  produce would misdescribe the technique it selects. Generating them at build
+  time from the presets themselves is the obvious route and needs a decision on
+  where they are stored and whether they are committed.
+- How many steps should the confirmation be, and does it live in the technique
+  section or beside it? It costs at least one control against that section's
+  ten-control budget, which the group 4 inventory has to account for.

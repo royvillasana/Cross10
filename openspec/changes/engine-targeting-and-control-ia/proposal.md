@@ -28,13 +28,27 @@ of them means re-authoring the section inventory that the others live in.
 
 ## What Changes
 
-- **One engine application with a chosen target.** The gallery `Composition`
-  picker and the Layer Engine `Chromatic engine` picker collapse into a single
-  applicator. The user picks what to apply and *where* — the selected layer, the
-  selected group, or the whole canvas — instead of inferring the difference from
-  which of two lookalike sections they happen to be reading. **BREAKING**: the
-  gallery no longer always replaces the stack, which amends R58's "this replaces
-  the stack and stores nothing about having done so".
+- **Technique is the canvas's context; an engine is what you apply within it.**
+  The two lookalike pickers are not merged into one — they are made into a
+  hierarchy, which is what they always were underneath. The *technique* sets what
+  the canvas is working in and is chosen from a thumbnail picker. An *engine* of
+  that technique is applied to a target: the selected layer, the selected group,
+  or an image. Sharing vocabulary between them is then correct rather than
+  confusing, because they name the same phenomena at two scales. **BREAKING**: an
+  engine application no longer replaces the stack, which amends R58's "this
+  replaces the stack and stores nothing about having done so".
+
+- **The techniques are shown as thumbnails, and that is the first thing the user
+  meets.** A user should see what a technique looks like before choosing it. This
+  is the built-in `imagePicker` control, whose contract is exactly this case —
+  "users choose from built-in visual options rather than uploading a file" — and
+  which owns its own thumbnail layout.
+
+- **Changing technique is confirmed before it destroys work.** Replacing the
+  canvas asks first and states what will be replaced; declining changes nothing.
+  Confirmation is a deliberate second action through built-in controls, because
+  the runtime exposes product code no modal dialog. Confirming still leaves the
+  change revertible: agreeing to proceed is not agreeing to lose the work.
 
 - **Apply is revertible.** A stack snapshot is captured immediately before an
   application and restored by an explicit product action. This is a product-side
