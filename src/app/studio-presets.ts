@@ -387,6 +387,14 @@ export function planStudioPresetApplication({
   //
   // Nothing is captured for an empty stack: there is no work to come back to,
   // and offering to restore emptiness is noise.
+  // Derived here rather than collected as the adds are pushed, because the
+  // snapshot has to be written before the first delete and the ids are already
+  // knowable: they are a function of the preset and the index, which is what
+  // lets the record be written for layers that do not exist yet.
+  const applyingLayerIds = preset.layers.map(
+    (_layer, index) => `${preset.id}-${index + 1}`,
+  );
+
   if (layers.length > 0) {
     commands.push({
       label: `Keep the stack before ${preset.label}`,
@@ -394,6 +402,7 @@ export function planStudioPresetApplication({
       type: "controls.setValue",
       value: captureStudioStackSnapshot({
         appliedLabel: preset.label,
+        appliedLayerIds: applyingLayerIds,
         layers,
         record: currentRecord,
         selectedLayerId,

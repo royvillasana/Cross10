@@ -104,6 +104,46 @@ export const STUDIO_LAYER_SECTIONS = [
         target: "selectedLayer.angle",
         type: "slider",
       },
+      // Beside Angle, because turning a layer and folding it are the same kind
+      // of question and an author asks them together.
+      //
+      // `always`, and every layer type carries it -- which is also what keeps it
+      // in this section. A control gated on `selectedLayer.type` would have to
+      // live beside that selector in Layer Pattern, and Layer Pattern is already
+      // at the ten-control cap.
+      //
+      // An image gets this *as well as* the runtime's media transform, not
+      // instead of it. Those buttons fold the asset, which travels with the
+      // picture; this folds the layer, like its angle. The image body combines
+      // them exclusive-or, so each stays a toggle rather than one silently
+      // winning.
+      //
+      // Named for the fold rather than for a mirror, because Layer Pattern
+      // already has `Mirror` and it is a different operation: that one reflects
+      // the field about its centre and leaves two symmetric halves, this one
+      // reverses the whole field and keeps it entire.
+      flipX: {
+        semanticGroup: "composition",
+        applicability: { mode: "always" },
+        defaultValue: false,
+        label: "Flip horizontally",
+        performanceReason:
+          "Negates a coordinate already computed inside the per-pixel body; no new sampling or branch.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.flipX",
+        type: "switch",
+      },
+      flipY: {
+        semanticGroup: "composition",
+        applicability: { mode: "always" },
+        defaultValue: false,
+        label: "Flip vertically",
+        performanceReason:
+          "Negates a coordinate already computed inside the per-pixel body; no new sampling or branch.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.flipY",
+        type: "switch",
+      },
       duplicate: {
         semanticGroup: "composition",
         applicability: { mode: "always" },

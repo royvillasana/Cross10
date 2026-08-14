@@ -33,6 +33,7 @@ const record: StudioLayerRecord = {
 
 const snapshot = captureStudioStackSnapshot({
   appliedLabel: "Interference Beat",
+  appliedLayerIds: ["beat-1", "beat-2"],
   layers,
   record,
   selectedLayerId: "inner",
@@ -164,12 +165,66 @@ describe("restoring the snapshot", () => {
   it("takes one restore whatever the size of the stack it replaces", () => {
     // The defect this exists for is that undo needs N+M presses and still does
     // not arrive. A restore that scaled with the stack would not have fixed it.
+    const wideSnapshot = captureStudioStackSnapshot({
+      appliedLabel: "Transchromie Sheets",
+      appliedLayerIds: ["a", "b", "c", "d", "e"],
+      layers,
+      record,
+      selectedLayerId: "inner",
+    });
     const wide = planStudioStackRestoration({
       currentLayerIds: ["a", "b", "c", "d", "e"],
-      snapshot,
+      snapshot: wideSnapshot,
     });
     expect(
       wide.filter((command) => command.type === "layers.add").length,
     ).toEqual(snapshot.layers.length);
+  });
+});
+
+describe("a snapshot the stack has moved past", () => {
+  it("is spent once a layer has been added since the application", () => {
+    // Restoring here would silently discard the layer the author added after
+    // the apply, and the snapshot holds the stack from *before* it -- so there
+    // would be no way back to what they actually had.
+    const commands = planStudioStackRestoration({
+      currentLayerIds: ["beat-1", "beat-2", "mine"],
+      snapshot,
+    });
+
+    expect(commands.some((command) => command.type === "layers.add")).toBe(false);
+    expect(commands.some((command) => command.type === "layers.delete")).toBe(false);
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.target).toBe(STUDIO_SNAPSHOT_TARGET);
+    expect(commands[0]?.value).toBeNull();
+  });
+
+  it("is spent once a layer has been removed since the application", () => {
+    const commands = planStudioStackRestoration({
+      currentLayerIds: ["beat-1"],
+      snapshot,
+    });
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.value).toBeNull();
+  });
+
+  it("is spent once the stack has been reordered since the application", () => {
+    const commands = planStudioStackRestoration({
+      currentLayerIds: ["beat-2", "beat-1"],
+      snapshot,
+    });
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.value).toBeNull();
+  });
+
+  it("still undoes an application whose own layers were merely edited", () => {
+    // A value edit is an edit *to* the thing being undone. An author who
+    // applies, nudges a slider, then decides against the composition still
+    // means "undo the apply".
+    const commands = planStudioStackRestoration({
+      currentLayerIds: ["beat-1", "beat-2"],
+      snapshot,
+    });
+    expect(commands.some((command) => command.type === "layers.add")).toBe(true);
   });
 });

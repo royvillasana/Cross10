@@ -639,6 +639,17 @@ export type StudioStackSnapshotLayer = Readonly<{
 export type StudioStackSnapshot = Readonly<{
   /** What was applied over it, so the restore can name what it undoes. */
   appliedLabel: string;
+  /**
+   * The stack the application was about to create, so a restore can tell
+   * whether it is still undoing that application or something built since.
+   *
+   * Restoring is "go back to before the apply", which is only honest while the
+   * apply is still the last thing that happened. An author who applied and then
+   * built three layers on top would lose them to a press meant to undo one
+   * action, and would have no way to get them back -- the snapshot holds the
+   * stack from *before*, not the one they had just made.
+   */
+  appliedLayerIds: readonly string[];
   layers: readonly StudioStackSnapshotLayer[];
   selectedLayerId: string | null;
 }>;
@@ -654,17 +665,20 @@ export const STUDIO_SNAPSHOT_TARGET = "stack.applySnapshot";
  */
 export function captureStudioStackSnapshot({
   appliedLabel,
+  appliedLayerIds,
   layers,
   record,
   selectedLayerId,
 }: {
   readonly appliedLabel: string;
+  readonly appliedLayerIds: readonly string[];
   readonly layers: readonly StudioRuntimeLayer[];
   readonly record: StudioLayerRecord;
   readonly selectedLayerId: string | null;
 }): StudioStackSnapshot {
   return {
     appliedLabel,
+    appliedLayerIds,
     layers: layers.map((layer) => ({
       collapsed: false,
       entry: record[layer.id] ?? null,
@@ -683,6 +697,7 @@ export function readStudioStackSnapshot(value: unknown): StudioStackSnapshot | n
   if (typeof value !== "object" || value === null) return null;
   const candidate = value as {
     appliedLabel?: unknown;
+    appliedLayerIds?: unknown;
     layers?: unknown;
     selectedLayerId?: unknown;
   };
@@ -712,6 +727,11 @@ export function readStudioStackSnapshot(value: unknown): StudioStackSnapshot | n
   return {
     appliedLabel:
       typeof candidate.appliedLabel === "string" ? candidate.appliedLabel : "",
+    appliedLayerIds: Array.isArray(candidate.appliedLayerIds)
+      ? candidate.appliedLayerIds.filter(
+          (id): id is string => typeof id === "string",
+        )
+      : [],
     layers,
     selectedLayerId:
       typeof candidate.selectedLayerId === "string" ? candidate.selectedLayerId : null,
@@ -731,6 +751,26 @@ export function readStudioStackSnapshot(value: unknown): StudioStackSnapshot | n
  * the applied stack's values behind, to be picked up by any later layer that
  * happened to reuse an id.
  */
+export function studioSnapshotStillUndoesItsApplication({
+  currentLayerIds,
+  snapshot,
+}: {
+  readonly currentLayerIds: readonly string[];
+  readonly snapshot: StudioStackSnapshot;
+}): boolean {
+  // Layer for layer, in order. A stack that has gained, lost, or reordered a
+  // layer since the application is no longer that application's result, and
+  // restoring over it would discard work the snapshot cannot give back.
+  //
+  // Value edits to the applied layers are deliberately not counted. Those are
+  // edits *to* the thing being undone -- an author who applies, nudges a slider,
+  // and then decides against the whole composition still means "undo the apply".
+  return (
+    currentLayerIds.length === snapshot.appliedLayerIds.length &&
+    currentLayerIds.every((id, index) => id === snapshot.appliedLayerIds[index])
+  );
+}
+
 export function planStudioStackRestoration({
   currentLayerIds,
   snapshot,
@@ -738,6 +778,20 @@ export function planStudioStackRestoration({
   readonly currentLayerIds: readonly string[];
   readonly snapshot: StudioStackSnapshot;
 }): readonly Readonly<Record<string, unknown>>[] {
+  // A snapshot whose application has been built on top of is spent: it is
+  // dropped rather than acted on, so the button stops claiming to undo
+  // something it would in fact overwrite.
+  if (!studioSnapshotStillUndoesItsApplication({ currentLayerIds, snapshot })) {
+    return [
+      {
+        label: "Discard a snapshot the stack has moved past",
+        target: STUDIO_SNAPSHOT_TARGET,
+        type: "controls.setValue",
+        value: null,
+      },
+    ];
+  }
+
   const commands: Readonly<Record<string, unknown>>[] = [];
 
   for (const layerId of currentLayerIds) {

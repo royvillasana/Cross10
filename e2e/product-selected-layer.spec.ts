@@ -8,6 +8,7 @@ import {
   addStudioLayer,
   openStudioSingleLayer,
   readStudioLayerIds,
+  readStudioOutputSignature,
   STUDIO_PRODUCT_OUTPUT,
   openStudioTwoLayerStack,
   selectStudioLayer,
@@ -2600,5 +2601,155 @@ test("browser: studio blend mode changes how the layer meets what it sits on", a
       selectedLayerId: layerId,
     },
     { requirementId: "selectedLayer.blendMode", target: "selectedLayer.blendMode" },
+  );
+});
+
+/**
+ * Which side of the layer the wedge is heavier on.
+ *
+ * Flip is like mirror in that it changes a relationship rather than a quantity:
+ * the band count holds, and so does the overall tone, so frequency and tone
+ * would both report that nothing moved. What it changes is *direction*, and a
+ * field only has a direction if something varies along it -- which is why the
+ * fixture sets a taper first. On an untapered field a horizontal flip is a
+ * genuine no-op and this would be asserting nothing.
+ *
+ * Sampled as the light fraction of the left half against the right half. A
+ * tapered field is systematically lighter at one end; flipping swaps which.
+ */
+const FIELD_DIRECTION = (
+  root: HTMLElement,
+): {
+  controlValue: unknown;
+  outputSignature: string;
+  selectedLayerId: string;
+} => {
+  const canvas = root.querySelector(
+    "[data-toolcraft-product-output]",
+  ) as HTMLCanvasElement | null;
+  const gl = canvas?.getContext("webgl2", { preserveDrawingBuffer: true });
+  let outputSignature = "absent";
+
+  if (canvas && gl && canvas.width > 0 && canvas.height > 0) {
+    // The same centred span the symmetry reader uses, and for the same reason:
+    // a layer is a shape, so a full-width row would spend most of its length on
+    // bare ground.
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
+    // Read off centre, not across the middle. The taper drifts along the band,
+    // which at the default angle is the vertical axis -- and on the centre line
+    // that drift is exactly zero, so a row sampled there cannot see the axis
+    // flipY folds. A third of the way up is inside the shape and off the axis.
+    gl.readPixels(
+      Math.floor((canvas.width - span) / 2),
+      Math.floor(canvas.height * 0.35),
+      span,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    let left = 0;
+    let right = 0;
+    const half = Math.floor(span / 2);
+    for (let index = 0; index < span; index += 1) {
+      const at = index * 4;
+      const light =
+        pixels[at]! + pixels[at + 1]! + pixels[at + 2]! > 382 ? 1 : 0;
+      if (index < half) left += light;
+      else right += light;
+    }
+
+    // Two readings, because the two axes move different things and one number
+    // cannot carry both. Reversing across the bands moves the field's weight
+    // from one side to the other; reversing along them turns the taper around,
+    // which changes how much of each band is filled and not where it sits.
+    const margin = Math.max(2, Math.floor(half * 0.05));
+    const lean =
+      left > right + margin
+        ? "left"
+        : right > left + margin
+          ? "right"
+          : "even";
+    const filled = (left + right) / span;
+    const fill = filled > 0.62 ? "high" : filled < 0.38 ? "low" : "mid";
+    outputSignature = `lean:${lean} fill:${fill}`;
+  }
+
+  // Both switches, because one proof exercises both axes and a reader watching
+  // only one would report "nothing changed" for the other's action.
+  const readToggle = (axis: string) =>
+    root
+      .querySelector(
+        `[data-toolcraft-control-target="selectedLayer.${axis}"] [role="switch"]`,
+      )
+      ?.getAttribute("aria-checked") ?? "absent";
+
+  return {
+    controlValue: `x:${readToggle("flipX")} y:${readToggle("flipY")}`,
+    outputSignature,
+    selectedLayerId:
+      root
+        .querySelector('[data-layer-id][aria-selected="true"]')
+        ?.getAttribute("data-layer-id") ?? "",
+  };
+};
+
+test("browser: studio layer flip folds only the selected layer", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+
+  // One wide band, pushed off centre. Both are load-bearing. A flip reverses the
+  // field about its own centre, so a field that is periodic across the frame
+  // reverses into something statistically identical -- the bands land where
+  // other bands were and a half-and-half reading cannot tell. One band with an
+  // offset gives the field a side to be on, which is the thing a flip moves.
+  await setStudioSlider(page, "Band count", 2);
+
+  const beforeX = await readStudioOutputSignature(page);
+
+  await expectToolcraftSelectedLayerControl(
+    session.observe(FIELD_DIRECTION),
+    session.controlAction("selectedLayer.flipX", async () => {
+      await toggleStudioSwitch(page, "selectedLayer.flipX");
+    }),
+    {
+      controlValue: "x:true y:false",
+      outputSignature: "lean:left fill:mid",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.flipX", target: "selectedLayer.flipX" },
+  );
+
+  // A switch that says "flip" has to mean a fold, so folding twice returns the
+  // layer. Read against the frame rather than the control, because a control
+  // that returned to false while the render stayed folded is exactly the
+  // failure worth catching.
+  await toggleStudioSwitch(page, "selectedLayer.flipX");
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 15_000 })
+    .toBe(beforeX);
+
+  // The other axis. The taper is what gives a band's own length a direction, so
+  // reversing that length reverses which end of the band is the wide one -- read
+  // here as how much of the row is filled rather than as which side it leans to.
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSlider(page, "Taper", 1);
+
+  await expectToolcraftSelectedLayerControl(
+    session.observe(FIELD_DIRECTION),
+    session.controlAction("selectedLayer.flipY", async () => {
+      await toggleStudioSwitch(page, "selectedLayer.flipY");
+    }),
+    {
+      controlValue: "x:false y:true",
+      outputSignature: "lean:right fill:high",
+      selectedLayerId: layerId,
+    },
+    { requirementId: "selectedLayer.flipY", target: "selectedLayer.flipY" },
   );
 });

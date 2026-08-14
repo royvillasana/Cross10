@@ -174,6 +174,8 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: [
         "selectedLayer.opacity",
         "selectedLayer.angle",
+        "selectedLayer.flipX",
+        "selectedLayer.flipY",
         "stack.actions",
         "selectedLayer.colorA",
         "selectedLayer.colorB",

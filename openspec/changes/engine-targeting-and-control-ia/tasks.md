@@ -7,7 +7,7 @@
 - [x] 2.1 Add a stack snapshot to `studio-stack-state.ts`: layer identities, order, per-layer values from `stack.layerRecord`, and the selected layer id. One snapshot, replaced on each application.
 - [x] 2.2 Capture the snapshot in `planStudioPresetApplication` before the first `layers.delete` is emitted, so no layer is removed before it is recorded.
 - [x] 2.3 Add a restore action to `app-composition.tsx` that rebuilds the snapshot's layer list through `layers.add`, writes back the per-layer record, and restores the selection.
-- [ ] 2.4 Scope the restore to the application it belongs to: stop offering it once the user has edited past the application, so restore never silently discards later work.
+- [x] 2.4 Scope the restore to the application it belongs to: stop offering it once the user has edited past the application, so restore never silently discards later work.
 - [x] 2.5 Decide and implement whether the snapshot persists across reload (see design Open Questions); whichever is chosen, make the restore action's availability match it.
 - [x] 2.6 Acceptance rows and a browser proof: apply over a known stack, restore, and assert the previous layer list returns layer for layer with its own values and selection.
 - [x] 2.7 Browser proof that a single restore is enough regardless of stack size (one layer replaced by five).
@@ -15,7 +15,7 @@
 ## 3. Close the hole in the history test
 
 - [x] 3.1 Tighten `studio-history.test.ts` so it asserts the layer-list mutations of an application are recoverable, not only that the record write is recorded. The current assertion at line 91 passes over a broken behaviour and must not be able to again.
-- [ ] 3.2 Add a regression proof that no intermediate stack — preset layers removed, previous layers not yet restored — is reachable by the user.
+- [x] 3.2 Add a regression proof that no intermediate stack — preset layers removed, previous layers not yet restored — is reachable by the user.
 
 ## 4. Author the new section inventory
 
@@ -44,12 +44,12 @@
 
 ## 6. Flip on every layer type
 
-- [ ] 6.1 Expose `flipX` and `flipY` for every layer type, not only the media path, wired to the existing uniforms.
-- [ ] 6.2 Choose the control kind — two toggles or one combined control — against the section budget (see design Open Questions).
-- [ ] 6.3 Name the controls so they cannot be read as the stripe field's `Mirror`, and add the schema assertion that the two stay distinct.
-- [ ] 6.4 Confirm the fold runs in the layer's own axes after rotation for procedural layers as it already does for pictures.
+- [x] 6.1 Expose `flipX` and `flipY` for every layer type, not only the media path, wired to the existing uniforms.
+- [x] 6.2 Choose the control kind — two toggles or one combined control — against the section budget (see design Open Questions).
+- [x] 6.3 Name the controls so they cannot be read as the stripe field's `Mirror`, and add the schema assertion that the two stay distinct.
+- [x] 6.4 Confirm the fold runs in the layer's own axes after rotation for procedural layers as it already does for pictures.
 - [ ] 6.5 Acceptance rows plus a browser proof with an asymmetric image fixture: flip horizontally and assert the sampled left pixel matches the previously sampled right pixel.
-- [ ] 6.6 Browser proof that flipping twice returns the layer to its unflipped appearance, and that flip changes neither layer size, position, nor canvas dimensions.
+- [x] 6.6 Browser proof that flipping twice returns the layer to its unflipped appearance, and that flip changes neither layer size, position, nor canvas dimensions.
 - [ ] 6.7 Assert no new decode of the source asset occurs on flip.
 
 ## 7. Give the pointer effect a subject

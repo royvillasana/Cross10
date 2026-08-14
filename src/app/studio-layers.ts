@@ -340,6 +340,8 @@ vec4 studioStripesBody(
   float widthRatio,
   float phase,
   float mirror,
+  float flipX,
+  float flipY,
   float taper,
   float separator,
   float jitterAmount,
@@ -358,6 +360,16 @@ vec4 studioStripesBody(
   vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
   float radians = angle * 0.017453292519943295;
   float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
+  // Folded in the layer's own axes, which is why it is applied to the rotated
+  // coordinate rather than to the fragment: turning a layer and then flipping it
+  // has to fold along the axis the author sees, not the screen's.
+  //
+  // Distinct from the mirror below, which reflects the field about its centre and
+  // leaves two symmetric halves. This reverses the field's direction and keeps
+  // it whole -- which is what makes it visible on a tapered or jittered field
+  // and invisible on a mirrored one, since an already-symmetric field reads the
+  // same either way.
+  coordinate = mix(coordinate, -coordinate, step(0.5, flipX));
   // Reflected about the field's own axis, so the two halves read as mirrored
   // rather than merely repeated. Folding the coordinate rather than branching
   // keeps the cost identical whether the switch is on or off.
@@ -390,6 +402,9 @@ vec4 studioStripesBody(
   // bands repeat along, so the drift follows the band's own length whatever
   // angle the field is set to.
   float along = centered.x * -sin(radians) + centered.y * cos(radians);
+  // The other axis of the same fold. Along the band is where the taper drifts,
+  // so flipping here is what points a wedge the other way.
+  along = mix(along, -along, step(0.5, flipY));
   float split = widthRatio + taper * along;
 
   float edge = max(fwidth(position) * 1.5, 1e-5);
@@ -487,6 +502,8 @@ vec4 studioGradientBody(
   vec2 resolution,
   vec2 cursor,
   float angle,
+  float flipX,
+  float flipY,
   float rampType,
   float phase,
   float paletteSlots,
@@ -501,6 +518,11 @@ vec4 studioGradientBody(
 ) {
   vec2 uv = fragmentPosition / max(resolution, vec2(1.0));
   vec2 centered = uv - 0.5;
+  // Folded before the ramp is read, so every ramp type folds: a linear ramp
+  // reverses, an angular sweep runs the other way, and a radial one is
+  // unchanged because it already has no direction to reverse.
+  centered.x = mix(centered.x, -centered.x, step(0.5, flipX));
+  centered.y = mix(centered.y, -centered.y, step(0.5, flipY));
   float radians = angle * 0.017453292519943295;
 
   float position;
@@ -567,6 +589,8 @@ vec4 studioImageBody(
   float shapeHalfWidth,
   float shapeHalfHeight,
   float rotation,
+  float mediaFlipX,
+  float mediaFlipY,
   float flipX,
   float flipY,
   sampler2D image
@@ -599,8 +623,19 @@ vec4 studioImageBody(
   // rather than the screen's. That is the asset-property reading: the transform
   // is stored on the asset, so it has to mean the same thing to everything that
   // draws it.
-  turned.x = mix(turned.x, -turned.x, step(0.5, flipX));
-  turned.y = mix(turned.y, -turned.y, step(0.5, flipY));
+  // Two folds, because two different things can be folded and an author means
+  // different things by them. The media transform belongs to the *asset* -- the
+  // runtime's own buttons write it, and it travels with the picture wherever it
+  // is used. The layer flip belongs to the *layer*, like its angle, and is the
+  // same control every other layer type carries.
+  //
+  // Combined rather than one overriding the other, so each stays a toggle:
+  // folding an already-folded picture returns it, which is what a switch that
+  // says "flip" has to mean. Summed modulo two is exclusive-or over 0 and 1.
+  float foldX = mod(mediaFlipX + flipX, 2.0);
+  float foldY = mod(mediaFlipY + flipY, 2.0);
+  turned.x = mix(turned.x, -turned.x, step(0.5, foldX));
+  turned.y = mix(turned.y, -turned.y, step(0.5, foldY));
 
   // Into texture space. The vertical flip is the two coordinate systems
   // disagreeing rather than a transform: an image's rows run down from its top
@@ -626,6 +661,8 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
       label: "Gradient",
       uniforms: [
         { defaultValue: 0, name: "angle", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
         {
           defaultValue: 0,
           name: "rampType",
@@ -691,6 +728,8 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "imageRotation", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "imageFlipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "imageFlipY", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
         // Last, and valueless: the texture is bound from decoded media rather
         // than read out of the record.
         { defaultValue: 0, name: "image", type: "sampler2D" },
@@ -707,6 +746,8 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
+        { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
         { defaultValue: 0, name: "taper", type: "float" },
         { defaultValue: 0, name: "separator", type: "float" },
         { defaultValue: 0, name: "jitterAmount", type: "float" },
