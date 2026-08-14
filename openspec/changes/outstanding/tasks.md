@@ -1,0 +1,30 @@
+# Outstanding tasks
+
+Each item names the archived change and task it came from, so the reasoning
+behind it can be read rather than re-derived. `SS` is
+`archive/2026-08-14-shader-studio`; `C10` is
+`archive/2026-08-14-croix10-generative-art-studio`.
+
+## 1. Debts found while building, which is why they are here
+
+- [ ] 1.1 **Audit the Croix10 capability specs against the Croix10 app.** Thirteen files and ninety-seven requirements went into `openspec/specs/` unchecked when C10 was archived at 110/219 tasks. Each is marked *not audited* at the top of its file; the audit either confirms a requirement, marks it pending like `shader-authoring` does, or removes it. Until then those specs state intent rather than behaviour
+- [ ] 1.2 **Undo writes into the wrong layer when the selection has moved.** Undoing an edit made while a *different* layer is selected reverts the control values and the sync folds them into whichever layer is selected now. A reverted patch does not say which layer it belonged to, and the record follows the controls (R56). Undo is correct for the layer you are on. The real fix is the record becoming the single store rather than a follower, which is an amendment to R56 rather than a patch to the sync
+- [ ] 1.3 **Forty-five acceptance rows name an automated test that does not exist.** Measured with the delivery reporter (`vitest --reporter=./scripts/toolcraft-vitest-runtime-evidence-reporter.mjs`), which lists each one. Rows added in the last sessions match their tests; the backlog is older. The delivery gate in 2.x will fail on these once its authorization is resolved, so they are cheaper to clear before then than during
+- [ ] 1.4 **Five owners in `app-verification-impact.json` are rejected by the role classifier** — `app-acceptance-data.ts`, `app-acceptance.ts`, `app-identity.ts`, `app-performance.ts`, `studio-acceptance-rows.ts`. They are declaration modules the classifier does not count as production, and the inventory validator rejects an owner it does not recognise. Every *missing* owner has been registered; this is the other half, and it is the same 2.10 blocker (SS 2.10)
+- [ ] 1.5 **The performance gate `maps every product production module to current renderer pass ownership` fails as a symptom.** It derives its delivery catalog through Playwright, so it fails whenever any browser proof does. Worth re-checking once 1.3 and 1.4 are clear rather than treating it as a finding of its own
+
+## 2. Unbuilt features, scoped and decided
+
+- [ ] 2.1 **Per-layer animation (SS group 6).** The one pending requirement in the main specs. Each layer animatable over the runtime timeline, loop seams held per layer, and a proof that two layers at different rates both return to their first frame. Declaring a timeline obliges playback coverage in the same batch — which is why it was never half-started
+- [ ] 2.2 **MCP delivery (SS group 9).** The primary delivery path: a package outside the signed app so it carries no integrity obligation, exposing the gallery and the assembled source for a named entry with parameter overrides
+- [ ] 2.3 **Preset corrections (SS group 10).** The palettes shipped in the gallery are Croix10's, recorded there as *plausible rather than verified*. Checking them against primary sources is its own task, and the library says so in its own comment
+- [ ] 2.4 **Final delivery gate (SS group 11)**, which depends on everything above and on 3.1
+- [ ] 2.5 **Croix10's own 109 open tasks** remain in `C10/tasks.md`. They were not reviewed when it was archived, and 1.1 is the prerequisite for judging which still matter
+
+## 3. Blocked on authorization, not on the product
+
+- [ ] 3.1 **Run `npm run verify:delivery`** (SS 2.10, and identically 3.5, 4.6, 5.5, 8.3). The perf specs it runs require fixture selector, resolution mode, nonce, pass ids, path ids, request authority hash and source hash together; `TOOLCRAFT_PERFORMANCE_FIXTURE_RESOLUTION_MODE=strict-development` clears the first gate and lands on the second. Those credentials come from an authorized operator or CI. **Do not manufacture a nonce or an authority hash to make the gate green** — the honest position is already recorded in the worklog
+
+## 4. Audit rather than assume
+
+- [ ] 4.1 **Re-read SS groups 0, 1 and 2 against the code before trusting their boxes.** Three of the tasks archived as open were found to be already done or superseded when they were finally read — 3.2 by R64, 4.2 by the layer's own controls, 4.3 by 14.6/14.7. The remaining unchecked boxes in the early groups have the same smell: they were written before the layer model existed
