@@ -8,6 +8,7 @@
     "dev": "node scripts/run-vite-on-free-port.mjs dev",
     "dev:restart": "node scripts/run-vite-on-free-port.mjs dev --toolcraft-restart",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build:pages": "tsc -p tsconfig.json --noEmit && vite build --base=/Cross10/",
     "preview": "node scripts/run-vite-on-free-port.mjs preview",
     "preview:restart": "node scripts/run-vite-on-free-port.mjs preview --toolcraft-restart",
     "docs:check": "node scripts/check-toolcraft-docs.mjs",
