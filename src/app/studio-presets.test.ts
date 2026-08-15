@@ -7,7 +7,10 @@ import {
   findStudioPreset,
   planStudioPresetApplication,
   STUDIO_PRESETS,
+  STUDIO_SERIES,
+  STUDIO_SERIES_IDS,
   studioPresetLayerEntry,
+  studioPresetPickerLabel,
 } from "./studio-presets";
 
 describe("the preset library", () => {
@@ -142,5 +145,102 @@ describe("applying a preset", () => {
     expect(added.map((command) => (command.layer as { name: string }).name)).toEqual(
       preset.layers.map((layer) => layer.name),
     );
+  });
+});
+
+/**
+ * What the library claims about itself.
+ *
+ * The previous rule here was a total between eight and twelve, which was the
+ * right bound on a demonstration that the stack could hold a composition and the
+ * wrong one on a library: it said the twelfth good entry had to displace one of
+ * the first eleven. What the cap was actually protecting is that the library
+ * represents the whole body of work rather than the easy parts, and per-series
+ * coverage says that directly.
+ */
+describe("what the library covers", () => {
+  it("carries at least one entry for each of the eight investigations", () => {
+    // Eight, not six. Chromoscope and Couleur dans l'espace were missing from a
+    // list that claimed to enumerate them, which is the kind of gap a count
+    // between eight and twelve could never have caught.
+    expect(STUDIO_SERIES_IDS).toHaveLength(8);
+
+    for (const series of STUDIO_SERIES_IDS) {
+      expect(
+        STUDIO_PRESETS.filter((preset) => preset.series === series),
+        `${STUDIO_SERIES[series].label} needs at least one entry`,
+      ).not.toHaveLength(0);
+    }
+  });
+
+  it("declares a series and a palette pedigree for every entry", () => {
+    for (const preset of STUDIO_PRESETS) {
+      expect(STUDIO_SERIES_IDS, `${preset.id} series`).toContain(preset.series);
+      expect(
+        ["plausible", "studio", "verified"],
+        `${preset.id} palette`,
+      ).toContain(preset.palette);
+    }
+  });
+
+  it("marks an entry in an environmental series as an evocation wherever it is offered", () => {
+    // The four environmental series have no picture plane -- their subject is a
+    // body moving through coloured space. A flat entry can produce the chromatic
+    // condition; presenting it as a rendering of the work would misdescribe both,
+    // so the marking travels with the name rather than living in a comment.
+    for (const preset of STUDIO_PRESETS) {
+      const evoked = STUDIO_SERIES[preset.series].carriage === "evoke";
+      expect(
+        studioPresetPickerLabel(preset).includes("evoking"),
+        `${preset.id} should ${evoked ? "" : "not "}be offered as an evocation`,
+      ).toBe(evoked);
+    }
+  });
+
+  it("claims a verified palette only where one is declared", () => {
+    // All of these are the studio's own and claim nothing. The assertion exists
+    // for the entry that is one day checked against a primary source: that is
+    // the only one allowed to say so, and nothing else may drift into saying it.
+    for (const preset of STUDIO_PRESETS) {
+      expect(
+        studioPresetPickerLabel(preset).includes("verified"),
+        `${preset.id} must not imply a verified palette`,
+      ).toBe(preset.palette === "verified");
+    }
+  });
+
+  it("names entries for their construction rather than for catalogued works", () => {
+    // The distinction is real rather than cautious: methods and styles are not
+    // copyrightable and the series names are the artist's own terms for
+    // categories of investigation, while the individual works are protected
+    // until well into the next century. A catalogue number in a label is the
+    // shape the mistake takes, and this library had one.
+    for (const preset of STUDIO_PRESETS) {
+      expect(preset.label, `${preset.id} names a catalogue number`).not.toMatch(
+        /\d/u,
+      );
+      for (const claim of ["reproduction", "replica", "copy of", "original"]) {
+        expect(
+          preset.label.toLowerCase(),
+          `${preset.id} must not claim to be a ${claim}`,
+        ).not.toContain(claim);
+      }
+    }
+  });
+
+  it("says what each layer's extent is rather than inheriting one", () => {
+    // A layer arrives confined to a shape (R65), which is right for building a
+    // composition and wrong for an entry that meant a whole-frame field: left
+    // unset it would silently land as a quarter-size rectangle in the middle of
+    // the canvas. Zero is how the vocabulary says "the whole frame", and an
+    // entry that means something narrower has to say that too.
+    for (const preset of STUDIO_PRESETS) {
+      for (const layer of preset.layers) {
+        expect(
+          layer.values.maskSize,
+          `${preset.id} / ${layer.name} must name its extent`,
+        ).toBeTypeOf("number");
+      }
+    }
   });
 });

@@ -82,11 +82,19 @@ async function chooseEntry(page, label) {
     .getByRole("button", { name: label, exact: true })
     .first()
     .click();
-  await page
-    .locator('[data-toolcraft-control-target="gallery.actions"]')
-    .getByRole("button", { name: "Apply" })
-    .first()
-    .click();
+  // Both presses. Changing the technique replaces the composition, so it asks
+  // first: over an empty canvas the first press applies and leaves the second
+  // with nothing to confirm, and over the previous entry's stack -- which is
+  // every capture after the first -- the second press is the one that lands.
+  const press = (name) =>
+    page
+      .locator('[data-toolcraft-control-target="gallery.actions"]')
+      .getByRole("button", { name })
+      .first()
+      .click();
+
+  await press("Change the technique");
+  await press("replace my work");
 }
 
 /**
@@ -182,21 +190,49 @@ async function capture(page, count) {
  */
 async function readPresets() {
   const source = await readFile(join(root, "src/app/studio-presets.ts"), "utf8");
+
+  // The series table, so the picker name can be composed exactly the way the
+  // product composes it. Matching by the bare label stopped working the moment
+  // the series joined the name, and the failure was silent: the locator found
+  // nothing and every capture would have been of whichever entry was already
+  // selected.
+  const seriesBlock = source.slice(
+    source.indexOf("export const STUDIO_SERIES"),
+    source.indexOf("export type StudioSeriesId"),
+  );
+  const series = new Map(
+    [...seriesBlock.matchAll(
+      /"?([\w-]+)"?:\s*\{\s*carriage: "(carry|evoke)",\s*label: "([^"]+)"/gu,
+    )].map(([, id, carriage, label]) => [id, { carriage, label }]),
+  );
+
   const body = source.slice(source.indexOf("export const STUDIO_PRESETS"));
-  const starts = [...body.matchAll(/\bid: "([^"]+)",\s*\n\s*label: "([^"]+)"/gu)];
+  const starts = [...body.matchAll(/\bid: "([^"]+)",/gu)];
 
   return starts.map((match, index) => {
     const from = match.index ?? 0;
     const to = starts[index + 1]?.index ?? body.length;
+    const entry = body.slice(from, to);
     // The densest field the entry draws. It decides how much of the frame the
     // thumbnail can show and still be a picture of anything.
-    const counts = [...body.slice(from, to).matchAll(/\bcount: (\d+)/gu)].map(
-      ([, value]) => Number(value),
+    const counts = [...entry.matchAll(/\bcount: (\d+)/gu)].map(([, value]) =>
+      Number(value),
     );
+    const label = entry.match(/\blabel: "([^"]+)"/u)?.[1] ?? "";
+    const seriesId = entry.match(/\bseries: "([^"]+)"/u)?.[1] ?? "";
+    const palette = entry.match(/\bpalette: "([^"]+)"/u)?.[1] ?? "";
+    const carried = series.get(seriesId);
+    if (!carried) throw new Error(`Unknown series "${seriesId}" for preset ${match[1]}.`);
+
+    const provenance = palette === "verified" ? ", verified palette" : "";
     return {
       count: counts.length > 0 ? Math.max(...counts) : 0,
       id: match[1],
-      label: match[2],
+      label,
+      pickerLabel:
+        carried.carriage === "evoke"
+          ? `${label} — evoking ${carried.label}${provenance}`
+          : `${label} — ${carried.label}${provenance}`,
     };
   });
 }
@@ -217,7 +253,7 @@ await page.waitForSelector("[data-toolcraft-product-output]");
 
 const thumbnails = {};
 for (const preset of presets) {
-  await chooseEntry(page, preset.label);
+  await chooseEntry(page, preset.pickerLabel);
   await settle(page);
   const src = await capture(page, preset.count);
   if (!src.startsWith("data:image/")) {

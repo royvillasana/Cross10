@@ -1,5 +1,5 @@
 import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
-import { STUDIO_PRESETS } from "./studio-presets";
+import { STUDIO_PRESETS, studioPresetPickerLabel } from "./studio-presets";
 
 /**
  * The gallery: a picker, and the action that applies what it names (R71).
@@ -25,9 +25,10 @@ export const STUDIO_GALLERY_SECTIONS = [
   {
     controls: {
       // A picker of thumbnails rather than a list of names, because a name is
-      // not what anyone is choosing between. "Physichromie 500" and "Lamella
-      // Sweep" tell an author nothing about which one they want; the pictures
-      // do, and they are the first thing the panel shows.
+      // not what anyone is choosing between. "Four-Ink Relief" and "Lamella
+      // Sweep" tell an author which investigation they are in and nothing about
+      // which one they want; the pictures do, and they are the first thing the
+      // panel shows.
       //
       // `imagePicker` is the built-in for exactly this -- choosing one visual
       // option from a set of thumbnails -- and it owns its own grid, so the
@@ -43,8 +44,12 @@ export const STUDIO_GALLERY_SECTIONS = [
         semanticGroup: "gallery",
         applicability: { mode: "always" },
         defaultValue: STUDIO_PRESETS[0]?.id ?? "",
+        // Named through the library's own function rather than from the label
+        // alone, so the series -- and, for the four the canvas can only evoke,
+        // that it is an evocation -- travels with every place an entry is
+        // offered. A picker of pictures has nowhere else to say it.
         items: STUDIO_PRESETS.map((preset) => ({
-          alt: preset.label,
+          alt: studioPresetPickerLabel(preset),
           src: STUDIO_TECHNIQUE_THUMBNAILS[preset.id] ?? "",
           value: preset.id,
         })),

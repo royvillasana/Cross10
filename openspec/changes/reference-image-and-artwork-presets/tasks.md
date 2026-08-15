@@ -1,27 +1,27 @@
 ## 1. Preset provenance and series
 
-- [ ] 1.1 Add `series` and a palette provenance of `verified` or `plausible` to `StudioPreset` in `studio-presets.ts`.
-- [ ] 1.2 Assign a series to each of the ten existing presets and mark every one `plausible`, which is what `studio-presets.ts` already says they are.
-- [ ] 1.3 Add the carry-or-evoke marking per series: Couleur Additive, Physichromie, Induction Chromatique and Chromointerférence are carried; Chromosaturation, Transchromie, Chromoscope and Couleur dans l'espace are evoked.
-- [ ] 1.4 Schema tests: every preset declares a series and a provenance, and every evoked-series preset is marked as an evocation.
-- [ ] 1.5 Surface provenance in the applicator so a plausible palette is never presented as verified.
+- [x] 1.1 Add `series` and a palette provenance of `verified` or `plausible` to `StudioPreset` in `studio-presets.ts`. **Three values, not two.** The change was written before the palettes were rewritten to be the studio's own; `studio` is not a weaker `plausible` but a different claim, and recording one as the other would put back exactly the false citation that rewrite removed. The spec delta was corrected to match.
+- [x] 1.2 Assign a series to each of the ten existing presets and mark every one `studio`, which is what `studio-presets.ts` already says they are.
+- [x] 1.3 Add the carry-or-evoke marking per series: Couleur Additive, Physichromie, Induction Chromatique and Chromointerférence are carried; Chromosaturation, Transchromie, Chromoscope and Couleur dans l'espace are evoked.
+- [x] 1.4 Schema tests: every preset declares a series and a provenance, and every evoked-series preset is marked as an evocation.
+- [x] 1.5 Surface provenance in the applicator so a plausible palette is never presented as verified. The picker item's own name carries the series and, for an evoked one, that it is an evocation; a verified palette is the only thing allowed to say so, and a test refuses to let anything else drift into saying it.
 
 ## 2. Correct the series list
 
-- [ ] 2.1 Replace the 8–12 total assertion with per-series coverage over the eight series. Expect red until group 3 lands.
-- [ ] 2.2 Rename `Physichromie 500` and any other preset that names an individual catalogued work, to name its construction instead.
-- [ ] 2.3 Add a validation that no preset name or description asserts reproduction of an individual artwork.
+- [x] 2.1 Replace the 8–12 total assertion with per-series coverage over the eight series. The cap lived only in the spec, never in a test, so what landed is the coverage assertion the cap was standing in for.
+- [x] 2.2 Rename `Physichromie 500` and any other preset that names an individual catalogued work, to name its construction instead. It is now `Four-Ink Relief`; the thumbnail map is keyed by id, so the whole set was regenerated.
+- [x] 2.3 Add a validation that no preset name or description asserts reproduction of an individual artwork.
 
 ## 3. Author the library
 
-- [ ] 3.1 Chromoscope and Couleur dans l'espace have no preset at all; author one each, marked as evocations.
-- [ ] 3.2 Couleur Additive: author the serigraph structure from the reference set — horizontal bands over a white ground, three to four saturated colours, stepped rectangular regions with a phase offset between them.
-- [ ] 3.3 Physichromie: author the dense four-colour field with thin dark separators and a region inset, in the amber/blue/black register and in a full-spectrum register.
-- [ ] 3.4 Induction Chromatique: author the tapered-band study — `taper` across horizontal bands with rectangular insets at differing `phase`, which is the recurring structure across most of the supplied references.
-- [ ] 3.5 Chromointerférence: author two superimposed stripe layers at slightly different `angle` and `count` so the moiré is the subject, and a variant masked to an `ellipse` over a gradient.
-- [ ] 3.6 Author a rotated-planes composition — several stripe layers at differing `angle` over a dark ground — for the scattered-planes structure in the reference set.
-- [ ] 3.7 Review every new preset for `maskSize: 0` where a whole-frame field is intended, per the existing note that a layer arrives confined to a shape.
-- [ ] 3.8 Browser proof that each new preset applies and renders, and that the gallery lists every series.
+- [x] 3.1 Chromoscope and Couleur dans l'espace have no preset at all; author one each, marked as evocations.
+- [x] 3.2 Couleur Additive: author the serigraph structure from the reference set — horizontal bands over a white ground, three to four saturated colours, stepped rectangular regions with a phase offset between them.
+- [x] 3.3 Physichromie: author the dense four-colour field with thin dark separators and a region inset, in the amber/blue/black register and in a full-spectrum register.
+- [x] 3.4 Induction Chromatique: author the tapered-band study — `taper` across horizontal bands with rectangular insets at differing `phase`, which is the recurring structure across most of the supplied references.
+- [x] 3.5 Chromointerférence: author two superimposed stripe layers at slightly different `angle` and `count` so the moiré is the subject, and a variant masked to an `ellipse` over a gradient.
+- [x] 3.6 Author a rotated-planes composition — several stripe layers at differing `angle` over a dark ground — for the scattered-planes structure in the reference set.
+- [x] 3.7 Review every new preset for `maskSize: 0` where a whole-frame field is intended, per the existing note that a layer arrives confined to a shape. Asserted rather than reviewed: every layer of every entry must name its extent, so one left unset fails instead of landing as a quarter-size rectangle nobody notices.
+- [x] 3.8 Browser proof that each new preset applies and renders, and that the gallery lists every series.
 
 ## 4. The reference image
 

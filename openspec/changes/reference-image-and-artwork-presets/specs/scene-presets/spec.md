@@ -9,10 +9,12 @@ The eight series SHALL be Couleur Additive, Physichromie, Induction Chromatique,
 Chromointerférence, Transchromie, Chromosaturation, Chromoscope, and Couleur dans
 l'espace. Each series SHALL have at least one preset.
 
-Each preset SHALL record the series it belongs to and whether its palette is
-**verified** against a primary source or **plausible** — recorded by the product
-without checking. A plausible palette SHALL be usable and MUST NOT be presented as
-though it were verified.
+Each preset SHALL record the series it belongs to and where its palette came
+from: **verified** against a primary source, **plausible** — recorded by the
+product as an approximation without checking — or the **studio's own**, chosen
+here and claiming nothing about the artist's. Only a verified palette MAY be
+presented as taken from a primary source; the other two SHALL be usable and MUST
+NOT be presented as though they were.
 
 Each series SHALL be marked as one the canvas can **carry** or one it can only
 **evoke**. Couleur Additive, Physichromie, Induction Chromatique and
@@ -58,7 +60,7 @@ Selection and loading are two steps. A select that rewrote twenty other targets 
 #### Scenario: Provenance is recorded and readable
 - **WHEN** the preset library is validated
 - **THEN** every preset declares its series
-- **AND** every preset declares its palette as verified or plausible
+- **AND** every preset declares its palette as verified, plausible, or the studio's own
 
 #### Scenario: An unverified palette is not presented as verified
 - **WHEN** a preset whose palette is plausible is offered to the user

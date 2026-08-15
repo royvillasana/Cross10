@@ -16,7 +16,11 @@ import {
   toggleStudioLayerVisibility,
   STUDIO_PRODUCT_OUTPUT,
 } from "./studio-product-helpers";
-import { STUDIO_PRESETS } from "../src/app/studio-presets";
+import {
+  STUDIO_PRESETS,
+  STUDIO_SERIES,
+  STUDIO_SERIES_IDS,
+} from "../src/app/studio-presets";
 import { expectToolcraftAcceptanceOutcome } from "./browser-acceptance-outcome-helpers";
 import {
   expectToolcraftProductObservableToChange,
@@ -174,6 +178,37 @@ test("browser: studio gallery applies a composition and leaves every control liv
   // to prevent.
   const entries = STUDIO_PRESETS;
   expect(entries.length, "the library should offer every built-in composition").toBeGreaterThan(1);
+
+  // Every investigation is reachable from the picker, and each item says which
+  // one it is. Read from the rendered names rather than from the list the test
+  // imported: a series present in the data and missing from the panel is a
+  // library the user cannot open, and the data alone cannot tell them apart.
+  const offered = await page
+    .locator('[data-toolcraft-control-target="gallery.entry"]')
+    .getByRole("button")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("aria-label") ?? ""),
+    );
+
+  expect(offered, "every entry is offered").toHaveLength(entries.length);
+  for (const series of STUDIO_SERIES_IDS) {
+    expect(
+      offered.some((name) => name.includes(STUDIO_SERIES[series].label)),
+      `${STUDIO_SERIES[series].label} must be reachable from the picker`,
+    ).toBe(true);
+  }
+
+  // And the four the canvas can only evoke say so where they are offered,
+  // rather than in a comment nobody reads.
+  for (const preset of entries) {
+    const evoked = STUDIO_SERIES[preset.series].carriage === "evoke";
+    expect(
+      offered.some(
+        (name) => name.startsWith(`${preset.label} —`) && name.includes("evoking"),
+      ),
+      `${preset.id} should ${evoked ? "" : "not "}be offered as an evocation`,
+    ).toBe(evoked);
+  }
 
   // **Undo is still not asserted here, and the reason is still a framework
   // defect rather than a choice.** Applying a preset is several runtime layer

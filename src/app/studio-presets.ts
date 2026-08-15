@@ -42,6 +42,59 @@ import {
  * and the works it works in the tradition of.
  */
 
+/**
+ * The eight investigations the library covers, and which of them a rectangle can
+ * actually hold.
+ *
+ * Eight rather than six, which is what the spec used to say. Chromoscope and
+ * Couleur dans l'espace were simply missing from a list that claimed to
+ * enumerate them.
+ *
+ * **Carry or evoke** is the distinction that matters more. Four of these are
+ * planar constructions: a band field, a relief read at an angle, an induced
+ * colour at a boundary, two structures beating against each other. A canvas
+ * carries those -- the phenomenon is in the picture plane, and reproducing the
+ * geometry reproduces the effect.
+ *
+ * The other four are not pictures at all. Chromosaturation is a chamber the
+ * visitor stands inside; Transchromie is coloured and transparent panels they
+ * walk between; Chromoscope and Couleur dans l'espace are environments. Their
+ * subject is a body moving through coloured space, which a fixed rectangle does
+ * not have. A flat preset can produce the *chromatic condition* those works put
+ * a viewer in; calling that a rendering of the work would misdescribe both.
+ */
+export const STUDIO_SERIES = {
+  chromointerference: { carriage: "carry", label: "Chromointerférence" },
+  chromosaturation: { carriage: "evoke", label: "Chromosaturation" },
+  chromoscope: { carriage: "evoke", label: "Chromoscope" },
+  "couleur-additive": { carriage: "carry", label: "Couleur Additive" },
+  "couleur-dans-l-espace": { carriage: "evoke", label: "Couleur dans l'espace" },
+  "induction-chromatique": { carriage: "carry", label: "Induction Chromatique" },
+  physichromie: { carriage: "carry", label: "Physichromie" },
+  transchromie: { carriage: "evoke", label: "Transchromie" },
+} as const;
+
+export type StudioSeriesId = keyof typeof STUDIO_SERIES;
+
+export const STUDIO_SERIES_IDS = Object.keys(STUDIO_SERIES) as readonly StudioSeriesId[];
+
+/**
+ * Where a preset's colours came from, as data rather than as a file comment.
+ *
+ * The user never reads the file. Before this existed the product offered ten
+ * palettes with equal confidence while the source said, in prose, that they were
+ * guesses -- which is the shape of every quiet inaccuracy: true somewhere nobody
+ * looks.
+ *
+ * Three values rather than the two the change was first written with. `studio`
+ * is not a weaker `plausible`, it is a different claim: a plausible palette says
+ * "we think this is roughly the artist's and did not check", and every palette
+ * here says "these are ours, chosen for the relationships the technique needs".
+ * Recording the second as the first would put back exactly the false citation
+ * the palettes were rewritten to remove.
+ */
+export type StudioPalettePedigree = "plausible" | "studio" | "verified";
+
 export type StudioPresetLayer = Readonly<{
   /** What the layers panel calls it, so the stack reads as the composition. */
   name: string;
@@ -55,7 +108,34 @@ export type StudioPreset = Readonly<{
   label: string;
   /** Bottom first, which is the order the runtime holds and the stack draws. */
   layers: readonly StudioPresetLayer[];
+  palette: StudioPalettePedigree;
+  series: StudioSeriesId;
 }>;
+
+/**
+ * What the picker calls an entry.
+ *
+ * The series is part of the name because the library is organised by series and
+ * a grid of thumbnails has nowhere else to put it -- and because "Wedge Beat"
+ * tells an author nothing about which investigation they are looking at.
+ *
+ * An evoked series says so here, which is the whole of requirement's positive
+ * half: the four environmental series are marked wherever they are offered, so
+ * nothing in the product presents a flat rectangle as a rendering of a room.
+ *
+ * Provenance appears only when there is something to claim. All ten original
+ * palettes are the studio's own and assert nothing, so they say nothing; a
+ * palette that had genuinely been checked against a primary source would be the
+ * one thing worth stating, and the schema test refuses to let anything else say
+ * it.
+ */
+export function studioPresetPickerLabel(preset: StudioPreset): string {
+  const series = STUDIO_SERIES[preset.series];
+  const provenance = preset.palette === "verified" ? ", verified palette" : "";
+  return series.carriage === "evoke"
+    ? `${preset.label} — evoking ${series.label}${provenance}`
+    : `${preset.label} — ${series.label}${provenance}`;
+}
 
 /**
  * The studio's own inks, named so a stack can be read.
@@ -90,6 +170,8 @@ const INK = {
 export const STUDIO_PRESETS: readonly StudioPreset[] = [
   {
     id: "additive-bands",
+    palette: "studio",
+    series: "couleur-additive",
     label: "Additive Bands",
     // Couleur additive is a band field whose separators are windows onto the
     // support (R67), and in a stack what shows through a window is the layer
@@ -117,6 +199,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "induced-third",
+    palette: "studio",
+    series: "induction-chromatique",
     label: "Induced Third",
     // Narrow separators and unequal band widths push the induced colour at each
     // boundary, which is what the series is about.
@@ -145,11 +229,21 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
     ],
   },
   {
-    id: "physichromie-500",
-    label: "Physichromie 500",
+    id: "four-ink-relief",
+    palette: "studio",
+    series: "physichromie",
+    // Renamed from a catalogue number.
+    //
+    // Naming a preset after an individual work claims to be that work, and it
+    // is not: the technique is free to use and the specific pieces are in
+    // copyright until well into the next century. What this entry actually is
+    // -- a four-ink relief field read slightly off head-on -- is both the
+    // honest name and the more useful one, because it says what changing the
+    // controls will change.
+    label: "Four-Ink Relief",
     // The relief read head-on-ish: each strip presenting some of its neighbour.
-    // Croix10 asked for 220 bands and this field's count stops at 200, which is
-    // the Nyquist limit against pixel pitch rather than a performance bound.
+    // The field's count stops at 200, which is the Nyquist limit against pixel
+    // pitch rather than a performance bound.
     layers: [
       {
         name: "Relief",
@@ -171,6 +265,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "lamella-sweep",
+    palette: "studio",
+    series: "physichromie",
     label: "Lamella Sweep",
     layers: [
       {
@@ -192,6 +288,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "induction-grid",
+    palette: "studio",
+    series: "induction-chromatique",
     label: "Induction Grid",
     // Black and white only: the colour in this one is entirely induced, which
     // is the claim the technique makes and the reason the palette is empty of
@@ -214,6 +312,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "afterimage-rose",
+    palette: "studio",
+    series: "induction-chromatique",
     label: "Afterimage Rose",
     layers: [
       {
@@ -233,6 +333,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "saturation-chamber",
+    palette: "studio",
+    series: "chromosaturation",
     label: "Saturation Chamber",
     // Chromosaturation is a full-field wash with no band structure, which in
     // this product is a gradient layer (R67). Two of them, so the chamber has
@@ -266,6 +368,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "interference-beat",
+    palette: "studio",
+    series: "chromointerference",
     label: "Interference Beat",
     layers: [
       {
@@ -288,6 +392,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "moire-wedge",
+    palette: "studio",
+    series: "chromointerference",
     label: "Moiré Wedge",
     // The wedge is the taper (R59) and the moiré is the second structure
     // beating against the first, so this one needs both halves of group 4.
@@ -311,6 +417,8 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
   },
   {
     id: "transchromie-sheets",
+    palette: "studio",
+    series: "transchromie",
     label: "Transchromie Sheets",
     // Sheets of transparent colour laid over one another, where the overlaps
     // carry colours no sheet contains. That is the stack with multiply
@@ -343,6 +451,446 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [
           colorB: INK.white,
           maskSize: 0,
           opacity: 0.55,
+        },
+      },
+    ],
+  },
+  {
+    id: "serigraph-registers",
+    palette: "studio",
+    series: "couleur-additive",
+    label: "Serigraph Registers",
+    // The printed form of the additive series: horizontal bands over a light
+    // ground, three inks, and a second register of the same field printed at an
+    // offset inside a rectangular window. The offset is the whole subject --
+    // where the two registers disagree, the eye makes a colour neither ink
+    // carries, which is what "additive" names.
+    layers: [
+      {
+        name: "Ground",
+        typeId: "gradient",
+        values: { colorA: INK.white, colorB: INK.white, maskSize: 0, rampType: "linear" },
+      },
+      {
+        name: "Register — first",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.red,
+          colorB: INK.blue,
+          colorC: INK.yellow,
+          count: 32,
+          maskSize: 0,
+          paletteSlots: 3,
+          separator: 0.14,
+          widthRatio: 0.55,
+        },
+      },
+      {
+        name: "Register — offset",
+        typeId: "stripes",
+        // Confined rather than whole-frame, and deliberately: the stepped
+        // window is the printed second pass, so it has to have an edge.
+        values: {
+          angle: 0,
+          colorA: INK.yellow,
+          colorB: INK.red,
+          colorC: INK.blue,
+          count: 32,
+          maskAspect: 1.6,
+          maskCenterY: -0.08,
+          maskShape: "rectangle",
+          maskSize: 0.3,
+          paletteSlots: 3,
+          phase: 0.5,
+          separator: 0.14,
+          widthRatio: 0.55,
+        },
+      },
+    ],
+  },
+  {
+    id: "amber-blue-relief",
+    palette: "studio",
+    series: "physichromie",
+    label: "Amber and Blue Relief",
+    // The dense register: four inks, separators thin enough to read as lines
+    // rather than bands, and an inset that repeats the field at a different
+    // phase so the relief appears to step where the window is.
+    layers: [
+      {
+        name: "Relief",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.amber,
+          colorB: INK.black,
+          colorC: INK.blue,
+          colorD: INK.black,
+          count: 180,
+          engine: "physichromie",
+          engineAmount: 0.6,
+          maskSize: 0,
+          paletteSlots: 4,
+          separator: 0.05,
+        },
+      },
+      {
+        name: "Inset",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.blue,
+          colorB: INK.black,
+          colorC: INK.amber,
+          colorD: INK.black,
+          count: 180,
+          engine: "physichromie",
+          engineAmount: 0.6,
+          maskAspect: 0.7,
+          maskShape: "rectangle",
+          maskSize: 0.34,
+          paletteSlots: 4,
+          phase: 0.5,
+          separator: 0.05,
+        },
+      },
+    ],
+  },
+  {
+    id: "spectrum-relief",
+    palette: "studio",
+    series: "physichromie",
+    label: "Spectrum Relief",
+    // The same construction in a full register rather than a two-ink one, which
+    // is the other half of what the series does: the relief carries as many
+    // inks as the support will hold and the shear mixes all of them.
+    layers: [
+      {
+        name: "Relief",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.magenta,
+          colorB: INK.yellow,
+          colorC: INK.cyan,
+          colorD: INK.green,
+          count: 200,
+          engine: "physichromie",
+          engineAmount: 0.85,
+          maskSize: 0,
+          paletteSlots: 4,
+          separator: 0.04,
+        },
+      },
+    ],
+  },
+  {
+    id: "tapered-study",
+    palette: "studio",
+    series: "induction-chromatique",
+    label: "Tapered Study",
+    // The recurring structure of the induction studies: bands whose width runs
+    // out across the field, with rectangular insets carrying the same field at
+    // a different phase. The taper is what gives the induced colour somewhere
+    // to change along, so the effect is not uniform across the picture.
+    layers: [
+      {
+        name: "Field",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.black,
+          colorB: INK.white,
+          count: 120,
+          engine: "induction",
+          engineAmount: 0.7,
+          maskSize: 0,
+          taper: 0.6,
+        },
+      },
+      {
+        name: "Inset — upper",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.white,
+          colorB: INK.black,
+          count: 120,
+          engine: "induction",
+          engineAmount: 0.7,
+          maskAspect: 2.2,
+          maskCenterY: 0.22,
+          maskShape: "rectangle",
+          maskSize: 0.16,
+          phase: 0.5,
+          taper: 0.6,
+        },
+      },
+      {
+        name: "Inset — lower",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.white,
+          colorB: INK.black,
+          count: 120,
+          engine: "induction",
+          engineAmount: 0.7,
+          maskAspect: 2.2,
+          maskCenterY: -0.22,
+          maskShape: "rectangle",
+          maskSize: 0.16,
+          phase: 0.25,
+          taper: 0.6,
+        },
+      },
+    ],
+  },
+  {
+    id: "superimposed-beat",
+    palette: "studio",
+    series: "chromointerference",
+    label: "Superimposed Beat",
+    // Two fields rather than one engine: the moiré here is produced by the
+    // stack, which is the honest reading of the technique -- a second structure
+    // laid over the first at a slightly different angle and pitch, beating with
+    // it. Small differences, because a large one reads as two patterns rather
+    // than as interference.
+    layers: [
+      {
+        name: "Field — first",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.cyan,
+          colorB: INK.black,
+          count: 96,
+          maskSize: 0,
+        },
+      },
+      {
+        name: "Field — second",
+        typeId: "stripes",
+        values: {
+          angle: 4,
+          blendMode: "screen",
+          colorA: INK.magenta,
+          colorB: INK.black,
+          count: 104,
+          maskSize: 0,
+          opacity: 0.7,
+        },
+      },
+    ],
+  },
+  {
+    id: "interference-lens",
+    palette: "studio",
+    series: "chromointerference",
+    label: "Interference Lens",
+    // The beat confined to a form over a ground, which is the other way the
+    // series is composed: the interference is an event happening somewhere
+    // rather than a field filling the frame.
+    layers: [
+      {
+        name: "Ground",
+        typeId: "gradient",
+        values: {
+          angle: 90,
+          colorA: INK.black,
+          colorB: INK.blue,
+          maskSize: 0,
+          rampType: "linear",
+        },
+      },
+      {
+        name: "Lens",
+        typeId: "stripes",
+        values: {
+          angle: 0,
+          colorA: INK.yellow,
+          colorB: INK.red,
+          colorC: INK.cyan,
+          count: 72,
+          engine: "chromointerference",
+          engineAmount: 0.8,
+          enginePitch: 1.12,
+          maskAspect: 1.2,
+          maskShape: "ellipse",
+          maskSize: 0.38,
+          paletteSlots: 3,
+        },
+      },
+    ],
+  },
+  {
+    id: "projection-cone",
+    palette: "studio",
+    series: "chromoscope",
+    label: "Projection Cone",
+    // **An evocation, not a rendering.** The chromoscope is an apparatus that
+    // throws coloured light into a room; its subject is the event in the air and
+    // the body standing in it. What a rectangle can carry is the chromatic
+    // condition that produces -- saturated hues meeting at a soft boundary, with
+    // an angular sweep standing in for the throw.
+    layers: [
+      {
+        name: "Dark",
+        typeId: "gradient",
+        values: { colorA: INK.black, colorB: INK.black, maskSize: 0, rampType: "linear" },
+      },
+      {
+        name: "Throw",
+        typeId: "gradient",
+        values: {
+          angle: 0,
+          colorA: INK.magenta,
+          colorB: INK.cyan,
+          colorC: INK.amber,
+          maskSize: 0,
+          paletteSlots: 3,
+          rampType: "angular",
+        },
+      },
+      {
+        name: "Falloff",
+        typeId: "gradient",
+        values: {
+          blendMode: "multiply",
+          colorA: INK.white,
+          colorB: INK.black,
+          maskSize: 0,
+          rampType: "radial",
+        },
+      },
+    ],
+  },
+  {
+    id: "suspended-planes",
+    palette: "studio",
+    series: "couleur-dans-l-espace",
+    label: "Suspended Planes",
+    // **An evocation, not a rendering.** Colour in space is planes hung apart
+    // from one another in a room, read against each other as the visitor moves.
+    // Flat, that becomes several banded planes at different angles over a dark
+    // ground -- the arrangement without the walking, which is the part a
+    // rectangle cannot supply.
+    layers: [
+      {
+        name: "Ground",
+        typeId: "gradient",
+        values: { colorA: INK.black, colorB: INK.blue, maskSize: 0, rampType: "radial" },
+      },
+      {
+        name: "Plane — left",
+        typeId: "stripes",
+        values: {
+          angle: 68,
+          colorA: INK.red,
+          colorB: INK.amber,
+          count: 40,
+          maskAspect: 0.45,
+          maskCenterX: -0.32,
+          maskRotation: 12,
+          maskShape: "rectangle",
+          maskSize: 0.4,
+          opacity: 0.9,
+        },
+      },
+      {
+        name: "Plane — middle",
+        typeId: "stripes",
+        values: {
+          angle: 24,
+          colorA: INK.cyan,
+          colorB: INK.white,
+          count: 56,
+          maskAspect: 0.5,
+          maskRotation: -8,
+          maskShape: "rectangle",
+          maskSize: 0.44,
+          opacity: 0.9,
+        },
+      },
+      {
+        name: "Plane — right",
+        typeId: "stripes",
+        values: {
+          angle: 112,
+          colorA: INK.green,
+          colorB: INK.magenta,
+          count: 34,
+          maskAspect: 0.4,
+          maskCenterX: 0.34,
+          maskRotation: 20,
+          maskShape: "rectangle",
+          maskSize: 0.38,
+          opacity: 0.9,
+        },
+      },
+    ],
+  },
+  {
+    id: "scattered-planes",
+    palette: "studio",
+    series: "couleur-dans-l-espace",
+    label: "Scattered Planes",
+    // **An evocation, not a rendering.** The looser arrangement: banded planes
+    // at widely differing angles over a dark ground, overlapping rather than
+    // ranked, so the frame reads as depth without any of it being modelled.
+    layers: [
+      {
+        name: "Ground",
+        typeId: "gradient",
+        values: { colorA: INK.black, colorB: INK.black, maskSize: 0, rampType: "linear" },
+      },
+      {
+        name: "Plane — low",
+        typeId: "stripes",
+        values: {
+          angle: 8,
+          colorA: INK.yellow,
+          colorB: INK.red,
+          count: 28,
+          maskAspect: 1.8,
+          maskCenterY: -0.2,
+          maskRotation: -14,
+          maskShape: "rectangle",
+          maskSize: 0.24,
+        },
+      },
+      {
+        name: "Plane — mid",
+        typeId: "stripes",
+        values: {
+          angle: 96,
+          blendMode: "screen",
+          colorA: INK.cyan,
+          colorB: INK.blue,
+          count: 44,
+          maskAspect: 0.9,
+          maskCenterX: 0.18,
+          maskRotation: 32,
+          maskShape: "rectangle",
+          maskSize: 0.3,
+        },
+      },
+      {
+        name: "Plane — high",
+        typeId: "stripes",
+        values: {
+          angle: 150,
+          blendMode: "screen",
+          colorA: INK.magenta,
+          colorB: INK.green,
+          count: 60,
+          maskAspect: 1.3,
+          maskCenterX: -0.22,
+          maskCenterY: 0.24,
+          maskRotation: 6,
+          maskShape: "rectangle",
+          maskSize: 0.26,
         },
       },
     ],

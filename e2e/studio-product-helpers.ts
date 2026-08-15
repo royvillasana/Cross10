@@ -2,6 +2,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 import { createToolcraftBrowserProofSession } from "./browser-proof-session";
 import { getToolcraftControlFieldByTarget } from "./browser-control-target-helpers";
+import {
+  STUDIO_PRESETS,
+  studioPresetPickerLabel,
+} from "../src/app/studio-presets";
 
 /**
  * Shared setup for Croix10 browser proofs.
@@ -509,17 +513,27 @@ export async function openStudioTwoLayerStack(
  * a popup.
  *
  * Matched as a *button*, not as an image. Each item is a button carrying the
- * entry's label as its `aria-label`, wrapping an `img` whose own `alt` is
+ * entry's name as its `aria-label`, wrapping an `img` whose own `alt` is
  * deliberately empty because the picture is decorative once the button is
  * named. Reaching for the image finds nothing at all.
+ *
+ * Takes the plain label and composes the rest through the library's own
+ * function. The name a picker item carries is the label plus its series -- and,
+ * for the four the canvas can only evoke, that it is an evocation -- and a test
+ * that spelled that out itself would be a second implementation of it, free to
+ * drift and failing silently when it did: the locator would simply find nothing
+ * and the capture would be of whatever was already selected.
  */
 export async function setStudioTechnique(
   page: Page,
   label: string,
 ): Promise<void> {
+  const preset = STUDIO_PRESETS.find((entry) => entry.label === label);
+  if (!preset) throw new Error(`No preset is labelled "${label}".`);
+
   await page
     .locator('[data-toolcraft-control-target="gallery.entry"]')
-    .getByRole("button", { name: label, exact: true })
+    .getByRole("button", { name: studioPresetPickerLabel(preset), exact: true })
     .first()
     .click();
 }
