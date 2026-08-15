@@ -14,6 +14,7 @@ import {
 import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
+import { StudioReferenceOverlay } from "./studio-reference-overlay";
 import { StudioRegionHandles } from "./studio-region-handles";
 import { useStudioShortcuts } from "./studio-shortcuts";
 import {
@@ -326,6 +327,7 @@ export function StudioCanvas(): React.JSX.Element {
         data-toolcraft-product-output=""
         ref={canvasRef}
       />
+      <StudioReferenceOverlay canvasRef={canvasRef} />
       <StudioRegionHandles canvasRef={canvasRef} />
     </>
   );

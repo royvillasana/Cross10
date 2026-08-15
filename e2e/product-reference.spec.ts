@@ -1,0 +1,305 @@
+import { expect, type Download, type Page } from "@playwright/test";
+
+import { getToolcraftApplicabilityRequirementId } from "../src/app/app-acceptance";
+import { expectToolcraftAcceptanceOutcome } from "./browser-acceptance-outcome-helpers";
+import { expectToolcraftControlApplicabilityState } from "./browser-control-applicability-evidence";
+import { inspectToolcraftImageDownload } from "./image-artifact-inspection";
+import {
+  openStudioSingleLayer,
+  readStudioLayerIds,
+  readStudioOutputSignature,
+  setStudioSelectValue,
+  setStudioSlider,
+  STUDIO_PRODUCT_OUTPUT,
+} from "./studio-product-helpers";
+import { STUDIO_PRESETS, studioPresetPickerLabel } from "../src/app/studio-presets";
+import {
+  expectToolcraftProductObservableToChange,
+  getToolcraftProductObservableSnapshot,
+} from "./product-observable-helpers";
+import { test } from "./toolcraft-product-test";
+
+/**
+ * Reference acceptance domain.
+ *
+ * Two kinds of claim, and they pull in opposite directions, which is what makes
+ * the domain worth its own file. The reference has to be *visible* — an author
+ * cannot work against something they cannot see — and it has to be *absent from
+ * every artifact*, because a guide that can be published is not a guide.
+ *
+ * Every proof below therefore reads two different surfaces: the editor, where
+ * the reference must appear, and the artifact, where it must not. A proof that
+ * only read one would pass over exactly the failure that matters.
+ */
+
+const REFERENCE_OVERLAY = "[data-studio-reference]";
+
+/** The overlay element, which is absent from the DOM when nothing is shown. */
+function studioReference(page: Page) {
+  return page.locator(REFERENCE_OVERLAY);
+}
+
+async function setStudioReference(page: Page, label: string): Promise<void> {
+  const preset = STUDIO_PRESETS.find((entry) => entry.label === label);
+  if (!preset) throw new Error(`No preset is labelled "${label}".`);
+
+  await page
+    .locator('[data-toolcraft-control-target="reference.entry"]')
+    .getByRole("button", { name: studioPresetPickerLabel(preset), exact: true })
+    .first()
+    .click();
+}
+
+/** The study the overlay is currently showing, or an empty string for none. */
+async function readStudioReferenceSource(page: Page): Promise<string> {
+  return page.evaluate((selector) => {
+    const image = document.querySelector(`${selector} img`);
+    return image?.getAttribute("src")?.slice(0, 96) ?? "";
+  }, REFERENCE_OVERLAY);
+}
+
+/** The composite once it has stopped moving, so two frames can be compared. */
+async function settleStudioFrame(page: Page): Promise<string> {
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await readStudioOutputSignature(page));
+        if (recent.length > 3) recent.shift();
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [200], timeout: 30_000 },
+    )
+    .toBe(true);
+  return recent[recent.length - 1] ?? "";
+}
+
+async function settleStudioObservable(page: Page): Promise<void> {
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await getToolcraftProductObservableSnapshot(page));
+        if (recent.length > 3) recent.shift();
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [300], timeout: 30_000 },
+    )
+    .toBe(true);
+}
+
+/**
+ * The pixels of a real exported artifact.
+ *
+ * Dispatched rather than clicked so the pointer never leaves the canvas, which
+ * keeps the export comparable with the one taken beside it: pressing the button
+ * with a real pointer commits the cursor away and changes the composition's own
+ * at-rest state.
+ */
+async function exportedPixels(page: Page): Promise<string> {
+  const download: Promise<Download> = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PNG" }).dispatchEvent("click");
+  const { inspection } = await inspectToolcraftImageDownload({
+    backgroundRgba: [0, 0, 0, 255],
+    download: await download,
+    page,
+  });
+  return inspection.decodedPixelHash;
+}
+
+test("browser: studio reference shows behind the work and reaches no artifact", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  const { session } = await openStudioSingleLayer(page);
+
+  const layersBefore = await readStudioLayerIds(page);
+  const canvasBefore = await page.locator(STUDIO_PRODUCT_OUTPUT).boundingBox();
+  const compositionBefore = await settleStudioFrame(page);
+
+  // Nothing is shown until the author asks for it, and "nothing" means absent
+  // from the tree rather than present at zero opacity. An element that exists
+  // and cannot be seen is the shape a leak takes.
+  await expect(studioReference(page)).toHaveCount(0);
+
+  // The artifact with no reference at all, which every comparison below is
+  // measured against.
+  const exportedWithout = await exportedPixels(page);
+
+  // The strength proved in both readings, because they are peers in one section
+  // and a gated surface owes its evidence per branch. It is a real claim rather
+  // than bookkeeping: the slider has to keep working *inside* the difference
+  // view, where what it scales is the strength of the comparison rather than
+  // the visibility of a picture.
+  for (const mode of [
+    { label: "Laying it over", value: "overlay" },
+    { label: "Their difference", value: "difference" },
+  ] as const) {
+    const applicability = {
+      expectation: "visible" as const,
+      selectorControlType: "select" as const,
+      selectorLabel: "Compare by",
+      selectorOptionLabel: mode.label,
+      selectorTarget: "reference.compare",
+      selectorValue: mode.value,
+      target: "reference.opacity",
+    };
+
+    // Back to nothing shown first, so the change below is a change.
+    await setStudioSlider(page, "Reference opacity", 0);
+    await expect(studioReference(page)).toHaveCount(0);
+
+    await expectToolcraftControlApplicabilityState(
+      session,
+      session.controlAction("reference.compare", async () => {
+        await setStudioSelectValue(page, "reference.compare", mode.label);
+      }),
+      applicability,
+      { baseRequirementId: "reference.opacity" },
+    );
+
+    await settleStudioObservable(page);
+    await expectToolcraftProductObservableToChange(
+      session,
+      session.controlAction("reference.opacity", async () => {
+        await setStudioSlider(page, "Reference opacity", 0.8);
+      }),
+      {
+        requirementId: getToolcraftApplicabilityRequirementId(
+          "reference.opacity",
+          applicability,
+        ),
+      },
+    );
+
+    await expect(studioReference(page)).toHaveCount(1);
+  }
+
+  // It is not a layer. The list is exactly what it was, and there is no row to
+  // select that corresponds to the reference.
+  expect(
+    await readStudioLayerIds(page),
+    "a reference must not appear in the layer list",
+  ).toEqual(layersBefore);
+
+  // And it did not resize anything. A study of another proportion is contained
+  // rather than fitted, so the canvas keeps the dimensions the author chose.
+  expect(
+    await page.locator(STUDIO_PRODUCT_OUTPUT).boundingBox(),
+    "loading a reference must not resize the canvas",
+  ).toEqual(canvasBefore);
+
+  // Every study is reachable and each one shows its own picture. The picker's
+  // coverage obligation is per item, and a study that silently showed the
+  // previous one would look exactly like one nobody had proved.
+  const seen = new Set<string>();
+  for (const preset of STUDIO_PRESETS) {
+    await setStudioReference(page, preset.label);
+    await expect
+      .poll(async () => readStudioReferenceSource(page), { timeout: 15_000 })
+      .not.toBe("");
+    seen.add(await readStudioReferenceSource(page));
+  }
+  expect(
+    seen.size,
+    "each study must show its own render rather than the one before it",
+  ).toBe(STUDIO_PRESETS.length);
+
+  // Choosing a study is a change to the editor and to nothing else: the outcome
+  // reads what is shown behind the work, and the composition beside it is
+  // asserted to have held still.
+  const first = STUDIO_PRESETS[0];
+  const second = STUDIO_PRESETS[1];
+  if (!first || !second) throw new Error("the library needs at least two entries");
+
+  await setStudioReference(page, first.label);
+  await expectToolcraftAcceptanceOutcome(
+    async () => ({
+      composition: await readStudioOutputSignature(page),
+      shown: await readStudioReferenceSource(page),
+    }),
+    async () => {
+      await setStudioReference(page, second.label);
+    },
+    { evidenceType: "command-side-effect", requirementId: "reference.entry" },
+  );
+
+  expect(
+    await readStudioLayerIds(page),
+    "choosing a study must not touch the layer list",
+  ).toEqual(layersBefore);
+
+  // The artifact is unchanged by all of it. Not "the export looks right" --
+  // identity against the export taken before any reference existed, because the
+  // failure being guarded is a leak and a leaked artifact looks perfectly fine.
+  expect(
+    await exportedPixels(page),
+    "an exported image must be identical whether or not a reference is showing",
+  ).toBe(exportedWithout);
+
+  // Dismissed by returning the strength to zero, which leaves the composition
+  // exactly as it was.
+  await setStudioSlider(page, "Reference opacity", 0);
+  await expect(studioReference(page)).toHaveCount(0);
+  expect(await readStudioLayerIds(page)).toEqual(layersBefore);
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 15_000 })
+    .toBe(compositionBefore);
+});
+
+test("browser: studio reference compares by difference and exports neither", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  const { session } = await openStudioSingleLayer(page);
+
+  const layersBefore = await readStudioLayerIds(page);
+  const compositionBefore = await settleStudioFrame(page);
+  const exportedWithout = await exportedPixels(page);
+
+  await setStudioSlider(page, "Reference opacity", 1);
+  await expect(studioReference(page)).toHaveAttribute("data-studio-reference", "overlay");
+
+  // Difference rather than a second opacity, because at fifty percent every
+  // mismatch looks like a mismatch -- including one that is only a difference
+  // in brightness. Read as the mode the overlay is actually in, since the
+  // blending is done by the browser and never reaches the product's own pixels.
+  await settleStudioObservable(page);
+  await expectToolcraftProductObservableToChange(
+    session,
+    session.controlAction("reference.compare", async () => {
+      await setStudioSelectValue(page, "reference.compare", "Their difference");
+    }),
+    { requirementId: "reference.compare" },
+  );
+
+  await expect(studioReference(page)).toHaveAttribute(
+    "data-studio-reference",
+    "difference",
+  );
+
+  // Comparing writes nothing. The layer list, and the composition's own pixels,
+  // are what they were before the mode was entered.
+  expect(await readStudioLayerIds(page)).toEqual(layersBefore);
+  expect(
+    await readStudioOutputSignature(page),
+    "entering a comparison must not change the composition",
+  ).toBe(compositionBefore);
+
+  // And exporting while it is active carries the composition alone.
+  expect(
+    await exportedPixels(page),
+    "an export taken while comparing must show the composition alone",
+  ).toBe(exportedWithout);
+
+  // Leaving it changes nothing either, which is the other half of the claim: a
+  // display mode that had written a value would show it on the way out.
+  await setStudioSelectValue(page, "reference.compare", "Laying it over");
+  await expect(studioReference(page)).toHaveAttribute("data-studio-reference", "overlay");
+  expect(await readStudioLayerIds(page)).toEqual(layersBefore);
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 15_000 })
+    .toBe(compositionBefore);
+});

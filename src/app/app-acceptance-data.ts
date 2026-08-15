@@ -12,6 +12,7 @@ import {
   studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
   studioPointerAcceptanceRows,
+  studioReferenceAcceptanceRows,
 } from "./studio-acceptance-rows";
 
 const persistenceSlices =
@@ -131,6 +132,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
       "Build a two-layer stack, edit both layers, move and collapse Controls, wait for persistence, and reload the page.",
   },
   ...studioGalleryAcceptanceRows,
+  ...studioReferenceAcceptanceRows,
   ...studioHistoryAcceptanceRows,
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
@@ -176,6 +178,26 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["gallery.restore"],
       title: "Previous Stack",
       workflowStage: "recover",
+    },
+    {
+      entity: "Reference",
+      entityId: "reference",
+      groupingReason:
+        "Choosing something to work against by looking at it. The thumbnails are the whole content of this section, and imagePicker is a standalone control, so the runtime gives it a section of its own whether or not the product asks -- declared explicitly here so the id stays nameable.",
+      id: "reference",
+      targets: ["reference.entry"],
+      title: "Reference",
+      workflowStage: "aim",
+    },
+    {
+      entity: "Reference view",
+      entityId: "reference-view",
+      groupingReason:
+        "How hard to look at the reference, and how to read it against the work. Its own entity rather than part of the picker because these two answer a question the picker does not: the picker names what to aim at, and these decide whether it is showing at all and whether the author is looking at both pictures or at the distance between them.",
+      id: "reference-view",
+      targets: ["reference.opacity", "reference.compare"],
+      title: "Reference View",
+      workflowStage: "aim",
     },
     {
       entity: "Background",

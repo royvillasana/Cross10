@@ -343,6 +343,55 @@ target, which is the part that would be dangerous.
 
 ---
 
+## 10. Every image a user loads becomes a layer, so a guide image is not expressible
+
+`media-reducer.ts` creates a layer for every imported asset, unconditionally:
+
+```ts
+// src/toolcraft/runtime/state/media-reducer.ts:203-222
+for (const { draft, layerId, layerName, mediaId } of items) {
+  importedAssets.push(createImportedMediaAsset({ draft, layerId, mediaId, ... }));
+  importedLayers.push({ displayName: layerName, id: layerId, kind: "layer", ... });
+}
+const layers = [...baseLayers, ...importedLayers];
+const selectedLayerId = importedLayers.at(-1)?.id ?? state.selectedLayerId;
+```
+
+There is no branch on `assetKind`, on `sourceTarget`, or on whether `panels.layers`
+is enabled. Importing also selects the new layer, and `layers.delete` prunes the
+media asset with it (`layers-reducer.ts:143`), so a product cannot import an image
+and then remove the layer to keep the asset.
+
+That closes every route to an image that is *not* content:
+
+- **`fileDrop`** is the only sanctioned uploader, and it goes through this reducer.
+- **A custom control** cannot stand in for it: `component-contracts.media-custom.ts:143`
+  forbids using a custom control to recreate a built-in FileDrop.
+- **`media.defaultAssets`** are product-shipped, not user-loaded, and become layers too.
+
+A reference image — one loaded to author *against*, which must never composite into
+the artwork and must never reach an artifact — therefore cannot be held anywhere the
+framework offers. Croix10 needs exactly this: the product asks a user to recreate a
+chromatic construction and can give them nothing to check their work against.
+
+The distinction the framework is missing is between **source material**, which is
+content and should be a layer, and a **guide**, which is not content and must not be.
+Onion-skinning, tracing references, and colour-match targets are all the second kind,
+and they are ordinary features of drawing and design tools.
+
+**Suggested fix:** either an `assetKind` or an import flag that allocates the media
+asset without a layer, or a first-class reference-image surface on the canvas schema
+with its own opacity and comparison modes. The asset system already keys assets by
+`sourceTarget`, so the smaller of the two is close to free: skip the `importedLayers`
+push when the import is marked as a guide, and let the product bind the texture itself.
+
+**Local workaround:** none is possible for the requirement as written. The options
+open to a product are all compromises — accept the layer and exclude it from the
+artwork, or offer a built-in image instead of a user's own — and which compromise to
+take is a product decision rather than an engineering one.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

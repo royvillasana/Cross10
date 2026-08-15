@@ -5,6 +5,7 @@ import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_GALLERY_SECTIONS } from "./studio-gallery-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
+import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
 import {
   STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
@@ -47,6 +48,11 @@ export const appSchema = defineToolcraft({
         // First, because it is where a composition starts: an entry sets a
         // stack and every control below stays live over it (R58).
         ...STUDIO_GALLERY_SECTIONS,
+        // Next, because it is the order the work happens in: see what the
+        // techniques look like, put one behind the canvas to work against,
+        // then build. The reference changes nothing about the composition, so
+        // it sits before everything that does.
+        ...STUDIO_REFERENCE_SECTIONS,
         ...STUDIO_BACKGROUND_SECTIONS,
         ...STUDIO_LAYER_SECTIONS,
         ...STUDIO_EXPORT_SECTIONS,

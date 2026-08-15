@@ -1,0 +1,38 @@
+/*
+ * Fixed to the viewport and placed from the canvas's own bounding rectangle,
+ * the same way the region handles are, and for the same reason: a wrapper would
+ * put an element between the runtime's scene surface and the canvas it
+ * positions, and the canvas is the product's output element rather than
+ * something to reparent for a coordinate system.
+ *
+ * Placing it from the canvas box is also what registers the two. A reference is
+ * only useful if it sits exactly where the composition sits, at the same scale,
+ * and the canvas box already carries whatever pan and zoom the shell applied.
+ */
+.overlay {
+  pointer-events: none;
+  position: fixed;
+  z-index: 4;
+}
+
+.image {
+  block-size: 100%;
+  display: block;
+  inline-size: 100%;
+  /* Contained rather than filled: a reference of another proportion must not be
+     cropped to fit, because the proportion is part of what is being read. */
+  object-fit: contain;
+}
+
+/*
+ * Difference, done by the browser rather than by the renderer.
+ *
+ * This is the whole reason the reference is a DOM element. A blend mode here
+ * composites against what is already painted — the canvas — and cannot reach
+ * the WebGL surface, the export frame, or the assembled source. The same effect
+ * inside the shader would have put the reference into the one place it must
+ * never be.
+ */
+.difference {
+  mix-blend-mode: difference;
+}

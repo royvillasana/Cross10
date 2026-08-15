@@ -231,7 +231,14 @@ export async function setStudioSlider(
   label: string,
   value: number,
 ): Promise<void> {
-  const slider = page.getByRole("slider", { name: label }).first();
+  // Matched exactly. Accessible-name matching is substring by default, so a
+  // query for "Opacity" also finds "Reference opacity" -- and finds it first,
+  // because the reference sits above the layer sections in the panel. The
+  // failure that produced is worth recording: the layer's opacity silently
+  // stayed where it was, a lens meant to paint nothing painted its gradient,
+  // and four treatment proofs reported the wrong colour with nothing in their
+  // own subject having changed.
+  const slider = page.getByRole("slider", { exact: true, name: label }).first();
   await slider.focus();
   await slider.evaluate((element, next) => {
     const input = element as HTMLInputElement;

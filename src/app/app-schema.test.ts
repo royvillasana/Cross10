@@ -49,6 +49,11 @@ describe("appSchema", () => {
       // beside the presses the aim above would have been its semantic peer,
       // obliging a visibility proof under four aims it does not depend on.
       "Previous Stack",
+      // Before everything that changes the composition, because it changes
+      // none of it: a reference is something to aim at, chosen after seeing
+      // the techniques and before building anything.
+      "Reference",
+      "Reference View",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide
       // into explicit workflow stages, and the kind gate moves with the
