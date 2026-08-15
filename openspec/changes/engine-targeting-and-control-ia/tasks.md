@@ -28,16 +28,16 @@
 
 ## 5. Technique as context, engine as application
 
-- [ ] 5.1 Replace the technique select with the built-in `imagePicker`, and place it first in the control surface so the techniques are the first thing the user meets.
-- [ ] 5.2 Produce a thumbnail per technique. They must be renders the product itself produces from the technique's own stack, not photographs of artworks (see design Open Questions).
-- [ ] 5.3 Make the technique picker set the canvas's construction, leaving every control it touched live and editable afterwards.
+- [x] 5.1 Replace the technique select with the built-in `imagePicker`, and place it first in the control surface so the techniques are the first thing the user meets.
+- [x] 5.2 Produce a thumbnail per technique. They must be renders the product itself produces from the technique's own stack, not photographs of artworks (see design Open Questions).
+- [x] 5.3 Make the technique picker set the canvas's construction, leaving every control it touched live and editable afterwards.
 - [ ] 5.4 Add the confirmation step for a technique change: state that current work will be replaced, leave the canvas untouched until confirmed, and skip asking when there is no work to replace.
 - [ ] 5.5 Express the confirmation through built-in controls as a deliberate second action. There is no modal available — do not author one.
 - [ ] 5.6 Keep the engine control as the per-target application, and make the surface distinguish context from application despite the shared vocabulary.
 - [ ] 5.7 Extend `planStudioPresetApplication` to take a target and emit commands affecting only that target's layers; add the image target alongside layer and group.
 - [ ] 5.8 Make the group and image targets unavailable rather than disabled when nothing eligible is selected, per the existing applicability requirement.
 - [ ] 5.9 Keep the existing target keys where possible so Settings Transfer round-trips (see the BREAKING note in design).
-- [ ] 5.10 Browser proof per technique thumbnail that choosing it changes the render — the `imagePicker` contract requires every visible item to be proved individually, not one proof for the control.
+- [x] 5.10 Browser proof per technique thumbnail that choosing it changes the render — the `imagePicker` contract requires every visible item to be proved individually, not one proof for the control.
 - [ ] 5.11 Browser proofs per engine target: layer-only leaves neighbours unchanged, group-only leaves outsiders unchanged, image-only restyles the picture and changes nothing else.
 - [ ] 5.12 Browser proof that applying an engine to a target never asks for confirmation and never replaces the canvas.
 - [ ] 5.13 Browser proofs for the confirmation: declining leaves every layer value and the current technique unchanged; confirming is still revertible by the group 2 restore action.

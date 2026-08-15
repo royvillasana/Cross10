@@ -19,7 +19,8 @@
     "verify:delivery": "node scripts/run-delivery-verification.mjs",
     "verify:perf": "node scripts/run-browser-performance.mjs",
     "verify:kernel": "node scripts/run-kernel-benchmarks.mjs",
-    "verify:receipt": "node scripts/toolcraft-verification-receipt.mjs validate"
+    "verify:receipt": "node scripts/toolcraft-verification-receipt.mjs validate",
+    "thumbnails": "vite build && node tools/generate-technique-thumbnails.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

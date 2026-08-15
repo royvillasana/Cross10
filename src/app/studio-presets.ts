@@ -28,9 +28,11 @@ import {
  * which is right for building a composition and wrong for a preset: these are
  * whole-frame fields, and zero is how the vocabulary says "the whole frame".
  *
- * **The palettes are Croix10's, which recorded them as plausible rather than
- * verified.** Checking them against primary sources is its own task, and
- * nothing here has done it.
+ * **The palettes are the studio's own.** They were previously carried from
+ * Croix10, which had recorded them as plausible without checking them against
+ * any primary source -- a guess wearing the authority of a citation. Choosing
+ * them here removes the false claim and puts more distance between the library
+ * and the works it works in the tradition of.
  */
 
 export type StudioPresetLayer = Readonly<{
@@ -48,17 +50,34 @@ export type StudioPreset = Readonly<{
   layers: readonly StudioPresetLayer[];
 }>;
 
-/** Cruz-Diez's palette as Croix10 recorded it, named so a stack can be read. */
+/**
+ * The studio's own inks, named so a stack can be read.
+ *
+ * **These are not the artist's palettes and no longer claim to be.** They were
+ * carried over as values Croix10 had recorded as plausible without checking
+ * them against any primary source, which made them a guess wearing the
+ * authority of a citation. They are now chosen here, which is both honest and
+ * further from the works themselves.
+ *
+ * What is kept is the *relationships*, because those are the techniques rather
+ * than decoration: complements that induce each other at a boundary, a dark
+ * separator narrow enough to read as a line rather than a band, and a light
+ * ground for the additive series. Recolouring at random would have kept the
+ * geometry and thrown away the phenomenon the geometry exists to produce.
+ *
+ * Role for role against what was here before, so every composition still
+ * assembles the same way and only the ink changed.
+ */
 const INK = {
-  amber: "#F2B300",
-  black: "#000000",
-  blue: "#0B3C8A",
-  cyan: "#00A0C6",
-  green: "#0B7A3B",
-  magenta: "#E4007F",
-  red: "#C8102E",
-  white: "#FFFFFF",
-  yellow: "#FFE800",
+  amber: "#FFC02E",
+  black: "#0B0B0F",
+  blue: "#2242A8",
+  cyan: "#14A7BE",
+  green: "#4FB84F",
+  magenta: "#F0348C",
+  red: "#D93A2B",
+  white: "#F7F5EF",
+  yellow: "#E9E44A",
 } as const;
 
 export const STUDIO_PRESETS: readonly StudioPreset[] = [

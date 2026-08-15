@@ -40,6 +40,10 @@ describe("appSchema", () => {
     expect(sections.map((section) => section.title)).toEqual([
       "Setup",
       "Gallery",
+      // Its own section because imagePicker is standalone: the runtime splits
+      // it out whatever the product declares, so the split is declared here to
+      // keep the id nameable by the inventory.
+      "Chosen composition",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide
       // into explicit workflow stages, and the kind gate moves with the

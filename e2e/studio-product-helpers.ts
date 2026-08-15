@@ -500,3 +500,38 @@ export async function openStudioTwoLayerStack(
     session: await createToolcraftBrowserProofSession(page),
   };
 }
+
+/**
+ * Chooses a gallery entry from the technique thumbnails.
+ *
+ * Not `setStudioSelectValue`: the gallery stopped being a select when the
+ * entries became pictures, and an `imagePicker` renders neither a combobox nor
+ * a popup.
+ *
+ * Matched as a *button*, not as an image. Each item is a button carrying the
+ * entry's label as its `aria-label`, wrapping an `img` whose own `alt` is
+ * deliberately empty because the picture is decorative once the button is
+ * named. Reaching for the image finds nothing at all.
+ */
+export async function setStudioTechnique(
+  page: Page,
+  label: string,
+): Promise<void> {
+  await page
+    .locator('[data-toolcraft-control-target="gallery.entry"]')
+    .getByRole("button", { name: label, exact: true })
+    .first()
+    .click();
+}
+
+/** The technique the picker currently shows as chosen. */
+export async function readStudioTechnique(page: Page): Promise<string> {
+  return page
+    .locator('[data-toolcraft-control-target="gallery.entry"]')
+    .evaluate(
+      (node) =>
+        node
+          .querySelector('[data-selected="true"]')
+          ?.getAttribute("aria-label") ?? "",
+    );
+}

@@ -64,7 +64,7 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     automatedTestName: "names every entry in the library exactly once",
     browser: true,
     browserTestName: "browser: studio gallery applies a composition and leaves every control live",
-    componentType: "select",
+    componentType: "imagePicker",
     // Naming an entry is a choice, not a render: what it changes is what the
     // action beside it will apply. The rendered claim belongs to that action's
     // row, and splitting them this way is what keeps each honest.

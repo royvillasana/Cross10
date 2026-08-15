@@ -4,8 +4,9 @@ import {
   openStudioSingleLayer,
   readStudioLayerIds,
   readStudioStackSignature,
-  setStudioSelectValue,
   setStudioSlider,
+  setStudioTechnique,
+  readStudioTechnique,
   STUDIO_PRODUCT_OUTPUT,
 } from "./studio-product-helpers";
 import { STUDIO_PRESETS } from "../src/app/studio-presets";
@@ -89,7 +90,7 @@ async function settleStudioOutput(page: Page): Promise<void> {
 }
 
 async function applyStudioPreset(page: Page, label: string): Promise<void> {
-  await setStudioSelectValue(page, "gallery.entry", label);
+  await setStudioTechnique(page, label);
   await page
     .locator('[data-toolcraft-control-target="gallery.actions"]')
     .getByRole("button", { name: "Apply" })
@@ -138,17 +139,11 @@ test("browser: studio gallery applies a composition and leaves every control liv
   // gallery now names, and the layers still standing.
   await expectToolcraftAcceptanceOutcome(
     async () => ({
-      entry: (
-        await page
-          .locator('[data-toolcraft-control-target="gallery.entry"]')
-          .getByRole("combobox")
-          .first()
-          .innerText()
-      ).trim(),
+      entry: await readStudioTechnique(page),
       layers: (await readStudioLayerIds(page)).join(","),
     }),
     async () => {
-      await setStudioSelectValue(page, "gallery.entry", second.label);
+      await setStudioTechnique(page, second.label);
     },
     { evidenceType: "command-side-effect", requirementId: "gallery.entry" },
   );
@@ -156,7 +151,7 @@ test("browser: studio gallery applies a composition and leaves every control liv
   // Naming an entry drew nothing: the stack is still the author's own.
   expect(await readStudioLayerIds(page)).toEqual(before);
 
-  await setStudioSelectValue(page, "gallery.entry", first.label);
+  await setStudioTechnique(page, first.label);
 
   await settleStudioOutput(page);
   await expectToolcraftProductObservableToChange(

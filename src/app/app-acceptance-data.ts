@@ -151,10 +151,20 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Gallery",
       entityId: "gallery",
       groupingReason:
-        "Where a composition starts: the library of built-in stacks and the action that applies the one chosen. Two controls rather than one, because a select that applied on change would persist a claim about the stack that the first edit makes false (R58/R71) -- named as a picker, its value stays true whatever happens next.",
+        "Choosing a technique by looking at it. The thumbnails are the whole content of this section, and imagePicker is a standalone control, so the runtime gives it a section of its own whether or not the product asks -- declared explicitly here so the id stays nameable.",
       id: "gallery",
-      targets: ["gallery.entry", "gallery.actions"],
+      targets: ["gallery.entry"],
       title: "Gallery",
+      workflowStage: "start",
+    },
+    {
+      entity: "Chosen composition",
+      entityId: "gallery-apply",
+      groupingReason:
+        "Doing something with the technique that was chosen: putting it on the canvas, and taking that back. Adjacent to the picker because the two are one act read in order -- look, then press -- and they share an entityId for the same reason.",
+      id: "gallery-apply",
+      targets: ["gallery.actions"],
+      title: "Chosen composition",
       workflowStage: "start",
     },
     {

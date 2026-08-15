@@ -1,7 +1,14 @@
+import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
 import { STUDIO_PRESETS } from "./studio-presets";
 
 /**
  * The gallery: a picker, and the action that applies what it names (R71).
+ *
+ * Two sections rather than one, and not by choice: `imagePicker` is a
+ * standalone control, so the runtime gives it a section of its own whatever the
+ * product declares. Declaring the split here rather than letting it happen is
+ * what keeps the section ids stable -- an auto-split section is named with a
+ * generated hash, which no inventory entry can name back.
  *
  * Two controls rather than one select that applies on change, because every
  * rendered control's value is persisted and R58 decided the gallery stores no
@@ -17,21 +24,43 @@ import { STUDIO_PRESETS } from "./studio-presets";
 export const STUDIO_GALLERY_SECTIONS = [
   {
     controls: {
+      // A picker of thumbnails rather than a list of names, because a name is
+      // not what anyone is choosing between. "Physichromie 500" and "Lamella
+      // Sweep" tell an author nothing about which one they want; the pictures
+      // do, and they are the first thing the panel shows.
+      //
+      // `imagePicker` is the built-in for exactly this -- choosing one visual
+      // option from a set of thumbnails -- and it owns its own grid, so the
+      // item list is all that is passed. A product-authored gallery panel is
+      // not an option in any case: custom controls may not recreate runtime
+      // panels, and the runtime's dialog composites reach no product surface.
+      //
+      // Every thumbnail is a render the product itself produced from the entry
+      // it selects (`npm run thumbnails`). An approximation would be a second
+      // renderer free to drift, and a picture of something the app would not
+      // actually draw misdescribes the technique it is selling.
       entry: {
         semanticGroup: "gallery",
         applicability: { mode: "always" },
         defaultValue: STUDIO_PRESETS[0]?.id ?? "",
-        label: "Composition",
-        options: STUDIO_PRESETS.map((preset) => ({
-          label: preset.label,
+        items: STUDIO_PRESETS.map((preset) => ({
+          alt: preset.label,
+          src: STUDIO_TECHNIQUE_THUMBNAILS[preset.id] ?? "",
           value: preset.id,
         })),
+        label: "Composition",
         performanceReason:
           "Names an entry in a library held in memory; nothing is rendered until the entry is applied.",
         performanceRole: "responsiveness",
         target: "gallery.entry",
-        type: "select",
+        type: "imagePicker",
       },
+    },
+    id: "gallery",
+    title: "Gallery",
+  },
+  {
+    controls: {
       // Both buttons on one control, which is not the first shape tried.
       //
       // Restore wants to appear only once there is a stack to come back to, and
@@ -56,7 +85,7 @@ export const STUDIO_GALLERY_SECTIONS = [
           { label: "Apply", value: "apply-preset" },
           { label: "Restore previous", value: "restore-stack" },
         ],
-        label: "Chosen composition",
+        label: "What the press does",
         performanceReason:
           "Replaces the stack once through runtime layer commands; the frame is redrawn by the same pass any edit uses.",
         performanceRole: "responsiveness",
@@ -64,7 +93,7 @@ export const STUDIO_GALLERY_SECTIONS = [
         type: "actions",
       },
     },
-    id: "gallery",
-    title: "Gallery",
+    id: "gallery-apply",
+    title: "Chosen composition",
   },
 ] as const;
