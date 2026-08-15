@@ -126,14 +126,32 @@ preference and a genuine preference looks like a restore.
 threshold for hiding one should be lower than the threshold for collapsing sections
 rather than shared out of convenience.
 
+## What the measurements settled
+
+**The boundary is 1024, not 760.** Measured across widths with storage cleared each
+time: Controls renders 300x780 and Layers 240x87, and the shell reports 1024 wide at
+every viewport below 1024 while `document.scrollWidth` equals the viewport. So the
+product stops being able to rely on the shell fitting the screen at exactly the
+runtime's own minimum, and anything narrower clips. 760 would have left the 760–1023
+band clipped and unarranged.
+
+**One threshold, not two.** The second threshold was for hiding one panel, and hiding
+was replaced by collapsing — which is what was asked for, and is safer: a collapsed
+panel keeps the header you tap to open it, while a hidden one needs another surface to
+bring it back and a phone has no room for one.
+
+**The marker does not have to be written by the interaction.** The question assumed
+both halves needed guarding. They do not: the *rescue* is planned only for a panel
+that is unreachable, so a panel the user put somewhere workable is never touched and
+no marker is needed. Only the *collapse* needs one, and "has this viewport been
+arranged once" is a fact about the product rather than about an interaction.
+
 ## Open Questions
 
-- Where is the real boundary — measured from panel width plus a usable canvas, rather
-  than taken from the request?
-- Should the two thresholds differ: collapse sections below one width, hide a panel
-  below a narrower one?
 - Does the onboarding dialog from `dialog-first-composition-flow` change the answer?
   It is full-screen by nature, so on a phone it may be the primary surface and the
   panels the secondary one — which would make this change smaller.
-- Is there any signal that distinguishes a restored panel position from one the user
-  just set, or does the marker have to be written by the interaction?
+- Should the rescue also place the artwork? `canvas.setViewport` is available, and a
+  composition centred in a 1024 shell sits at x≈512, off a 390px screen. It is
+  reachable today only because the canvas is larger than the shell; a smaller one
+  would not be.

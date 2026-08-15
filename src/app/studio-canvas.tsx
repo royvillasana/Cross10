@@ -15,6 +15,7 @@ import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
 import { StudioReferenceOverlay } from "./studio-reference-overlay";
+import { useStudioSmallViewportArrangement } from "./studio-small-viewport-sync";
 import { StudioRegionHandles } from "./studio-region-handles";
 import { useStudioShortcuts } from "./studio-shortcuts";
 import {
@@ -79,6 +80,12 @@ export function StudioCanvas(): React.JSX.Element {
   // external-store subscription.
   const state = useToolcraftSelector((current) => current);
   const renderScale = readStudioRenderScale(state);
+
+  // Brings the panels back within reach when the shell is wider than the screen.
+  // Here rather than in a module of its own because this component is already
+  // the product's one mounted surface, and a second mount point for a hook that
+  // runs once would be a second thing to keep alive.
+  useStudioSmallViewportArrangement();
 
   /**
    * Uploaded pictures, decoded once and keyed by the layer that owns them.

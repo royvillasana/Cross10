@@ -6,6 +6,7 @@ import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_GALLERY_SECTIONS } from "./studio-gallery-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
 import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
+import { STUDIO_SMALL_VIEWPORT_TARGET } from "./studio-small-viewport";
 import {
   STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
@@ -86,6 +87,11 @@ export const appSchema = defineToolcraft({
       // work with no confirmation at all, which is the failure the two presses
       // exist to prevent.
       STUDIO_PENDING_TECHNIQUE_TARGET,
+      // Whether a narrow viewport has already been arranged once. Persisted so
+      // the collapse happens on first arrival and never again -- a layout that
+      // re-imposed itself every load would undo the user's own choice each time
+      // they came back.
+      STUDIO_SMALL_VIEWPORT_TARGET,
           ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],

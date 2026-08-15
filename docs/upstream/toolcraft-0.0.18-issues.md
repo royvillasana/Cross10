@@ -416,8 +416,26 @@ What a product *can* do about narrow screens is reduce how much is in the panel 
 use `layoutGroups` to pack controls — real but marginal. It cannot put the canvas on
 top and the panels below, which is what a phone needs.
 
-**Two constants are doing the blocking, and they are small.** In
-`panel-host-config.ts`:
+**The root cause is one style on the shell, and it is worse than a layout gap.**
+`toolcraft-app.tsx:86-102`:
+
+```tsx
+className={cn("relative min-h-[640px] w-full overflow-hidden ...")}
+style={{ ...style, minWidth: toolcraftMinAppWidthPx }}   // 1024
+```
+
+Below 1024px the shell stays 1024 wide and its overflow is **hidden**, so everything
+past the viewport edge is clipped with no scroll to reach it. Measured at a 390px
+viewport: `[data-slot="toolcraft-runtime-app"]` is 1024 wide, `document.scrollWidth`
+is 390, and the Controls panel sits at `left: 714` — inside the shell, outside the
+viewport, unreachable by any gesture. The panel is not mispositioned; the surface it
+lives on is wider than the screen and cannot be scrolled.
+
+The product cannot override it. `ToolcraftAppProps` accepts `style`, but `minWidth` is
+applied *after* the spread, so a product value is discarded, and an inline style beats
+any class a product could pass through `className`.
+
+**Two more constants block the requested arrangement**, in `panel-host-config.ts`:
 
 ```ts
 controls: { snapEdges: ["left", "right"], stageClassName: "min-h-[560px]", ... },
@@ -429,17 +447,22 @@ The two panels a phone needs *below* the canvas are the only two that may not sn
 560px floor means either panel covers most of an 800px-tall viewport, so "canvas
 above, panels below" cannot fit even if the snap were allowed.
 
-**Suggested fix, smallest first:** add `"bottom"` to the `controls` and `layers` snap
-edges and make the 560px floor a maximum-height clamp against the viewport. That
+**Suggested fix, smallest first:** let the 1024px minimum yield to the viewport, or
+allow the product's `minWidth` to win, or drop `overflow-hidden` so what does not fit
+can at least be scrolled to. Any one of the three turns "unreachable" into "cramped".
+Then add `"bottom"` to the `controls` and `layers` snap edges and make the 560px floor
+a maximum-height clamp against the viewport. That
 alone would let a product arrange the stacked layout through the panel commands it
 already publishes. A `panels.layout` schema field, or a breakpoint-driven stacked
 layout in the shell, would be the fuller fix.
 
 **Local workaround: partial, through runtime commands rather than around them.**
-`panels.setOffset`, `panels.resetOffset`, `panels.setHidden` and
-`panels.setSectionCollapsed` are published commands, so a product can bring an
-off-screen panel back, collapse every section, and show one panel at a time on a
-narrow viewport. That makes a phone *usable*. It cannot produce the requested layout,
+`panels.setOffset`, `panels.resetOffset`, `panels.setHidden`,
+`panels.setSectionCollapsed` and `canvas.setViewport` are published commands, so a
+product can pull an off-screen panel back into the visible strip, collapse every
+section, show one panel at a time, and place the artwork where it can be seen. Offsets
+have to be computed against the **1024px shell** rather than the viewport, which is
+the detail that makes this non-obvious. That makes a phone *usable*. It cannot produce the requested layout,
 because of the two constants above.
 
 **A workaround that does not work, recorded so it is not tried twice.** Hiding the
@@ -485,6 +508,47 @@ or download. Separately, allowing an `export-image`/`export-video` role outside 
 sticky footer would let export live where a product's flow puts it.
 
 **Local workaround:** none for sharing. Users export a file and share it themselves.
+
+---
+
+## 13. The browser suite is not deterministic at two workers, and the count hides it
+
+Four full runs of `test:browser:stable` on the same machine, two of them on a tree
+with no product change at all:
+
+```
+no change:          8 failed, 223 passed
+change + its tests: 9 failed, 226 passed
+change + its tests: 9 failed, 226 passed
+change, tests off:  8 failed, 223 passed
+```
+
+Five failures are stable and are issues 3, 4 and 8. The rest rotate. Across those four
+runs the additional failures were drawn from a pool — `studio undo reverts an edit`,
+`studio gallery aims an entry at one layer`, `studio gallery confirms before it
+replaces the work`, `studio reference shows behind the work`, `studio reference
+compares by difference`, `studio background color grounds preview and export alike`,
+`app-browser-performance-probe`, `app-browser-model-import-evidence`,
+`app-browser-model-appearance-evidence` — and no two runs drew the same set. Every one
+of them passes alone, and passes with three sibling specs at the same worker count.
+
+They are the slowest proofs in the suite: readback loops with stability windows, and
+4K export downloads that decode a real artifact. Under two workers on a loaded machine
+they exceed a window rather than fail an assertion.
+
+**Why this matters more than the flakiness itself.** The only signal a developer has is
+the failure count, and the count is stable at 8–9 while the membership is not. A run
+that goes 8 → 9 looks like a regression and is not; a run that stays at 8 while a
+genuine regression displaces a flaky test looks clean and is not. Telling those apart
+costs a stash and two more ten-minute runs, which is what it cost here.
+
+**Suggested fix:** mark the stability-window and artifact-download recipes as
+retryable, or give them a budget that scales with worker count, so a timing failure
+reports as a retry rather than as a result. Failing that, a run summary that names
+which failures are new against a recorded baseline would let the count be trusted.
+
+**Local workaround:** compare membership rather than count, and confirm any new
+failure alone and in a small group before believing it.
 
 ---
 

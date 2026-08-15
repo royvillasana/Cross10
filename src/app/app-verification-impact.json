@@ -285,6 +285,41 @@
     },
     {
       "acceptanceIds": [
+        "reference.compare",
+        "reference.opacity"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-reference-overlay.module.css"
+    },
+    {
+      "acceptanceIds": [
+        "reference.compare",
+        "reference.entry",
+        "reference.opacity"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-reference-overlay.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "reference.compare",
+        "reference.entry",
+        "reference.opacity"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-reference-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "reference.compare",
+        "reference.entry",
+        "reference.opacity"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-reference.ts"
+    },
+    {
+      "acceptanceIds": [
         "selectedLayer.regionHandle.corner",
         "selectedLayer.regionHandle.move",
         "selectedLayer.regionHandle.rotate",
@@ -351,6 +386,20 @@
     },
     {
       "acceptanceIds": [
+        "persistence.reload"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-small-viewport-sync.ts"
+    },
+    {
+      "acceptanceIds": [
+        "persistence.reload"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-small-viewport.ts"
+    },
+    {
+      "acceptanceIds": [
         "export.image-action"
       ],
       "kind": "functional",
@@ -396,6 +445,14 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-stack-state.ts"
+    },
+    {
+      "acceptanceIds": [
+        "gallery.entry",
+        "reference.entry"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-technique-thumbnails.ts"
     }
   ]
 }
