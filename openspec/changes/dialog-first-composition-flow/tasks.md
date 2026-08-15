@@ -1,8 +1,22 @@
 ## 1. Prove the dialog is allowed before building on it
 
-- [ ] 1.1 Write a boundary test asserting the product may import `@/toolcraft/ui/components/composites/dialog` and may not import `@/toolcraft/ui` or `@/toolcraft/ui/components/controls/**`, so the finding this change rests on is enforced rather than remembered.
-- [ ] 1.2 Correct the record in the archived `engine-targeting-and-control-ia` design, which states dialogs reach no product surface. Leave the sentence and mark it wrong with the reason; a design that quietly changes its mind teaches nothing.
-- [ ] 1.3 Author the `builtInFitCheck` before the renderer: `capabilities` naming `custom-interaction`, `checkedBuiltIns` including `imagePicker` and `actions`, and `whyInsufficient` written against modality and sequencing. If it cannot be written truthfully, stop — the flow is not buildable and the rest of this change is void.
+- [x] 1.1 Boundary test asserting the product may import `@/toolcraft/ui/components/composites/dialog` and may not import `@/toolcraft/ui` or `@/toolcraft/ui/components/controls/**`. Landed as `src/app/studio-dialog-boundary.test.ts`; the import is permitted.
+- [x] 1.2 Correct the record in the archived `engine-targeting-and-control-ia` design. The wrong sentence is kept and marked, with both halves of the correction: the import is allowed, and the conclusion was right anyway.
+- [x] 1.3 Author the `builtInFitCheck` before the renderer. **It cannot be written truthfully, so this change stops here as the task required.** An onboarding flow's value is "which step", which a `select` holds; its cards are an `imagePicker`; its presses are `actions`. The only thing no built-in offers is modality, and `custom-controls.md` states a custom control may not be justified by "icons, layout, styling, compactness, or custom buttons alone" — modality is placement. `custom-controls.ts:143` requires one of `custom-interaction`, `custom-value-model`, or `custom-visualization`, and none of the three is honestly present.
+
+  The other surfaces were checked rather than assumed, and each excludes it for its own reason: `canvasContent` "must not contain buttons, forms, CTAs, helper text, upload prompts, menus, settings UI" (`decision-contracts.ts:76`); `infiniteCanvasContent` is preview-only "without … pointer input"; `onPanelAction` renders nothing. Recorded as upstream issue 14.
+
+## Blocked from here down
+
+Everything below assumes a dialog. There is none available, and there is no smaller
+version of a modal — a surface either covers the app or it is a panel section, which
+is what this change exists to move away from. The remaining groups are left unchecked
+rather than reworded, because the work is not smaller, it is unavailable.
+
+Two pieces might survive a reshape and are worth separating out if this is revisited:
+the aim coming from the surface an application was started from (group 7), and the
+layer-row actions (group 8) — both of which are blocked on their own runtime gaps
+rather than on the dialog.
 
 ## 2. The flow, alongside the sections rather than replacing them
 

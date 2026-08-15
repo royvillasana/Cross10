@@ -1,5 +1,14 @@
 # The work starts in a dialog, not in a sidebar
 
+> **Blocked. Do not implement.** Group 1 was written as a gate and the gate failed:
+> a product may import the runtime's Dialog and has nowhere to render it. The three
+> surfaces that could paint over the app each exclude it — `controlRenderers` needs a
+> fit check that modality cannot honestly supply, `canvasContent` may not contain
+> buttons or settings UI, and `infiniteCanvasContent` takes no pointer input. Filed
+> as upstream issue 14 with the smallest fix. The proposal is kept intact because the
+> problem it describes is real and the design is what to build the day a modal
+> surface exists.
+
 ## Why
 
 The product opens on an empty canvas and a sidebar of nineteen sections. Everything

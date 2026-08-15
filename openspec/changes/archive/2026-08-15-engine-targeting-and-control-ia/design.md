@@ -123,6 +123,28 @@ issue 9 in `docs/upstream/toolcraft-0.0.18-issues.md`.
 **Chosen.** Present techniques as thumbnails through the built-in `imagePicker`,
 laid out in the control surface.
 
+> **Corrected by `dialog-first-composition-flow`. The paragraph below is wrong and
+> is kept so the mistake is legible.** The claim that the dialog composites "reach
+> no product surface" was not checked against the boundary; it was inferred from a
+> contract sentence about *panels* and generalised. The product-boundary policy
+> bans exactly two things — the bare `@/toolcraft/ui` entry and
+> `@/toolcraft/ui/components/controls/**` — and the dialog composite lives under
+> `components/composites/**`, which no rule names. `controlRenderers` is a listed
+> extension point, and a dialog is on none of the do-not-recreate lists. The modal
+> the user asked for was available the whole time, and the two-press confirmation
+> this design chose instead existed only because of this error.
+>
+> `src/app/studio-dialog-boundary.test.ts` now asserts the real answer, so the
+> belief is enforced rather than remembered.
+>
+> **The conclusion below is nevertheless right, and the correction above is only
+> about the reason.** A product may import the dialog and has nowhere to render
+> it: `controlRenderers` needs a `builtInFitCheck` that modality cannot honestly
+> supply, `canvasContent` "must not contain buttons, forms, CTAs, helper text,
+> upload prompts, menus, settings UI", and `infiniteCanvasContent` takes no
+> pointer input. The two-press confirmation this design chose stands. Recorded as
+> upstream issue 14.
+
 The requested shape was a large dialogue of cards shown before work begins. That
 specific shape is not available: `component-contracts.media-custom.ts` forbids
 custom controls that "recreate built-in controls, runtime panels, toolbar,

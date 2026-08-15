@@ -552,6 +552,53 @@ failure alone and in a small group before believing it.
 
 ---
 
+## 14. The dialog composites are importable, and no product surface may render one
+
+These two facts are both true and together they block a modal entirely.
+
+**A product may import the dialog.** `toolcraft-product-boundary-module-policy.mjs`
+bans exactly the bare `@/toolcraft/ui` entry and `@/toolcraft/ui/components/controls/**`.
+`src/toolcraft/ui/components/composites/dialog.tsx` is under `components/composites/**`
+and is named by no rule.
+
+**No product surface may present it.** Every extension point in `decision-contracts.ts:61`
+excludes it for a different reason:
+
+- `controlRenderers` needs a `builtInFitCheck`, and `custom-controls.ts:143` requires
+  one of `custom-interaction`, `custom-value-model`, or `custom-visualization`. An
+  onboarding flow has none: its value is "which step", which a `select` holds; its
+  cards are an `imagePicker`; its presses are `actions`. The only thing no built-in
+  offers is **modality** — and `custom-controls.md` states that a custom control may
+  not be justified by "icons, layout, styling, compactness, or custom buttons alone".
+  Modality is placement, so the honest fit check cannot be written.
+- `canvasContent` is banned outright from carrying it: *"canvasContent must not contain
+  buttons, forms, CTAs, helper text, upload prompts, menus, settings UI"*
+  (`decision-contracts.ts:76`).
+- `infiniteCanvasContent` is "reserved for preview-only product environments … without
+  … pointer input".
+- `onPanelAction` runs commands and renders nothing.
+
+So the runtime ships a Dialog, lets a product import it, and gives it nowhere to put
+it. A generated app can present no modal at all — not a confirmation, not an
+onboarding step, not a destructive-action guard — which is why this product's
+technique change is a two-press arrangement rather than a question.
+
+**Worth stating plainly because it cost two designs.** The first recorded the composites
+as unreachable, which is false and led to a workaround. The second checked the import,
+found it permitted, and planned a flow around it — and the flow is still impossible,
+for a reason two contracts away from where the first looked.
+
+**Suggested fix:** a `ToolcraftAppComposition.dialogContent` surface, or an
+`overlay`/`modal` control placement that renders outside the panel, or simply naming
+modality as a legitimate `custom-interaction` justification in `custom-controls.md`.
+Any of the three would make the requested onboarding flow buildable; today none of them
+exists.
+
+**Local workaround:** none. Every product decision that wants a modal is expressed as
+a second press in the panel instead.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
