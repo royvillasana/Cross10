@@ -5,6 +5,11 @@ import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_GALLERY_SECTIONS } from "./studio-gallery-sections";
 import { STUDIO_LAYER_SECTIONS } from "./studio-layer-sections";
+import {
+  STUDIO_ONBOARDING_CHOICE_TARGET,
+  STUDIO_ONBOARDING_SETTLED_TARGET,
+  STUDIO_ONBOARDING_TARGET,
+} from "./studio-onboarding";
 import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
 import { STUDIO_SMALL_VIEWPORT_TARGET } from "./studio-small-viewport";
 import {
@@ -92,6 +97,12 @@ export const appSchema = defineToolcraft({
       // re-imposed itself every load would undo the user's own choice each time
       // they came back.
       STUDIO_SMALL_VIEWPORT_TARGET,
+      // Which step the onboarding flow is on, and what it is about to start
+      // from. Persisted so a reload mid-decision does not drop the user onto a
+      // canvas they never confirmed.
+      STUDIO_ONBOARDING_TARGET,
+      STUDIO_ONBOARDING_CHOICE_TARGET,
+      STUDIO_ONBOARDING_SETTLED_TARGET,
           ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],

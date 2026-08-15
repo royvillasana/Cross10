@@ -253,6 +253,33 @@
     },
     {
       "acceptanceIds": [
+        "gallery.entry"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-onboarding-dialog.module.css"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "canvas.render-scale",
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-onboarding-dialog.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "canvas.render-scale",
+        "gallery.apply",
+        "gallery.entry"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-onboarding.ts"
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include",
         "canvas.render-scale",
