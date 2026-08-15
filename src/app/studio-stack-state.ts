@@ -560,6 +560,7 @@ export function buildStudioStack(
   paths: StudioVertexPaths = {},
   images: ReadonlyMap<string, StudioLayerMedia> = new Map(),
   pointerSubject: string = STUDIO_POINTER_PER_LAYER,
+  pointerPush = 0,
 ): readonly StudioLayerValues[] {
   const byId = new Map(layers.map((layer) => [layer.id, layer]));
   const everyLayerFollows = pointerSubject === STUDIO_POINTER_EVERY_LAYER;
@@ -604,6 +605,12 @@ export function buildStudioStack(
           // replacing it: "every layer" turns it on everywhere, and turning it
           // back to "per layer" restores exactly the layers the author had set.
           ...(everyLayerFollows ? { engineCursor: 1 } : {}),
+          // Only the layers the pointer reaches are pushed by it. A layer that
+          // does not follow the pointer should not be moved by it either --
+          // otherwise "reaches" would mean one thing for the engine and another
+          // for the displacement.
+          pointerPush:
+            everyLayerFollows || entry.values.engineCursor === 1 ? pointerPush : 0,
           visible: isEffectivelyVisible(layer, byId) ? 1 : 0,
         },
       };
@@ -674,6 +681,22 @@ export type StudioStackSnapshot = Readonly<{
  * keeps its meaning and the stack-level choice overrides nothing permanently.
  */
 export const STUDIO_POINTER_SUBJECT_TARGET = "stack.pointerSubject";
+
+/**
+ * How far the pointer pushes the field, as a stack-level amount.
+ *
+ * Stack-level for the same reason the subject is: a gesture is one thing, and
+ * an author setting how hard it pushes is not setting it per layer. Projected
+ * onto every layer so the shader still reads it as an ordinary per-layer
+ * uniform.
+ */
+export const STUDIO_POINTER_PUSH_TARGET = "stack.pointerPush";
+
+export function readStudioPointerPush(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, value))
+    : 0;
+}
 
 export const STUDIO_POINTER_PER_LAYER = "per-layer";
 export const STUDIO_POINTER_EVERY_LAYER = "every-layer";

@@ -342,6 +342,7 @@ vec4 studioStripesBody(
   float mirror,
   float flipX,
   float flipY,
+  float pointerPush,
   float taper,
   float separator,
   float jitterAmount,
@@ -358,6 +359,21 @@ vec4 studioStripesBody(
 ) {
   // Normalised against height so the field does not stretch with aspect ratio.
   vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
+  // The pointer pushes the field away from itself, falling to nothing at the
+  // same reach the engines already use. This is a displacement of the
+  // coordinate rather than a change of strength: strength makes an effect
+  // stronger where the pointer is, and displacement makes the field *move*,
+  // which is the difference between a highlight and a gesture.
+  //
+  // Proportional to the offset itself rather than to its direction. A
+  // normalised push has a full-strength discontinuity at zero length -- exactly
+  // where the pointer sits -- so the field would tear under the cursor and the
+  // direction it tore in would be whatever the arithmetic happened to produce.
+  // Scaling the offset vector goes smoothly to nothing at the centre, which is
+  // what makes this read as the field being pushed rather than punctured.
+  vec2 fromCursor = centered - cursor;
+  float pushReach = 1.0 - smoothstep(0.0, 0.45, length(fromCursor));
+  centered += fromCursor * pushReach * pointerPush * 0.9;
   float radians = angle * 0.017453292519943295;
   float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
   // Folded in the layer's own axes, which is why it is applied to the rotated
@@ -504,6 +520,7 @@ vec4 studioGradientBody(
   float angle,
   float flipX,
   float flipY,
+  float pointerPush,
   float rampType,
   float phase,
   float paletteSlots,
@@ -518,6 +535,21 @@ vec4 studioGradientBody(
 ) {
   vec2 uv = fragmentPosition / max(resolution, vec2(1.0));
   vec2 centered = uv - 0.5;
+  // The pointer pushes the field away from itself, falling to nothing at the
+  // same reach the engines already use. This is a displacement of the
+  // coordinate rather than a change of strength: strength makes an effect
+  // stronger where the pointer is, and displacement makes the field *move*,
+  // which is the difference between a highlight and a gesture.
+  //
+  // Proportional to the offset itself rather than to its direction. A
+  // normalised push has a full-strength discontinuity at zero length -- exactly
+  // where the pointer sits -- so the field would tear under the cursor and the
+  // direction it tore in would be whatever the arithmetic happened to produce.
+  // Scaling the offset vector goes smoothly to nothing at the centre, which is
+  // what makes this read as the field being pushed rather than punctured.
+  vec2 fromCursor = centered - cursor;
+  float pushReach = 1.0 - smoothstep(0.0, 0.45, length(fromCursor));
+  centered += fromCursor * pushReach * pointerPush * 0.9;
   // Folded before the ramp is read, so every ramp type folds: a linear ramp
   // reverses, an angular sweep runs the other way, and a radial one is
   // unchanged because it already has no direction to reverse.
@@ -663,6 +695,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "angle", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
+        { defaultValue: 0, name: "pointerPush", type: "float" },
         {
           defaultValue: 0,
           name: "rampType",
@@ -748,6 +781,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { booleanControl: true, defaultValue: 0, name: "mirror", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
+        { defaultValue: 0, name: "pointerPush", type: "float" },
         { defaultValue: 0, name: "taper", type: "float" },
         { defaultValue: 0, name: "separator", type: "float" },
         { defaultValue: 0, name: "jitterAmount", type: "float" },

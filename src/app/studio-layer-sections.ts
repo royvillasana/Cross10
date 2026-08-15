@@ -677,6 +677,23 @@ widthRatio: {
         target: "stack.pointerSubject",
         type: "select",
       },
+      // How hard, beside what it reaches, because the two are one question --
+      // an author deciding a gesture decides both at once.
+      push: {
+        semanticGroup: "pointer",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Pointer push",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One length and one normalise against a coordinate the body already has; the cost is the same at zero.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "stack.pointerPush",
+        type: "slider",
+      },
     },
     id: "pointer",
     title: "Pointer",

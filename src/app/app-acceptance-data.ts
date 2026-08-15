@@ -260,7 +260,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       groupingReason:
         "Deciding which layers a gesture reaches. Its own entity rather than a control on the selected layer: every other per-layer control edits whichever layer is selected, and this one says what the pointer touches across the whole stack -- a claim no single layer can hold, since a layer only knows about itself.",
       id: "pointer",
-      targets: ["stack.pointerSubject"],
+      targets: ["stack.pointerSubject", "stack.pointerPush"],
       title: "Pointer",
       workflowStage: "respond",
     },

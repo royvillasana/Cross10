@@ -174,3 +174,44 @@ describe("which layers the pointer reaches", () => {
     expect(stack[1]?.values.engineCursor).toBe(0);
   });
 });
+
+describe("how hard the pointer pushes", () => {
+  const followers: StudioRuntimeLayer[] = [
+    { id: "opted-in", visible: true },
+    { id: "opted-out", visible: true },
+  ];
+  const pushRecord = {
+    "opted-in": { typeId: "stripes" as const, values: { engineCursor: 1 } },
+    "opted-out": { typeId: "stripes" as const, values: { engineCursor: 0 } },
+  };
+
+  it("pushes only the layers the pointer reaches", () => {
+    // Otherwise "reaches" would mean one thing for the engine and another for
+    // the displacement, and a layer that opted out would still be moved.
+    const stack = buildStudioStack(pushRecord, followers, {}, new Map(), "per-layer", 0.8);
+
+    expect(stack[0]?.values.pointerPush).toBe(0.8);
+    expect(stack[1]?.values.pointerPush).toBe(0);
+  });
+
+  it("pushes every layer once the pointer reaches every layer", () => {
+    const stack = buildStudioStack(
+      pushRecord,
+      followers,
+      {},
+      new Map(),
+      "every-layer",
+      0.8,
+    );
+
+    expect(stack[0]?.values.pointerPush).toBe(0.8);
+    expect(stack[1]?.values.pointerPush).toBe(0.8);
+  });
+
+  it("pushes nothing by default, so an untouched stack renders as it did", () => {
+    const stack = buildStudioStack(pushRecord, followers);
+
+    expect(stack[0]?.values.pointerPush).toBe(0);
+    expect(stack[1]?.values.pointerPush).toBe(0);
+  });
+});

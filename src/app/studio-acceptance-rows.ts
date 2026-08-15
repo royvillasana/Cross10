@@ -122,6 +122,21 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
     userAction:
       "Set Pointer reaches to Every layer, move the pointer over the canvas, then set it back.",
   },
+  {
+    automated: true,
+    automatedTestName: "declares the pointer push displaces the field it reaches",
+    browser: true,
+    browserTestName: "browser: studio pointer push displaces the field",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Raising Pointer push with the pointer over the canvas bends the bands near it away from the pointer, leaving the field at the far edge where it was; a pointer that has left the frame reaches nothing at any amount.",
+    fixture: "Croix10 with one layer following the pointer",
+    id: "stack.pointerPush",
+    kind: "control",
+    target: "stack.pointerPush",
+    userAction: "Point at the canvas and raise Pointer push.",
+  },
 ];
 
 export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [

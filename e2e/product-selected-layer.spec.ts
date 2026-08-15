@@ -8,6 +8,7 @@ import {
   addStudioLayer,
   openStudioSingleLayer,
   readStudioLayerIds,
+  readStudioSelectedLayerId,
   readStudioOutputSignature,
   STUDIO_PRODUCT_OUTPUT,
   openStudioTwoLayerStack,
@@ -18,6 +19,10 @@ import {
   setStudioSlider,
   toggleStudioSwitch,
 } from "./studio-product-helpers";
+import {
+  expectToolcraftProductObservableToChange,
+  getToolcraftProductObservableSnapshot,
+} from "./product-observable-helpers";
 import { test } from "./toolcraft-product-test";
 
 /**
@@ -2888,4 +2893,125 @@ test("browser: studio pointer subject reaches every layer", async ({ page }) => 
     },
     { requirementId: "stack.pointerSubject", target: "stack.pointerSubject" },
   );
+});
+
+test("browser: studio pointer push displaces the field", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  const { layerId, session } = await openStudioSingleLayer(page);
+  // Dense enough that the sampled window holds a dozen boundaries. At the
+  // default count a window holds one, and a single boundary sliding out of it
+  // reads the same as the field vanishing.
+  await setStudioSlider(page, "Band count", 60);
+
+  // Reached through the stack-level subject rather than the layer's own switch.
+  // That switch is gated on an engine being chosen, so opting in through it
+  // would mean choosing an engine this proof does not otherwise need -- and the
+  // displacement is not an engine effect, so the fixture should not imply one.
+  await setStudioSelectValue(page, "stack.pointerSubject", "Every layer");
+
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to aim a pointer at.");
+  const aim = async (fraction: number): Promise<void> => {
+    await page.mouse.move(box.x + box.width * fraction, box.y + box.height / 2);
+    await page.waitForTimeout(200);
+  };
+
+  await aim(0.35);
+
+  // Read where the bands sit near the pointer against where they sit far from
+  // it. A displacement moves the field rather than recolouring it, so what
+  // changes is the position of the boundaries, and only on one side.
+  const bandsNearPointer = async (): Promise<string> =>
+    output.evaluate((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return "absent";
+      const read = (fx: number): string => {
+        const width = 400;
+        const x = Math.min(
+          Math.max(Math.round(canvas.width * fx) - width / 2, 0),
+          canvas.width - width,
+        );
+        const pixels = new Uint8Array(width * 4);
+        gl.readPixels(
+          x,
+          Math.floor(canvas.height / 2),
+          width,
+          1,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          pixels,
+        );
+        // Where the boundaries fall, not what colour they are.
+        const edges: number[] = [];
+        for (let index = 4; index < pixels.length; index += 4) {
+          const delta =
+            Math.abs(pixels[index]! - pixels[index - 4]!) +
+            Math.abs(pixels[index + 1]! - pixels[index - 3]!) +
+            Math.abs(pixels[index + 2]! - pixels[index - 2]!);
+          if (delta > 60) edges.push(index / 4);
+        }
+        return edges.join(",");
+      };
+      return `${read(0.35)}|${read(0.85)}`;
+    });
+
+  // The evidence helper needs a baseline that holds still, and rightly: a frame
+  // that was already moving could produce a "change" that had nothing to do
+  // with the press. Three agreeing reads rather than two, because the frames
+  // that move here are the ones a first draw is still catching up with and two
+  // adjacent reads can agree in the gap between them.
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await getToolcraftProductObservableSnapshot(page));
+        if (recent.length > 3) recent.shift();
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [300], timeout: 30_000 },
+    )
+    .toBe(true);
+
+  const atRest = await bandsNearPointer();
+
+  await expectToolcraftProductObservableToChange(
+    session,
+    session.controlAction("stack.pointerPush", async () => {
+      await setStudioSlider(page, "Pointer push", 1);
+      // Put the pointer back: moving the slider left the canvas, and a pointer
+      // that has gone pushes nothing anywhere.
+      await aim(0.35);
+    }),
+    { requirementId: "stack.pointerPush" },
+  );
+
+  const pushed = await bandsNearPointer();
+  const [nearRest, farRest] = atRest.split("|");
+  const [nearPushed, farPushed] = pushed.split("|");
+
+  expect(nearPushed, "the bands under the pointer should have moved").not.toBe(
+    nearRest,
+  );
+  expect(farPushed, "the bands away from the pointer should not have").toBe(farRest);
+
+  // And a pointer that has left the frame reaches nothing, whatever the amount
+  // is set to — which is what keeps an export deterministic.
+  //
+  // Moved to the top-left corner rather than just past an edge. The commit
+  // rides on a window pointermove and reads "inside" from the canvas box, so
+  // the pointer has to land somewhere that is off the canvas *and* still in the
+  // viewport — just past an edge is easily neither, and then no event fires,
+  // the cursor is never committed as away, and the field stays pushed. That
+  // reads as this assertion failing when what actually failed was the gesture.
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(600);
+  expect(
+    await bandsNearPointer(),
+    "a pointer off the canvas should push nothing",
+  ).toBe(atRest);
+
+  expect(await readStudioSelectedLayerId(page)).toBe(layerId);
 });

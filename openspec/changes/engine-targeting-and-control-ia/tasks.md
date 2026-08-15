@@ -56,8 +56,8 @@
 
 - [x] 7.1 Add a pointer subject control — selected layer or every layer — replacing the bare per-layer `engineCursor` switch as the way the subject is chosen.
 - [x] 7.2 Make an all-layers subject drive each layer through its own layer type's parameters rather than one post-composite displacement.
-- [ ] 7.3 Extend the existing `cursorReach` falloff into a displacement, keeping the falloff limit so a pointer outside the frame reaches nothing.
-- [ ] 7.4 Keep the pointer uniform a uniform in the assembled deliverable rather than baking it to a constant.
+- [x] 7.3 Extend the existing `cursorReach` falloff into a displacement, keeping the falloff limit so a pointer outside the frame reaches nothing.
+- [x] 7.4 Keep the pointer uniform a uniform in the assembled deliverable rather than baking it to a constant.
 - [x] 7.5 Confirm pointer position is still absent from the undo stack.
 - [ ] 7.6 Acceptance rows and browser proofs: selection changes do not move the effect's subject; export with the pointer over the canvas matches the at-rest render.
 - [ ] 7.7 Assert the delivered shader with a pointer effect still carries no product name, attribution, or generator marker.
