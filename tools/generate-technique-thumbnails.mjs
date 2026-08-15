@@ -122,9 +122,19 @@ async function settle(page) {
   }
 }
 
-async function capture(page) {
+/**
+ * How many bands a thumbnail should show.
+ *
+ * The picker lays ten items out in four columns, so a tile is well under a
+ * hundred pixels wide. A two-hundred-band field drawn across it averages to a
+ * flat grey -- faithful, and a picture of nothing. Fourteen bands is enough to
+ * read a rhythm, a taper and a separator at that size.
+ */
+const TARGET_BANDS = 14;
+
+async function capture(page, count) {
   return page.evaluate(
-    ([width, height]) => {
+    ([width, height, bands, TARGET]) => {
       const canvas = document.querySelector("[data-toolcraft-product-output]");
       if (!(canvas instanceof HTMLCanvasElement)) return "";
       const off = document.createElement("canvas");
@@ -132,21 +142,33 @@ async function capture(page) {
       off.height = height;
       const context = off.getContext("2d");
       if (!context) return "";
-      // Cover rather than stretch: a technique read at the wrong aspect is a
-      // different rhythm, and the rhythm is the thing being shown.
-      const scale = Math.max(width / canvas.width, height / canvas.height);
-      const drawWidth = canvas.width * scale;
-      const drawHeight = canvas.height * scale;
+      // A detail rather than the whole frame, when the whole frame would not
+      // survive the tile. These are still the product's own pixels -- nothing
+      // is redrawn or approximated -- but read close enough that the technique
+      // is visible, the way a swatch shows a weave.
+      //
+      // Sized from the entry's own band count, so a sparse field still shows
+      // its whole composition and only a dense one is cropped into.
+      const fraction = bands > 0 ? Math.min(1, TARGET / bands) : 1;
+      const sourceWidth = Math.max(32, Math.round(canvas.width * fraction));
+      const sourceHeight = Math.min(
+        canvas.height,
+        Math.round(sourceWidth * (height / width)),
+      );
       context.drawImage(
         canvas,
-        (width - drawWidth) / 2,
-        (height - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
+        Math.round((canvas.width - sourceWidth) / 2),
+        Math.round((canvas.height - sourceHeight) / 2),
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        width,
+        height,
       );
       return off.toDataURL("image/webp", 0.72);
     },
-    [WIDTH, HEIGHT],
+    [WIDTH, HEIGHT, count, TARGET_BANDS],
   );
 }
 
@@ -161,8 +183,22 @@ async function capture(page) {
 async function readPresets() {
   const source = await readFile(join(root, "src/app/studio-presets.ts"), "utf8");
   const body = source.slice(source.indexOf("export const STUDIO_PRESETS"));
-  const entries = [...body.matchAll(/\bid: "([^"]+)",\s*\n\s*label: "([^"]+)"/gu)];
-  return entries.map(([, id, label]) => ({ id, label }));
+  const starts = [...body.matchAll(/\bid: "([^"]+)",\s*\n\s*label: "([^"]+)"/gu)];
+
+  return starts.map((match, index) => {
+    const from = match.index ?? 0;
+    const to = starts[index + 1]?.index ?? body.length;
+    // The densest field the entry draws. It decides how much of the frame the
+    // thumbnail can show and still be a picture of anything.
+    const counts = [...body.slice(from, to).matchAll(/\bcount: (\d+)/gu)].map(
+      ([, value]) => Number(value),
+    );
+    return {
+      count: counts.length > 0 ? Math.max(...counts) : 0,
+      id: match[1],
+      label: match[2],
+    };
+  });
 }
 
 const presets = await readPresets();
@@ -183,12 +219,14 @@ const thumbnails = {};
 for (const preset of presets) {
   await chooseEntry(page, preset.label);
   await settle(page);
-  const src = await capture(page);
+  const src = await capture(page, preset.count);
   if (!src.startsWith("data:image/")) {
     throw new Error(`Captured nothing for ${preset.id}.`);
   }
   thumbnails[preset.id] = src;
-  process.stdout.write(`${preset.id}: ${Math.round(src.length / 1024)}kB\n`);
+  process.stdout.write(
+    `${preset.id}: ${Math.round(src.length / 1024)}kB (${preset.count || "no"} bands)\n`,
+  );
 }
 
 await browser.close();
