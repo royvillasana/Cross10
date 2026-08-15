@@ -416,13 +416,44 @@ What a product *can* do about narrow screens is reduce how much is in the panel 
 use `layoutGroups` to pack controls — real but marginal. It cannot put the canvas on
 top and the panels below, which is what a phone needs.
 
-**Suggested fix:** a stacked layout below a breakpoint — canvas first, panels beneath
-as collapsible sections in a single scroll — or a `panels.layout` schema field that
-lets a product ask for it. The panel host already measures the visual viewport, so the
-measurement exists and only the arrangement is missing.
+**Two constants are doing the blocking, and they are small.** In
+`panel-host-config.ts`:
 
-**Local workaround:** none. A generated app is desktop-only, and nothing in the
-schema says so.
+```ts
+controls: { snapEdges: ["left", "right"], stageClassName: "min-h-[560px]", ... },
+layers:   { snapEdges: ["left", "right"], stageClassName: "min-h-[560px]", ... },
+```
+
+The two panels a phone needs *below* the canvas are the only two that may not snap to
+`bottom` — `timeline` and `toolbar` both already allow `["top", "bottom"]`. And a
+560px floor means either panel covers most of an 800px-tall viewport, so "canvas
+above, panels below" cannot fit even if the snap were allowed.
+
+**Suggested fix, smallest first:** add `"bottom"` to the `controls` and `layers` snap
+edges and make the 560px floor a maximum-height clamp against the viewport. That
+alone would let a product arrange the stacked layout through the panel commands it
+already publishes. A `panels.layout` schema field, or a breakpoint-driven stacked
+layout in the shell, would be the fuller fix.
+
+**Local workaround: partial, through runtime commands rather than around them.**
+`panels.setOffset`, `panels.resetOffset`, `panels.setHidden` and
+`panels.setSectionCollapsed` are published commands, so a product can bring an
+off-screen panel back, collapse every section, and show one panel at a time on a
+narrow viewport. That makes a phone *usable*. It cannot produce the requested layout,
+because of the two constants above.
+
+**A workaround that does not work, recorded so it is not tried twice.** Hiding the
+runtime panels with a media query and rendering a product-authored mobile control
+surface instead: the hiding half is fine — `src/styles.css` is product-owned and the
+panels expose stable `data-toolcraft-*` and `data-panel-type` hooks — and product code
+can already render full-viewport interactive UI, which this product does for its
+region handles. The content is what fails. `decision-contracts.ts:78` allows the
+canvas to carry "real product result, source material, renderer output derived from
+current state, and valid product editing handles" and a control surface is none of
+those; `component-contracts.media-custom.ts:129` forbids custom controls that recreate
+built-in controls or runtime panels; and `toolcraft-app-shell` requires each product
+control target to appear exactly once in an inventory validated statically, with no
+viewport, so "this copy only exists on small screens" cannot be declared.
 
 ---
 
