@@ -93,6 +93,17 @@ export function isStudioBoxReachable(
 const RESCUE_MARGIN_PX = 8;
 
 /**
+ * The vertical room one collapsed panel takes, header plus a gap.
+ *
+ * Used instead of a panel's measured height whenever the same arrangement is
+ * also collapsing it. On a first narrow load a panel still measures its full
+ * body — 780px — and stacking the next one under *that* puts it off the bottom
+ * of a phone. What matters is the height it is about to have, which is its
+ * header. Measured at 38; the rest is the gap between two stacked headers.
+ */
+const COLLAPSED_PANEL_STACK_PX = 46;
+
+/**
  * How far a panel has to move to be on screen, as a translate delta.
  *
  * A delta measured from where the panel actually is, rather than a position
@@ -114,22 +125,22 @@ const RESCUE_MARGIN_PX = 8;
 export function planStudioPanelRescue({
   box,
   currentOffset,
+  targetTop = RESCUE_MARGIN_PX,
   viewport,
 }: {
   readonly box: StudioPanelBox | null;
   readonly currentOffset: Readonly<{ x: number; y: number }>;
+  /** Where this panel's top should land, so several can be stacked. */
+  readonly targetTop?: number;
   readonly viewport: StudioViewport;
 }): Readonly<{ x: number; y: number }> | null {
   if (!box || isStudioBoxReachable(box, viewport)) return null;
 
-  // Pinned to the top-left of the visible strip. A panel wider than the screen
-  // keeps its left edge on screen, which is the edge its header and its controls
-  // start from, and one narrower than the screen simply sits at the margin.
-  const targetLeft = RESCUE_MARGIN_PX;
-  const targetTop = RESCUE_MARGIN_PX;
-
+  // Pinned to the left of the visible strip. A panel wider than the screen keeps
+  // its left edge on screen, which is the edge its header and its controls start
+  // from, and one narrower than the screen simply sits at the margin.
   return {
-    x: currentOffset.x + (targetLeft - box.left),
+    x: currentOffset.x + (RESCUE_MARGIN_PX - box.left),
     y: currentOffset.y + (targetTop - box.top),
   };
 }
@@ -175,15 +186,36 @@ export function planStudioSmallViewportArrangement({
 
   const commands: StudioArrangementCommand[] = [];
 
+  // Stacked, not piled. Every rescued panel pinned to the same corner means the
+  // last one drawn covers the rest, and the one underneath is then unreachable
+  // while measuring as perfectly placed — which is what happened: the Layers
+  // panel sat at (10,10) with a correct box and nothing of it visible, because
+  // Controls was drawn on top of it.
+  //
+  // The stack starts below anything already reachable, so a panel the user put
+  // somewhere workable is neither moved nor landed on.
+  let nextTop = RESCUE_MARGIN_PX;
+  for (const panel of panels) {
+    if (panel.box && isStudioBoxReachable(panel.box, viewport)) {
+      nextTop = Math.max(nextTop, panel.box.top + panel.box.height + RESCUE_MARGIN_PX);
+    }
+  }
+
   for (const panel of panels) {
     const offset = planStudioPanelRescue({
       box: panel.box,
       currentOffset: panel.currentOffset,
+      targetTop: nextTop,
       viewport,
     });
-    if (offset) {
-      commands.push({ offset, panelId: panel.panelId, type: "panels.setOffset" });
-    }
+    if (!offset) continue;
+
+    commands.push({ offset, panelId: panel.panelId, type: "panels.setOffset" });
+    // The height it is about to have, not the one it has: this arrangement may
+    // be collapsing it in the same batch.
+    nextTop +=
+      (alreadyArranged ? (panel.box?.height ?? 0) : COLLAPSED_PANEL_STACK_PX) +
+      RESCUE_MARGIN_PX;
   }
 
   if (!alreadyArranged) {

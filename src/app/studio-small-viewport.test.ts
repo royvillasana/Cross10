@@ -131,6 +131,53 @@ describe("the arrangement", () => {
       .toBe(false);
   });
 
+  it("stacks rescued panels instead of piling them on one corner", () => {
+    // The failure this prevents was live for one deploy: both panels pinned to
+    // (8,8), Controls drawn over Layers, and Layers unreachable while measuring
+    // as perfectly placed. A box in the right position is not the same claim as
+    // a panel anyone can see.
+    const offsets = planStudioSmallViewportArrangement({
+      alreadyArranged: false,
+      panels: [
+        { box: OFF_SCREEN, currentOffset: { x: 0, y: 0 }, panelId: "controls" },
+        {
+          box: { height: 780, left: 900, top: 10, width: 240 },
+          currentOffset: { x: 0, y: 0 },
+          panelId: "layers",
+        },
+      ],
+      sectionIds,
+      viewport: PHONE,
+    })
+      .filter((command) => command.type === "panels.setOffset")
+      .map((command) => command.offset as { x: number; y: number });
+
+    expect(offsets).toHaveLength(2);
+    // The second lands below the first by a collapsed header's worth, because
+    // both are being collapsed in this same batch and 780 is the height they are
+    // about to stop having.
+    expect(offsets[1].y - offsets[0].y).toBeGreaterThan(40);
+    expect(offsets[1].y - offsets[0].y).toBeLessThan(80);
+  });
+
+  it("starts the stack below a panel the user already placed", () => {
+    // A reachable panel is never moved, so the rescued one has to go under it
+    // rather than on top of it.
+    const placed = { height: 38, left: 8, top: 8, width: 240 };
+    const [offset] = planStudioSmallViewportArrangement({
+      alreadyArranged: true,
+      panels: [
+        { box: placed, currentOffset: { x: 0, y: 0 }, panelId: "layers" },
+        { box: OFF_SCREEN, currentOffset: { x: 0, y: 0 }, panelId: "controls" },
+      ],
+      sectionIds,
+      viewport: PHONE,
+    }).map((command) => command.offset as { x: number; y: number });
+
+    // Its top lands below the placed panel's bottom edge.
+    expect(OFF_SCREEN.top + offset.y).toBeGreaterThanOrEqual(placed.top + placed.height);
+  });
+
   it("rescues only the panel that needs it", () => {
     const rescues = planStudioSmallViewportArrangement({
       alreadyArranged: true,

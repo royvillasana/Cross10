@@ -127,6 +127,27 @@ test("browser: studio panels are reachable on a phone-sized viewport", async ({
     isReachable(boxes.canvas, boxes.viewport),
     `the canvas must be reachable; it measured ${JSON.stringify(boxes.canvas)} in a ${boxes.viewport[0]}px viewport`,
   ).toBe(true);
+
+  // Neither panel is buried under the other, which a box reading alone cannot
+  // see. This shipped once: both panels measured correctly at (10,10) and the
+  // Layers panel was entirely covered by Controls. Asked of the *rendered* page
+  // rather than of the geometry — what is at the point, not what is near it.
+  const headerHits = await page.evaluate(() => {
+    const at = (selector: string) => {
+      const panel = document.querySelector(selector);
+      if (!panel) return "absent";
+      const rect = panel.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + 24, rect.top + 12);
+      return hit && panel.contains(hit) ? "on top" : "covered";
+    };
+    return {
+      controls: at('[data-panel-type="controls"]'),
+      layers: at('[data-panel-type="layers"]'),
+    };
+  });
+
+  expect(headerHits.controls, "the controls header is not covered").toBe("on top");
+  expect(headerHits.layers, "the layers header is not covered").toBe("on top");
 });
 
 test("browser: studio leaves a desktop viewport arranged as it was", async ({
