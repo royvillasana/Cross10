@@ -34,6 +34,14 @@ Croix10 SHALL be assembled through `defineToolcraft` and `ToolcraftApp`, supplyi
 ### Requirement: Entity-scoped control sections
 An `appControlSectionInventory` SHALL be exported declaring every product section's stable `entityId`, human-readable `entity`, exact `targets`, and `groupingReason`. Each product control target SHALL appear exactly once. One entity SHALL stay in one section through ten controls; sections of eight to ten controls SHALL declare `semanticGroup` on every control; an entity above ten controls SHALL split into balanced two-to-ten-control sections sharing the same `entityId` with a unique `workflowStage` and concrete `splitReason`.
 
+A control and the controls it is read with SHALL sit in the same section, and
+sections that continue one another SHALL be adjacent. `groupingReason` SHALL
+state what the user is doing when they need those controls together, not which
+module the values happen to live in. Specifically: the colours of one layer SHALL
+NOT be split across sections; a layer's kind and the media that kind requires
+SHALL be reachable without crossing an unrelated section; and a layer's geometry,
+including its flip, SHALL be one section.
+
 #### Scenario: Inventory covers every control
 - **WHEN** the schema is validated
 - **THEN** every product control target appears exactly once in the inventory
@@ -56,6 +64,18 @@ An `appControlSectionInventory` SHALL be exported declaring every product sectio
 #### Scenario: Broad titles stay within their limit
 - **WHEN** a broad title such as `Motion`, `Export`, `Scene`, or `Shape` is used
 - **THEN** that section holds fewer than eight controls and fewer than three semantic clusters
+
+#### Scenario: One layer's colours are not split
+- **WHEN** the inventory is validated
+- **THEN** every colour target belonging to one layer sits in a single section
+
+#### Scenario: A layer's kind and its media stay together
+- **WHEN** a layer kind that requires media is selected
+- **THEN** the control that sets the kind and the control that supplies the media are in the same section or in adjacent sections
+
+#### Scenario: Continuing sections are adjacent
+- **WHEN** two sections share an `entityId`
+- **THEN** they are adjacent in the rendered order
 
 ### Requirement: Section titles must not resemble their gating condition
 A section title MUST NOT equal, contain, or be contained by the condition value or option label of a gate that lives in another section. Sections SHALL be titled by the entity they edit, not by the branch that reveals them.

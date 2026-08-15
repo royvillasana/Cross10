@@ -1,36 +1,18 @@
-# scene-presets Specification
-
-## Purpose
-Recorded from the Croix10 change, archived at 110 of 219 tasks.
-
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
-## Requirements
-### Requirement: Scene serialization is runtime Settings Transfer
-Scene export and import SHALL be the runtime's `Export Settings` and `Import Settings` in Setup. Product code MUST NOT implement settings import/export through `panelActions`, route-local file inputs, or app-authored controls, and MUST NOT gate it by app complexity. Product-owned non-control state that belongs in a scene SHALL be opted in through `settingsTransfer.additionalValueTargets`.
-
-#### Scenario: Round trip is lossless
-- **WHEN** the user exports settings and then imports the same file
-- **THEN** the engine, every parameter value, and every opted-in product value are identical to before
-- **AND** the rendered frame at the same timeline time is visually identical
-
-#### Scenario: No product preset panel
-- **WHEN** the controls panel is inspected
-- **THEN** it contains no product-authored save, load, or import-JSON control
-- **AND** settings transfer appears only in runtime Setup
-
-#### Scenario: Custom shader source transfers
-- **WHEN** a custom shader hook is active and settings are exported
-- **THEN** the hook source is included through a declared additional value target and restored on import
+## MODIFIED Requirements
 
 ### Requirement: Built-in preset library
 The product SHALL ship a preset library that covers the artist's eight
-investigations, selectable through a schema control. Applying a preset SHALL be
-revertible.
+investigations. Applying a preset SHALL be revertible.
+
+The library SHALL be offered at two moments rather than one: when a session begins,
+as the starting point for the whole canvas, and while editing, as something applied
+to one layer or group. Both SHALL offer the same library, because a user who has
+learned what an entry looks like at the start must find the same entry later.
+
+The library SHALL be presented as pictures wherever it is offered. Its surface is
+not fixed to a schema control: the starting choice belongs in the onboarding dialog
+and the per-layer choice belongs with the layer it applies to, and neither is a
+setting that shapes existing work.
 
 The eight series SHALL be Couleur Additive, Physichromie, Induction Chromatique,
 Chromointerférence, Transchromie, Chromosaturation, Chromoscope, and Couleur dans
@@ -59,6 +41,11 @@ The total number of presets is not fixed. The previous requirement of a total
 between 8 and 12 is withdrawn: it described a demonstration that the stack could
 hold a composition, and the library's purpose is now to show a user what the
 vocabulary can do.
+
+#### Scenario: The library is offered at both moments
+- **WHEN** a session is started, and again while editing a layer
+- **THEN** the same library is offered in both places
+- **AND** each entry is shown as a picture of what it will make
 
 #### Scenario: Every series represented
 - **WHEN** the preset list is opened
@@ -100,34 +87,3 @@ Selection and loading are two steps. A select that rewrote twenty other targets 
 #### Scenario: No preset claims to be a specific artwork
 - **WHEN** the preset library is validated
 - **THEN** no preset name or description asserts that it reproduces an individual catalogued artwork
-
-### Requirement: Workspace persistence by reload
-The app SHALL rely on default runtime workspace persistence, declaring `persistenceCoverage: "reload"`, `evidence: "persistence-state"`, and `persistenceSlices` exactly equal to the resolved `schema.persistence.include`. Product code MUST NOT read or write localStorage or IndexedDB directly.
-
-#### Scenario: Workspace survives reload
-- **WHEN** the user edits parameters and reloads the browser
-- **THEN** the visible workspace, canvas state, and panel state are restored from the resolved persistence slices
-
-#### Scenario: Reset restores defaults, not the persisted scene
-- **WHEN** the user triggers global reset after a reload
-- **THEN** every schema control returns to its `defaultValue`
-
-### Requirement: Randomize with locks
-Randomize SHALL assign new values within declared schema ranges, and every randomizable group SHALL have a lock `switch` that excludes its targets.
-
-The command and its locks live together in one Randomize section, as an `actions` control rather than a sticky `panelActions` one, because two framework rules make the original per-section sticky design unbuildable. A section holding a large compound control cannot also hold a lock: runtime splits the compound control into its own section, which duplicates section titles. And every acceptance row on a sticky `panelActions` control must cover every footer action, so adding Randomize to the footer would oblige the export proof and the randomize proof to each exercise both commands.
-
-Randomize covers the stripe field, the palette, the immersive field, and the translucent planes, so every engine has something to randomize. Viewer parallax, the afterimage fringe, the interference relationship, and the embedded shape are deliberately excluded; extending randomize to them requires adding their locks in the same change.
-
-#### Scenario: Locked palette survives randomization
-- **WHEN** the palette lock is on and the user randomizes
-- **THEN** the palette is unchanged while the stripe field takes new values
-
-#### Scenario: Randomized values stay in range
-- **WHEN** the user randomizes repeatedly
-- **THEN** every value lies within its declared `min` and `max` and the render never becomes blank or degenerate
-
-#### Scenario: Randomize is undoable
-- **WHEN** the user randomizes and then triggers runtime undo
-- **THEN** the previous parameter values are restored as one history step
-
