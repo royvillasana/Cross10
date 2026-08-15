@@ -9,10 +9,24 @@
  * only useful if it sits exactly where the composition sits, at the same scale,
  * and the canvas box already carries whatever pan and zoom the shell applied.
  */
-.overlay {
+/*
+ * The frame the reference is placed inside, rather than the reference itself.
+ *
+ * Two elements because one cannot both establish a coordinate system and sit
+ * inside it. This one is fixed to the viewport and carries no offset of its
+ * own, so measuring it says where the viewport actually is and how much the
+ * shell has scaled everything — and the reference is then placed in the frame's
+ * units rather than in the viewport's.
+ */
+.frame {
+  inset: 0;
   pointer-events: none;
   position: fixed;
   z-index: 4;
+}
+
+.overlay {
+  position: absolute;
 }
 
 .image {

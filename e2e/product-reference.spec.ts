@@ -58,6 +58,35 @@ async function readStudioReferenceSource(page: Page): Promise<string> {
   }, REFERENCE_OVERLAY);
 }
 
+/**
+ * The reference sits exactly on the canvas, to the pixel.
+ *
+ * Measured from both boxes rather than read out of the style that was written,
+ * because the whole failure this guards is a style that is written correctly
+ * and drawn somewhere else.
+ */
+async function expectStudioReferenceOnCanvas(page: Page): Promise<void> {
+  const boxes = await page.evaluate((selector) => {
+    const canvas = document.querySelector("[data-toolcraft-product-output]");
+    const overlay = document.querySelector(selector);
+    if (!canvas || !overlay) return null;
+    const a = canvas.getBoundingClientRect();
+    const b = overlay.getBoundingClientRect();
+    return {
+      canvas: [a.left, a.top, a.width, a.height],
+      overlay: [b.left, b.top, b.width, b.height],
+    };
+  }, REFERENCE_OVERLAY);
+
+  expect(boxes, "both the canvas and the reference must be on the page").not.toBeNull();
+  for (const [index, name] of ["left", "top", "width", "height"].entries()) {
+    expect(
+      Math.abs((boxes?.overlay[index] ?? 0) - (boxes?.canvas[index] ?? 0)),
+      `the reference's ${name} must match the canvas's`,
+    ).toBeLessThan(1.5);
+  }
+}
+
 /** The composite once it has stopped moving, so two frames can be compared. */
 async function settleStudioFrame(page: Page): Promise<string> {
   const recent: string[] = [];
@@ -175,6 +204,23 @@ test("browser: studio reference shows behind the work and reaches no artifact", 
 
     await expect(studioReference(page)).toHaveCount(1);
   }
+
+  // It lands on the picture, measured rather than assumed.
+  //
+  // This is the assertion the feature shipped without and needed. The overlay
+  // is fixed to the viewport and one of the shell's wrappers is transformed, so
+  // writing the canvas's measured rect straight into a style applies the offset
+  // twice and draws every length at length x zoom. A count of one, an
+  // attribute, and a changed screenshot were all true while the reference sat a
+  // few hundred pixels from the composition at a third of its size -- because
+  // at the default zoom the arithmetic degenerates and the bug is invisible.
+  await expectStudioReferenceOnCanvas(page);
+
+  // And at another zoom, which is where the two coordinate systems come apart.
+  await page.getByRole("button", { name: "Zoom out" }).first().click();
+  await expectStudioReferenceOnCanvas(page);
+  await page.getByRole("button", { name: "Zoom in" }).first().click();
+  await expectStudioReferenceOnCanvas(page);
 
   // It is not a layer. The list is exactly what it was, and there is no row to
   // select that corresponds to the reference.

@@ -27,6 +27,16 @@ import {
  * pan and zoom the shell applied — which is what registers the two pictures
  * against each other.
  *
+ * **And placed inside its own frame rather than at viewport coordinates**, for
+ * the reason the handles already record. `position: fixed` resolves against the
+ * viewport only while no ancestor is transformed, and one of the shell's
+ * wrappers is: under it the container becomes the containing block, so the
+ * canvas offset is applied twice, and a length written into a style is drawn at
+ * length × zoom. Writing the measured rect straight in put the reference a few
+ * hundred pixels from the picture it was supposed to sit on and a third of its
+ * size — which is exactly what the region handles were once doing, and exactly
+ * what the proof below now measures rather than assumes.
+ *
  * Absent from the DOM entirely when there is nothing to show, rather than
  * rendered transparent. An element that is present but invisible is the shape a
  * leak takes: it survives a screenshot, a compositing change, and any future
@@ -42,6 +52,7 @@ export function StudioReferenceOverlay({
   );
   const view = readStudioReferenceView(values);
 
+  const frameRef = React.useRef<HTMLDivElement | null>(null);
   const [box, setBox] = React.useState<{
     height: number;
     left: number;
@@ -60,8 +71,24 @@ export function StudioReferenceOverlay({
    */
   const measure = React.useCallback((): void => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+    const frameElement = frameRef.current;
+    if (!canvas || !frameElement) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const frameRect = frameElement.getBoundingClientRect();
+    // What the frame measures on screen against what it measures in its own
+    // layout. That ratio is the shell's zoom, derived rather than known, so
+    // this does not depend on how the shell implements it.
+    const scale =
+      frameElement.offsetWidth > 0 ? frameRect.width / frameElement.offsetWidth : 1;
+    const safeScale = scale > 0 ? scale : 1;
+
+    const rect = {
+      height: canvasRect.height / safeScale,
+      left: (canvasRect.left - frameRect.left) / safeScale,
+      top: (canvasRect.top - frameRect.top) / safeScale,
+      width: canvasRect.width / safeScale,
+    };
 
     setBox((previous) =>
       previous &&
@@ -97,29 +124,34 @@ export function StudioReferenceOverlay({
     };
   }, [canvasRef, measure]);
 
-  if (view.src === "" || box === null) return null;
-
+  // The frame is always mounted, because it is what the measurement is taken
+  // against: a frame that appeared only once there was something to show would
+  // have nothing to measure on the render that decides where to show it.
   return (
-    <div
-      className={styles.overlay}
-      // Read by the browser proofs to tell "no reference" from "a reference at
-      // zero", which are the two states the leak proofs have to distinguish.
-      data-studio-reference={view.compare}
-      style={{
-        height: `${box.height}px`,
-        left: `${box.left}px`,
-        opacity: view.opacity,
-        top: `${box.top}px`,
-        width: `${box.width}px`,
-      }}
-    >
-      <img
-        alt=""
-        className={`${styles.image}${
-          view.compare === STUDIO_REFERENCE_DIFFERENCE ? ` ${styles.difference}` : ""
-        }`}
-        src={view.src}
-      />
+    <div className={styles.frame} ref={frameRef}>
+      {view.src === "" || box === null ? null : (
+        <div
+          className={styles.overlay}
+          // Read by the browser proofs to tell "no reference" from "a reference
+          // at zero", which are the two states the leak proofs distinguish.
+          data-studio-reference={view.compare}
+          style={{
+            height: `${box.height}px`,
+            left: `${box.left}px`,
+            opacity: view.opacity,
+            top: `${box.top}px`,
+            width: `${box.width}px`,
+          }}
+        >
+          <img
+            alt=""
+            className={`${styles.image}${
+              view.compare === STUDIO_REFERENCE_DIFFERENCE ? ` ${styles.difference}` : ""
+            }`}
+            src={view.src}
+          />
+        </div>
+      )}
     </div>
   );
 }
