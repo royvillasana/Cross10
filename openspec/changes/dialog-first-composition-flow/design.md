@@ -32,6 +32,15 @@ no product hook. `shader-authoring` also states product code MUST NOT author its
 layer list or its controls. A duplicate icon and a gear icon on a layer row cannot be
 built from the product side at all.
 
+**A dialog is also the only surface a phone can use.** The panels are floating,
+draggable, viewport-snapped surfaces with no breakpoint anywhere in their path, and
+`ToolcraftAssemblySchema.panels` takes four enable flags and nothing about placement,
+order, or size. At 386px the Controls panel sits off-screen and the canvas measures
+`left: -384.8`. A product cannot fix that — but a dialog is full-screen by nature, so
+every decision this change moves into one is a decision that becomes reachable on a
+phone. That is a side effect worth naming, not a substitute: the editor itself stays
+unusable at that width until the runtime grows a stacked layout (upstream issue 11).
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -49,6 +58,12 @@ built from the product side at all.
 - Re-opening the reference's own compromise. It stays a built-in study, per the
   decision taken in `reference-image-and-artwork-presets`.
 - A tour, tips, or any first-run teaching beyond showing the work itself.
+- Fixing the editor on small screens. The dialog helps because it is full-screen;
+  the panel layout behind it is runtime-owned and out of reach.
+- Moving export into a dialog. `panelActions` is contracted for sticky-footer actions
+  and `defineToolcraft` hoists it there automatically, so only the format and
+  resolution selects could move — splitting one action across two surfaces, which is
+  worse than leaving it. Recorded as upstream issue 12.
 
 ## Decisions
 

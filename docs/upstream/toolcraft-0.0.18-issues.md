@@ -392,6 +392,71 @@ take is a product decision rather than an engineering one.
 
 ---
 
+## 11. The panel shell has no mobile layout, and a product cannot supply one
+
+At a 386px viewport Croix10 is unusable. The Controls panel sits off-screen, the
+Layers panel collapses to a dropdown, and the canvas is scrolled somewhere the user
+cannot see. Measured, not estimated: `getBoundingClientRect()` on the product output
+returned `left: -384.8` on a fresh load.
+
+The panels are floating, draggable, snapping surfaces owned by
+`runtime/react/panel-host/panel-host.tsx`, positioned against the visual viewport.
+Nothing in that path has a breakpoint: the only `matchMedia` calls in the runtime are
+for colour scheme and reduced motion.
+
+A product cannot correct it. `ToolcraftAssemblySchema.panels` takes exactly four
+fields — `controls`, `layers`, `timeline`, `toolbar` — and each is an enable flag or
+a contract, with no placement, order, size, split, or collapsed-by-default. Panel
+position is runtime state a *user* drags. `component-contracts` forbids product code
+from authoring panels, and `decision-contracts.ts:61` forbids importing or rendering
+low-level runtime surfaces, so styling them from outside is the same violation with
+extra steps.
+
+What a product *can* do about narrow screens is reduce how much is in the panel and
+use `layoutGroups` to pack controls — real but marginal. It cannot put the canvas on
+top and the panels below, which is what a phone needs.
+
+**Suggested fix:** a stacked layout below a breakpoint — canvas first, panels beneath
+as collapsible sections in a single scroll — or a `panels.layout` schema field that
+lets a product ask for it. The panel host already measures the visual viewport, so the
+measurement exists and only the arrangement is missing.
+
+**Local workaround:** none. A generated app is desktop-only, and nothing in the
+schema says so.
+
+---
+
+## 12. A product can never hold its own artifact, so it cannot share one
+
+`decision-contracts.ts:61` and `:220` put the whole delivery path in the runtime:
+settings, scene crop, background semantics, "exact timestamped encoding, download,
+progress, and typed failures", and app code "must not ... instantiate encoders, or
+own artifact download mechanics". The product contributes pixels through
+`exportRenderer.renderFrame` and never sees the encoded result — there is no
+completion callback, no blob hand-off, and no `navigator.share` anywhere in the
+runtime.
+
+Sharing an export to a social network therefore cannot be built. It is not that the
+product is discouraged from owning the download; it is that the bytes never arrive.
+
+The placement rule compounds it. `panelActions` is contracted for "sticky footer
+product actions such as Generate, Export, Copy, or Download" and `defineToolcraft`
+"hoists panelActions into the controls panel sticky footer automatically", so the
+export press is structurally bound to the footer. A product that wants export to live
+in a dialog can move only the format and resolution selects, leaving the press
+elsewhere — which splits one action across two surfaces and is worse than not moving
+it.
+
+**Suggested fix:** an optional completion hand-off on the export contract — the
+artifact `Blob` and its filename, delivered after the runtime has encoded and
+downloaded it — would let a product offer `navigator.share` without owning encoding
+or download. Separately, allowing an `export-image`/`export-video` role outside the
+sticky footer would let export live where a product's flow puts it.
+
+**Local workaround:** none for sharing. Users export a file and share it themselves.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
