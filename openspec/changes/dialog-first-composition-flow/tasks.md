@@ -16,8 +16,11 @@
 
 - [ ] 3.1 Add the setup step: aspect ratio, width and height, resolution scale, background — written through the same runtime targets the Setup section writes.
 - [ ] 3.2 Pre-fill from the chosen starting point, and decide what "start from nothing" pre-fills.
-- [ ] 3.3 Create nothing until it is confirmed: no canvas, no layer, no value. Prove that leaving mid-step is indistinguishable from never having started.
-- [ ] 3.4 Record honestly that these controls remain in the runtime Setup section, because a product cannot suppress it. File the gap upstream rather than describing the duplicate as intended.
+- [ ] 3.3 Offer named output shapes so nobody has to know the numbers: square (1080x1080), portrait (1080x1350), and vertical (1080x1920). Set them by writing the runtime's own aspect, width and height rather than storing a size — one owner, reached earlier.
+- [ ] 3.4 Note that **1080x1350 has no runtime aspect preset**. `canvas-aspect-ratio-presets.ts` ships 1:1, 3:2, 16:9, 3:4, 9:16, 2:3 and 4:3, and 4:5 is not among them — which is why these are set as real dimensions rather than as a ratio. Check what the Setup aspect select shows once a size lands outside its list, and file it upstream if the answer is misleading rather than merely blank.
+- [ ] 3.5 Name the shapes for the shape, not for the company: "Portrait (4:5)" rather than a platform's name. The dimensions are facts about a picture, and a product that brands them takes on a claim it cannot keep when the platform changes its mind.
+- [ ] 3.6 Create nothing until it is confirmed: no canvas, no layer, no value. Prove that leaving mid-step is indistinguishable from never having started.
+- [ ] 3.7 Record honestly that these controls remain in the runtime Setup section, because a product cannot suppress it. File the gap upstream rather than describing the duplicate as intended.
 
 ## 4. Move the technique choice
 

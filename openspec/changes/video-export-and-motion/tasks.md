@@ -28,13 +28,14 @@
 - [ ] 4.3 Give the export renderer the timeline's timestamp and resolve drift at it. The renderer already draws a deterministic scene at a size; time is the one input it lacks.
 - [ ] 4.4 Keep the still's at-rest pointer rule intact while letting the loop supply a pointer path for video. Two exports of one composition must still be the same composition.
 - [ ] 4.5 Prove the artifact: duration and packet count follow the timeline, the cadence is the 30 FPS schedule regardless of render cost, editing duration changes the artifact, the last frame meets the first, and the background survives with Background off.
-- [ ] 4.6 Assert the product allocates no export canvas, calls no `toBlob` or `toDataURL`, creates no object URL, instantiates no encoder, and downloads nothing. The runtime owns delivery and this is the line that says so.
+- [ ] 4.6 Check the loop period against what the common destinations accept — a vertical video is usually watched on a phone where anything past a minute or so is a different kind of post — and make the declared period a reason rather than a round number. MP4 is already the specified default and is the format those destinations take, so nothing here needs a new format.
+- [ ] 4.7 Assert the product allocates no export canvas, calls no `toBlob` or `toDataURL`, creates no object URL, instantiates no encoder, and downloads nothing. The runtime owns delivery and this is the line that says so.
 
-## 5. Sharing — blocked
+## 5. Posting is the user's, and nothing here does it
 
-- [ ] 5.1 Do not build a share action. The encoded artifact never reaches product code: there is no completion callback, no blob hand-off, and no filename, and `export-pipeline` forbids the product from producing one itself. A share button would have nothing to share.
-- [ ] 5.2 Confirm upstream issue 12 states the smallest fix that would unblock it — the artifact and its filename handed back after the runtime has encoded and downloaded it — so the ask is recorded as a framework gap rather than as a product decision not to do it.
-- [ ] 5.3 Tell the user that MP4 is what lands and that sharing is two taps from the file on a phone, rather than leaving the request looking granted.
+- [ ] 5.1 Build no share action, and do not treat that as a gap this change is leaving. The ask was for output *shaped* for where it is posted; the user downloads the file and uploads it themselves. MP4 at a phone-shaped canvas is the whole of it.
+- [ ] 5.2 Confirm the shapes land in `dialog-first-composition-flow` group 3 rather than here, since they are canvas dimensions rather than export settings, and that nothing in the export surface duplicates them.
+- [ ] 5.3 Leave upstream issue 12 filed anyway. A share *integration* is still impossible for the reason recorded there, and the day someone asks for one it should be a known gap rather than a fresh discovery.
 
 ## 6. Verify and close
 

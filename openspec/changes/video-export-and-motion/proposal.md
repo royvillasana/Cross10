@@ -39,8 +39,11 @@ drift quantized to whole cycles per loop. This change builds them.
   by default, because a work whose inks change is a different work rather than the
   same one seen from elsewhere.
 
-- **Sharing to a social network is not included, because it cannot be built.** See
-  Impact.
+- **Nothing is posted anywhere.** The user asked for output *shaped* for where they
+  post it, not for the product to post it: they download the file and upload it
+  themselves. That is a settings question, and MP4 at a phone-shaped canvas already
+  answers it. A share integration is a different thing, and it is the one that cannot
+  be built — see Impact.
 
 ## Capabilities
 
@@ -56,7 +59,13 @@ _None._ Everything here is already specified; what is missing is the build.
 
 ## Impact
 
-**Sharing cannot be built and is not proposed.** `export-pipeline` requires that
+**Output shaped for a destination is a canvas question, not an export one.** The
+sizes a phone-first destination expects — square, 4:5 portrait, 9:16 vertical — are
+canvas dimensions, and `dialog-first-composition-flow` owns the step that sets them.
+`export.image.resolution` is fixed by spec at 2K/4K/8K and needs no change, because a
+long edge of 4096 is more than any of those destinations keeps.
+
+**A share *integration* cannot be built, and is not proposed.** `export-pipeline` requires that
 product code "MUST NOT allocate export canvases, call `toBlob` or `toDataURL`,
 create object URLs, download artifacts, instantiate `MediaRecorder` or
 `VideoEncoder`, call `canvas.captureStream()`, or import an encoder library", and
