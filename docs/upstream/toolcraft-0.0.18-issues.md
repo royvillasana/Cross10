@@ -297,6 +297,52 @@ would also hide real product regressions.
 
 ---
 
+## 9. Applicability can only read control values, so eligibility is not expressible
+
+`control-applicability.ts` requires every predicate target to be a **rendered control**:
+
+```ts
+// src/app/acceptance/control-applicability.ts:257
+`${control.target} predicate target "${predicate.target}" does not exist.`
+```
+
+and the runtime evaluates predicates by reading `state.values[target]`. Together those mean a
+control can be gated on *what another control is set to* and on nothing else.
+
+Several product conditions are not control values. The two this app met are both about the
+runtime's own layer selection:
+
+- whether the selected layer is a **group**
+- whether any layer carries **imported media**
+
+`toolcraft-app-shell` requires "conditional applicability instead of disabling" — a target
+that cannot receive an operation must be *unavailable*, not present and inert. For a
+condition the runtime owns, that requirement cannot be satisfied. `state.selectedLayerId` and
+`state.mediaAssets` are both in state and both readable by `getToolcraftTargetValue`'s own
+`state.values` fallback — they simply are not control targets, so the acceptance check rejects
+naming them before the runtime ever gets the chance.
+
+The two ways out are both worse than the problem. A product can invent a rendered control that
+mirrors the selection purely so a predicate can read it, which puts a control in the panel
+that exists for the schema rather than for the user and lies the moment anyone edits it; or it
+can leave the target present and do nothing when it is pressed, which is exactly the disabled
+behaviour the rule forbids.
+
+**Suggested fix:** allow predicates to name runtime-derived targets — at minimum a selection
+kind and a per-layer asset presence — or let a product register a named predicate the runtime
+evaluates against state. The evaluation path already falls back to `state.values`, so the
+missing piece is the vocabulary rather than the mechanism.
+
+**Local workaround:** partial, and the remainder is recorded rather than hidden. Croix10's
+gallery names its aim in a rendered select (`gallery.target`) and gates the two presses on it,
+so the destructive press is genuinely absent whenever the aim is narrower than the canvas and
+the additive press is absent when it is not — that half is real conditional applicability.
+What is not expressible is the second half: with the aim set to the selected group and no
+group selected, the press is offered and does nothing. It does not fall back to a wider
+target, which is the part that would be dangerous.
+
+---
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

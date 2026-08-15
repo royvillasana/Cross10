@@ -625,6 +625,10 @@ vec4 studioImageBody(
   float mediaFlipY,
   float flipX,
   float flipY,
+  float engine,
+  float engineAmount,
+  float engineCursor,
+  float enginePitch,
   sampler2D image
 ) {
   // The picture lives in the *layer's* frame, not the canvas's.
@@ -680,7 +684,59 @@ vec4 studioImageBody(
     return vec4(0.0);
   }
 
-  return texture(image, uv);
+  vec4 sampled = texture(image, uv);
+  if (engine < 0.5) {
+    return sampled;
+  }
+
+  // The same three readings the procedural bodies offer (R67), against a
+  // picture instead of a field the body built.
+  //
+  // A picture has no palette and no seams of its own, so what the engine reads
+  // is a structure it lays over the picture -- strips across the picture's own
+  // frame, so they turn, fold and travel with it rather than sitting on the
+  // canvas underneath. That is the prior art's own arrangement: the relief is
+  // an apparatus placed in front of an image, not a property the image had.
+  //
+  // Branch order is the contract with the engine option order, as in the other
+  // two bodies.
+  vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
+  float cursorReach = 1.0 - smoothstep(0.0, 0.45, length(centered - cursor));
+  float engineStrength = engineAmount * mix(1.0, cursorReach, step(0.5, engineCursor));
+
+  float scaled = uv.x * 64.0;
+  float withinBand = fract(scaled);
+  vec3 colour = sampled.rgb;
+
+  if (engine < 1.5) {
+    // Induction: the complement appears in a narrow fringe at each seam, and
+    // nowhere else, which is what makes it a colour the picture does not carry.
+    float toEdge = min(withinBand, 1.0 - withinBand);
+    float fringeSpan = max(engineStrength * 0.25, 0.0001);
+    float fringe = 1.0 - smoothstep(0.0, fringeSpan, toEdge);
+    colour = mix(colour, vec3(1.0) - colour, fringe * engineStrength);
+  } else if (engine < 2.5) {
+    // The relief: each strip presents a little of what is beside it, which for
+    // a picture means reading it a strip over. Alternating which side a strip
+    // leans to is what reads as depth rather than as one uniform smear, and the
+    // occlusion darkens with the shear exactly as it does over a band field.
+    float side = mod(floor(scaled), 2.0) < 0.5 ? -1.0 : 1.0;
+    vec2 neighbour = vec2(
+      clamp(uv.x + side * engineStrength * 0.015625, 0.0, 1.0),
+      uv.y
+    );
+    colour = mix(colour, texture(image, neighbour).rgb, clamp(engineStrength, 0.0, 1.0));
+    colour *= 1.0 - min(engineStrength * 0.35, 0.55);
+  } else {
+    // A second structure at another pitch, beating against the first. The beat
+    // is the subject, so what it modulates is the picture's own colour rather
+    // than a palette the picture does not have.
+    float second = fract(scaled * max(enginePitch, 0.01));
+    float secondMask = 1.0 - smoothstep(0.0, 0.5, abs(second - 0.5));
+    colour = mix(colour, abs(colour - vec3(secondMask)), engineStrength);
+  }
+
+  return vec4(colour, sampled.a);
 }
 `;
 
@@ -763,6 +819,33 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { booleanControl: true, defaultValue: 0, name: "imageFlipY", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
+        /**
+         * The chromatic engine over a picture, named exactly as it is over a
+         * band field so that one control edits either and an entry applied to
+         * an image carries the same engine it would carry anywhere else.
+         *
+         * Order here is the contract with the branch order in the body and with
+         * the option order of the control, all three of which have to agree.
+         */
+        {
+          defaultValue: 0,
+          name: "engine",
+          optionValues: [
+            "none",
+            "induction",
+            "physichromie",
+            "chromointerference",
+          ],
+          type: "float",
+        },
+        { defaultValue: 0.25, name: "engineAmount", type: "float" },
+        {
+          booleanControl: true,
+          defaultValue: 0,
+          name: "engineCursor",
+          type: "float",
+        },
+        { defaultValue: 1.2, name: "enginePitch", type: "float" },
         // Last, and valueless: the texture is bound from decoded media rather
         // than read out of the record.
         { defaultValue: 0, name: "image", type: "sampler2D" },

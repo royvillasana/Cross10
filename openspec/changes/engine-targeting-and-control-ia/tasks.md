@@ -31,16 +31,16 @@
 - [x] 5.1 Replace the technique select with the built-in `imagePicker`, and place it first in the control surface so the techniques are the first thing the user meets.
 - [x] 5.2 Produce a thumbnail per technique. They must be renders the product itself produces from the technique's own stack, not photographs of artworks (see design Open Questions).
 - [x] 5.3 Make the technique picker set the canvas's construction, leaving every control it touched live and editable afterwards.
-- [ ] 5.4 Add the confirmation step for a technique change: state that current work will be replaced, leave the canvas untouched until confirmed, and skip asking when there is no work to replace.
-- [ ] 5.5 Express the confirmation through built-in controls as a deliberate second action. There is no modal available — do not author one.
-- [ ] 5.6 Keep the engine control as the per-target application, and make the surface distinguish context from application despite the shared vocabulary.
-- [ ] 5.7 Extend `planStudioPresetApplication` to take a target and emit commands affecting only that target's layers; add the image target alongside layer and group.
-- [ ] 5.8 Make the group and image targets unavailable rather than disabled when nothing eligible is selected, per the existing applicability requirement.
-- [ ] 5.9 Keep the existing target keys where possible so Settings Transfer round-trips (see the BREAKING note in design).
+- [x] 5.4 Add the confirmation step for a technique change: state that current work will be replaced, leave the canvas untouched until confirmed, and skip asking when there is no work to replace.
+- [x] 5.5 Express the confirmation through built-in controls as a deliberate second action. There is no modal available — do not author one.
+- [x] 5.6 Keep the engine control as the per-target application, and make the surface distinguish context from application despite the shared vocabulary.
+- [x] 5.7 Extend `planStudioPresetApplication` to take a target and emit commands affecting only that target's layers; add the image target alongside layer and group.
+- [x] 5.8 Make the group and image targets unavailable rather than disabled when nothing eligible is selected, per the existing applicability requirement. **Half of this is not expressible and is recorded as issue 9 in `docs/upstream/toolcraft-0.0.18-issues.md`.** What landed: the aim is a rendered select and each press is gated on it, so the destructive press is absent for every narrow aim and the additive press is absent for the canvas aim. What did not: with the group aim chosen and no group selected, the press is offered and does nothing, because an applicability predicate may only name a rendered control's target and the runtime's selection kind is not one. It does not fall back to a wider target, which is the part that would have been dangerous.
+- [x] 5.9 Keep the existing target keys where possible so Settings Transfer round-trips (see the BREAKING note in design).
 - [x] 5.10 Browser proof per technique thumbnail that choosing it changes the render — the `imagePicker` contract requires every visible item to be proved individually, not one proof for the control.
-- [ ] 5.11 Browser proofs per engine target: layer-only leaves neighbours unchanged, group-only leaves outsiders unchanged, image-only restyles the picture and changes nothing else.
-- [ ] 5.12 Browser proof that applying an engine to a target never asks for confirmation and never replaces the canvas.
-- [ ] 5.13 Browser proofs for the confirmation: declining leaves every layer value and the current technique unchanged; confirming is still revertible by the group 2 restore action.
+- [x] 5.11 Browser proofs per engine target: layer-only leaves neighbours unchanged, group-only leaves outsiders unchanged, image-only restyles the picture and changes nothing else.
+- [x] 5.12 Browser proof that applying an engine to a target never asks for confirmation and never replaces the canvas.
+- [x] 5.13 Browser proofs for the confirmation: declining leaves every layer value and the current technique unchanged; confirming is still revertible by the group 2 restore action.
 
 ## 6. Flip on every layer type
 
@@ -65,6 +65,6 @@
 ## 8. Verify and close
 
 - [ ] 8.1 Run `npm test` and confirm both halves — `node --test` and vitest — since the `&&` chain hides the second when the first fails.
-- [ ] 8.2 Run the browser suite and confirm the only failures are the two that already fail on untouched `main`: `app-performance.gates` renderer pass ownership and `scripts/toolcraft-product-control-boundary.test.mjs`.
+- [ ] 8.2 Run the browser suite and confirm the only failures are the ones that already fail on untouched `main`. **The baseline this task was written with was wrong and is corrected here**, measured by stashing the change and re-running: `npm test`'s two — `app-performance.gates` renderer pass ownership and `scripts/toolcraft-product-control-boundary.test.mjs` — plus five in `test:browser:stable`: three `app-browser-orientation-evidence` recipes, `app-browser-runtime-requirements` over `canvas.render-scale`, and `browser: starter canvas accepts media upload without product controls`. Those five are issues 3, 4 and 8 in the upstream report.
 - [ ] 8.3 Confirm the integrity gate still passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
 - [ ] 8.4 Reproduce the original defect's steps in the running app and confirm the stack returns.

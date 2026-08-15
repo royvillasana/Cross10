@@ -9,15 +9,25 @@ import {
   planStudioLayerDuplication,
   planStudioPenDrawing,
   planStudioStackRestoration,
+  studioApplicationLayerIds,
+  STUDIO_APPLY_TARGET_TARGET,
+  STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
+  readStudioApplyTarget,
   readStudioLayerEntry,
   readStudioLayerRecord,
+  readStudioPendingTechnique,
   readStudioStackSnapshot,
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
-import { findStudioPreset, planStudioPresetApplication } from "./studio-presets";
+import {
+  findStudioPreset,
+  planStudioPresetApplication,
+  planStudioTechniqueChange,
+  planStudioTechniqueDecline,
+} from "./studio-presets";
 import { createStudioStackRenderer } from "./studio-stack-render";
 
 /**
@@ -105,7 +115,7 @@ function handleStudioPanelAction({
     return;
   }
 
-  if (action.value === "apply-preset") {
+  if (action.value === "apply-preset" || action.value === "confirm-preset") {
     // The gallery is an applicator, not a mode (R58): this replaces the stack
     // and stores nothing about having done so. The entry the picker names is
     // read at the moment of the press rather than followed, which is what makes
@@ -113,13 +123,60 @@ function handleStudioPanelAction({
     const preset = findStudioPreset(state.values["gallery.entry"]);
     if (!preset) return;
 
-    // The snapshot that makes this reversible is emitted by the plan itself,
-    // so a caller cannot apply without capturing first.
-    for (const command of planStudioPresetApplication({
+    // Whether this press offers or carries out is the plan's decision, not
+    // this dispatcher's: the snapshot that makes the change reversible is
+    // emitted by the same plan, so a caller cannot apply without capturing
+    // first and cannot apply without having asked first either.
+    for (const command of planStudioTechniqueChange({
+      confirmed: action.value === "confirm-preset",
       layers: state.layers ?? [],
+      pendingTechnique: readStudioPendingTechnique(
+        state.values[STUDIO_PENDING_TECHNIQUE_TARGET],
+      ),
       preset,
       record: readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
       selectedLayerId: state.selectedLayerId ?? null,
+    })) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
+    }
+    return;
+  }
+
+  if (action.value === "cancel-preset") {
+    for (const command of planStudioTechniqueDecline()) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
+    }
+    return;
+  }
+
+  if (action.value === "apply-engine") {
+    // The narrow half: the entry is laid onto layers that already exist and no
+    // layer is created, removed, or reordered. Nothing is armed and nothing is
+    // asked, because there is nothing here to lose.
+    const preset = findStudioPreset(state.values["gallery.entry"]);
+    if (!preset) return;
+
+    const layers = state.layers ?? [];
+    const target = readStudioApplyTarget(state.values[STUDIO_APPLY_TARGET_TARGET]);
+
+    for (const command of planStudioPresetApplication({
+      layers,
+      preset,
+      record: readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
+      selectedLayerId: state.selectedLayerId ?? null,
+      target,
+      targetLayerIds: studioApplicationLayerIds({
+        layers,
+        // Which layers carry a picture is the runtime's answer, not the
+        // record's: an imported layer's entry still says whatever kind it was
+        // created as, and the asset is what makes it a picture.
+        mediaLayerIds: (state.mediaAssets ?? [])
+          .filter((asset) => asset.assetKind === "image")
+          .map((asset) => asset.layerId)
+          .filter((id): id is string => typeof id === "string"),
+        selectedLayerId: state.selectedLayerId ?? null,
+        target,
+      }),
     })) {
       dispatch(command as Parameters<typeof dispatch>[0]);
     }

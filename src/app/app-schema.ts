@@ -9,8 +9,10 @@ import {
   STUDIO_CURSOR_TARGET,
   STUDIO_LAYER_RECORD_TARGET,
   STUDIO_PEN_TARGET,
+  STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SHAPE_GEOMETRY_TARGETS,
   STUDIO_SNAPSHOT_TARGET,
+  STUDIO_TECHNIQUE_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
 } from "./studio-stack-state";
 
@@ -68,6 +70,16 @@ export const appSchema = defineToolcraft({
       // the apply that replaced one should survive it too. One snapshot, so the
       // cost is bounded by a single stack's metadata.
       STUDIO_SNAPSHOT_TARGET,
+      // Which construction the canvas was started from. Persisted because the
+      // composition is: a reload that forgot it would report no current
+      // technique for a canvas that plainly has one.
+      STUDIO_TECHNIQUE_TARGET,
+      // The offer a press has made and not yet been allowed to carry out.
+      // Persisted with the rest so a reload mid-decision does not quietly turn
+      // "asked" into "never asked" -- the next press would then replace the
+      // work with no confirmation at all, which is the failure the two presses
+      // exist to prevent.
+      STUDIO_PENDING_TECHNIQUE_TARGET,
           ...STUDIO_SHAPE_GEOMETRY_TARGETS,
     ],
     include: ["canvas", "layers", "panels", "values"],

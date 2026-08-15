@@ -161,11 +161,21 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Chosen composition",
       entityId: "gallery-apply",
       groupingReason:
-        "Doing something with the technique that was chosen: putting it on the canvas, and taking that back. Adjacent to the picker because the two are one act read in order -- look, then press -- and they share an entityId for the same reason.",
+        "Doing something with the technique that was chosen: aiming it, putting it there, and taking that back. Adjacent to the picker because the two are one act read in order -- look, aim, then press -- and they share an entityId for the same reason. The target sits with the presses because it gates them: aiming at the canvas is a replacement and asks first, aiming at a layer, a group, or the pictures adds to the work and does not, and each press is offered only for the aim it belongs to.",
       id: "gallery-apply",
-      targets: ["gallery.actions"],
+      targets: ["gallery.target", "gallery.actions", "gallery.engineActions"],
       title: "Chosen composition",
       workflowStage: "start",
+    },
+    {
+      entity: "Previous stack",
+      entityId: "gallery-restore",
+      groupingReason:
+        "Coming back from the last replacement. Its own entity because what it acts on is not the chosen entry but the stack that preceded it, whatever entry caused the replacement -- and keeping it out of the applicator means the aim above is not a condition on it, which it is not.",
+      id: "gallery-restore",
+      targets: ["gallery.restore"],
+      title: "Previous Stack",
+      workflowStage: "recover",
     },
     {
       entity: "Background",

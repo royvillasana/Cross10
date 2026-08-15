@@ -710,6 +710,134 @@ export function readStudioPointerSubject(value: unknown): string {
 export const STUDIO_SNAPSHOT_TARGET = "stack.applySnapshot";
 
 /**
+ * What an application is aimed at.
+ *
+ * A rendered control, because it is the author's choice rather than a derived
+ * fact, and because the two action controls beside it are gated on it: the
+ * canvas target is a replacement and asks first, every narrower target adds to
+ * the work and does not. Splitting the presses that way is what keeps a
+ * destructive press from sitting one pixel from an additive one.
+ */
+export const STUDIO_APPLY_TARGET_TARGET = "gallery.target";
+
+export const STUDIO_APPLY_TO_CANVAS = "canvas";
+export const STUDIO_APPLY_TO_LAYER = "layer";
+export const STUDIO_APPLY_TO_GROUP = "group";
+export const STUDIO_APPLY_TO_IMAGE = "image";
+
+export type StudioApplyTarget =
+  | typeof STUDIO_APPLY_TO_CANVAS
+  | typeof STUDIO_APPLY_TO_LAYER
+  | typeof STUDIO_APPLY_TO_GROUP
+  | typeof STUDIO_APPLY_TO_IMAGE;
+
+export function readStudioApplyTarget(value: unknown): StudioApplyTarget {
+  return value === STUDIO_APPLY_TO_LAYER ||
+    value === STUDIO_APPLY_TO_GROUP ||
+    value === STUDIO_APPLY_TO_IMAGE
+    ? value
+    : STUDIO_APPLY_TO_CANVAS;
+}
+
+/**
+ * The technique a press has offered to change to and not yet been allowed to.
+ *
+ * Uncontrolled product state, like the snapshot: nothing edits it but the two
+ * presses that set and clear it. Holding the *entry id* rather than a boolean is
+ * what makes the confirmation specific — an author who arms a change, browses
+ * the thumbnails, and then confirms is confirming the entry they armed, not
+ * whichever one they happen to be looking at.
+ */
+export const STUDIO_PENDING_TECHNIQUE_TARGET = "stack.pendingTechnique";
+
+export function readStudioPendingTechnique(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * The technique the canvas was last set to.
+ *
+ * Not a claim that the canvas still looks like it — an author edits freely
+ * afterwards, and R58 is right that the gallery stores nothing about the stack.
+ * This records only what happened: which construction the canvas was started
+ * from. Declining a change has to leave "the previously chosen technique still
+ * the current one", and there is nothing else that could answer that.
+ */
+export const STUDIO_TECHNIQUE_TARGET = "stack.technique";
+
+export function readStudioTechniqueId(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * The layers an application aimed at something narrower than the canvas names.
+ *
+ * Pure, and separate from the plan that acts on it, because "which layers does
+ * *the selected group* mean" is the part with the edge cases: a group is not
+ * next to its members in the array, a group can hold groups, and a selection
+ * inside a group is a reasonable way to mean that group.
+ *
+ * Groups themselves are never returned. A group organises and does not render,
+ * so writing values onto one would store an entry nothing ever reads.
+ *
+ * An empty result is the honest answer for a target nothing eligible is
+ * selected for, and the caller emits nothing rather than falling back to a
+ * target the author did not choose.
+ */
+export function studioApplicationLayerIds({
+  layers,
+  mediaLayerIds = [],
+  selectedLayerId,
+  target,
+}: {
+  readonly layers: readonly StudioRuntimeLayer[];
+  readonly mediaLayerIds?: readonly string[];
+  readonly selectedLayerId: string | null;
+  readonly target: StudioApplyTarget;
+}): readonly string[] {
+  const selected = layers.find((layer) => layer.id === selectedLayerId) ?? null;
+
+  if (target === STUDIO_APPLY_TO_LAYER) {
+    return selected && selected.kind !== "group" ? [selected.id] : [];
+  }
+
+  if (target === STUDIO_APPLY_TO_IMAGE) {
+    const carried = new Set(mediaLayerIds);
+    return layers
+      .filter((layer) => layer.kind !== "group" && carried.has(layer.id))
+      .map((layer) => layer.id);
+  }
+
+  if (target !== STUDIO_APPLY_TO_GROUP) return [];
+
+  // A selection inside a group means that group: an author who clicked a member
+  // and asked for "the selected group" has named exactly one group, and
+  // refusing them would be pedantry rather than safety.
+  const groupId =
+    selected?.kind === "group" ? selected.id : (selected?.parentGroupId ?? null);
+  if (!groupId) return [];
+
+  const inGroup = new Set<string>([groupId]);
+  // Repeated to a fixed point rather than recursively, because the array makes
+  // no promise that a nested group appears before the members hanging off it.
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const layer of layers) {
+      if (inGroup.has(layer.id)) continue;
+      if (layer.parentGroupId && inGroup.has(layer.parentGroupId)) {
+        inGroup.add(layer.id);
+        grew = true;
+      }
+    }
+  }
+
+  return layers
+    .filter((layer) => layer.kind !== "group" && inGroup.has(layer.id))
+    .map((layer) => layer.id);
+}
+
+/**
  * Captures the stack as it stands, before anything is removed.
  *
  * Groups are carried with their members' parentage because a restore that

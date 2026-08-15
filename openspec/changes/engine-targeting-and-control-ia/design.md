@@ -107,6 +107,17 @@ first and can be taken back.
 offered, per the existing "Conditional applicability instead of disabling"
 requirement in `toolcraft-app-shell`.
 
+*Half of that turned out not to be expressible, and what shipped says so.* An
+applicability predicate may only name a **rendered control's** target, so a
+condition the runtime owns — whether the selection is a group, whether any layer
+carries a picture — cannot gate anything. The aim itself is therefore a rendered
+select and both presses are gated on it, which makes the destructive press
+genuinely absent for every narrow aim and the additive press absent for the
+canvas aim. What remains is that choosing the group aim with no group selected
+leaves a press that does nothing. It does not fall back to a wider target — the
+wider target is the one that destroys the stack — and the gap is recorded as
+issue 9 in `docs/upstream/toolcraft-0.0.18-issues.md`.
+
 ### The technique picker is `imagePicker`, and the modal is not available
 
 **Chosen.** Present techniques as thumbnails through the built-in `imagePicker`,

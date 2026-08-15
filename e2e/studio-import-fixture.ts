@@ -1,0 +1,89 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import zlib from "node:zlib";
+
+import { type Page } from "@playwright/test";
+
+/**
+ * A four-quadrant fixture, written to a real file so a real input can take it.
+ *
+ * Sixty-four pixels square rather than two: the sampler filters linearly, so a
+ * tiny picture is all gradient and has no interior to read. Flat quadrants are
+ * what make the readings unambiguous -- a picture that arrived mirrored,
+ * rotated or stretched puts different colours at the sampled points, and a
+ * layer drawing its default stripes puts white and black at both.
+ */
+const IMPORT_FIXTURE = path.join(os.tmpdir(), "studio-quadrants.png");
+
+function writeImportFixture(): void {
+  const size = 64;
+  const half = size / 2;
+  const quadrant = (x: number, y: number): readonly [number, number, number] =>
+    y < half
+      ? x < half
+        ? [255, 40, 40]
+        : [40, 90, 255]
+      : x < half
+        ? [250, 230, 40]
+        : [255, 255, 255];
+
+  const raw = Buffer.alloc(size * (size * 3 + 1));
+  let offset = 0;
+  for (let y = 0; y < size; y += 1) {
+    raw[offset] = 0;
+    offset += 1;
+    for (let x = 0; x < size; x += 1) {
+      const [red, green, blue] = quadrant(x, y);
+      raw[offset] = red;
+      raw[offset + 1] = green;
+      raw[offset + 2] = blue;
+      offset += 3;
+    }
+  }
+
+  const crc32 = (buffer: Buffer): number => {
+    let crc = ~0;
+    for (const byte of buffer) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit += 1) {
+        crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+      }
+    }
+    return ~crc;
+  };
+  const chunk = (tag: string, data: Buffer): Buffer => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(tag, "ascii"), data]);
+    const crcValue = Buffer.alloc(4);
+    crcValue.writeUInt32BE(crc32(body) >>> 0);
+    return Buffer.concat([length, body, crcValue]);
+  };
+
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header[8] = 8;
+  header[9] = 2;
+
+  fs.writeFileSync(
+    IMPORT_FIXTURE,
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk("IHDR", header),
+      chunk("IDAT", zlib.deflateSync(raw)),
+      chunk("IEND", Buffer.alloc(0)),
+    ]),
+  );
+}
+
+export async function importStudioImage(page: Page): Promise<void> {
+  await page
+    .locator('[data-toolcraft-control-target="media.image"]')
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(IMPORT_FIXTURE);
+}
+
+export { IMPORT_FIXTURE, writeImportFixture };

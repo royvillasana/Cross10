@@ -1,9 +1,16 @@
 import { type StudioLayerTypeId } from "./studio-layers";
 import {
+  STUDIO_APPLY_TO_CANVAS,
+  STUDIO_LAYER_RECORD_TARGET,
+  STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SNAPSHOT_TARGET,
+  STUDIO_TECHNIQUE_TARGET,
   captureStudioStackSnapshot,
   collectStudioSelectedLayerEdit,
+  projectStudioLayerEntry,
+  readStudioLayerEntry,
   studioSelectedLayerTarget,
+  type StudioApplyTarget,
   type StudioLayerRecord,
   type StudioLayerRecordEntry,
   type StudioRuntimeLayer,
@@ -361,6 +368,209 @@ export function studioPresetLayerEntry(layer: StudioPresetLayer): StudioLayerRec
 }
 
 /**
+ * A technique change, and the offer that has to precede it.
+ *
+ * Two presses rather than one, and the decision about which of them is being
+ * made lives here rather than in the dispatcher, for the same reason every
+ * other plan in this module does: the interesting part is *when it refuses to
+ * act*, and that is worth asserting without a runtime.
+ *
+ * Three outcomes, in the order they can happen:
+ *
+ * - **Nothing to lose.** An empty canvas has no work to replace, so the first
+ *   press applies. Asking anyway is how a confirmation becomes something a user
+ *   learns to click through.
+ * - **Not yet agreed.** The offer is recorded and *nothing else is emitted*.
+ *   The canvas has to be untouched until the change is confirmed, so this
+ *   deliberately returns one command rather than a smaller application.
+ * - **Agreed to this entry.** The replacement runs, the offer is cleared, and
+ *   the canvas records which construction it was set to.
+ *
+ * The confirming press is matched against the entry that was armed. An author
+ * who arms a change, browses the thumbnails, and then confirms is agreeing to
+ * what they were shown, not to whichever entry is under the cursor — and a
+ * confirmation that could apply something never offered would be worse than
+ * none.
+ *
+ * Confirming does not waive the revert: the application still captures its
+ * snapshot, because agreeing to proceed is not agreeing to lose the work.
+ */
+export function planStudioTechniqueChange({
+  confirmed,
+  layers,
+  pendingTechnique,
+  preset,
+  record,
+  selectedLayerId,
+}: {
+  /** True for the confirming press, false for the one that offers. */
+  readonly confirmed: boolean;
+  readonly layers: readonly StudioRuntimeLayer[];
+  readonly pendingTechnique: string | null;
+  readonly preset: StudioPreset;
+  readonly record: StudioLayerRecord;
+  readonly selectedLayerId: string | null;
+}): readonly Readonly<Record<string, unknown>>[] {
+  const agreed = pendingTechnique === preset.id;
+
+  if (confirmed && !agreed) return [];
+
+  if (!confirmed && !agreed && layers.length > 0) {
+    return [
+      {
+        label: `Offer to replace the work with ${preset.label}`,
+        target: STUDIO_PENDING_TECHNIQUE_TARGET,
+        type: "controls.setValue",
+        value: preset.id,
+      },
+    ];
+  }
+
+  return [
+    ...planStudioPresetApplication({ layers, preset, record, selectedLayerId }),
+    {
+      label: "Clear the pending technique",
+      target: STUDIO_PENDING_TECHNIQUE_TARGET,
+      type: "controls.setValue",
+      value: "",
+    },
+    {
+      label: `Record ${preset.label} as the canvas technique`,
+      target: STUDIO_TECHNIQUE_TARGET,
+      type: "controls.setValue",
+      value: preset.id,
+    },
+  ];
+}
+
+/**
+ * Declining, which writes one thing and touches nothing else.
+ *
+ * No layer command, no record write, and no write to the technique the canvas
+ * is already in — "declining changes nothing" is a claim about the whole
+ * composition, and the cheapest way to keep it true is for there to be nothing
+ * else here to get wrong.
+ */
+export function planStudioTechniqueDecline(): readonly Readonly<
+  Record<string, unknown>
+>[] {
+  return [
+    {
+      label: "Keep the current work",
+      target: STUDIO_PENDING_TECHNIQUE_TARGET,
+      type: "controls.setValue",
+      value: "",
+    },
+  ];
+}
+
+/**
+ * Applying an entry to layers that already exist.
+ *
+ * The narrow half of the applicator, and deliberately a different shape from
+ * the canvas half. Nothing is created, nothing is destroyed, and nothing is
+ * reordered: each named layer takes the entry's values and keeps everything the
+ * runtime owns about it — its identity, its place in the stack, its name, its
+ * parentage, and whether it is visible.
+ *
+ * **Each layer keeps its own kind.** `collectStudioSelectedLayerEdit` walks the
+ * uniforms of the entry it is folding into, so a value the target's kind has no
+ * uniform for is dropped rather than stored. That is what lets an entry built
+ * out of band fields be applied to a picture: the engine, the treatment, the
+ * blending and the opacity land, and `count` — which a picture has no reading
+ * of — does not. Retyping instead would replace the picture with the bands, and
+ * the author asked for the picture to be restyled, not removed.
+ *
+ * Entries carry a stack and targets carry a count of their own, so the entry's
+ * layers are laid across the target's in order and repeat when they run out.
+ * Both lists are bottom-first, so a two-layer entry over a four-layer group puts
+ * the ground on the ground.
+ *
+ * One command, and therefore one undo. The record is the only thing written,
+ * and `controls.setValue` is one of the two commands the runtime does give a
+ * history entry — which is exactly why this half needs no snapshot and the
+ * canvas half does.
+ */
+export function planStudioTargetedApplication({
+  layerIds,
+  preset,
+  record,
+  selectedLayerId = null,
+}: {
+  readonly layerIds: readonly string[];
+  readonly preset: StudioPreset;
+  readonly record: StudioLayerRecord;
+  readonly selectedLayerId?: string | null;
+}): readonly Readonly<Record<string, unknown>>[] {
+  // Nothing eligible is selected, so nothing happens. Falling back to a wider
+  // target would apply the entry somewhere the author did not point it, and the
+  // wider target here is the one that destroys the stack.
+  if (layerIds.length === 0 || preset.layers.length === 0) return [];
+
+  const next: Record<string, StudioLayerRecordEntry> = { ...record };
+  layerIds.forEach((layerId, index) => {
+    const source = preset.layers[index % preset.layers.length];
+    if (!source) return;
+
+    next[layerId] = collectStudioSelectedLayerEdit(
+      readStudioLayerEntry(record, layerId),
+      Object.fromEntries(
+        Object.entries(source.values).map(([name, value]) => [
+          studioSelectedLayerTarget(name),
+          value,
+        ]),
+      ),
+    );
+  });
+
+  const commands: Readonly<Record<string, unknown>>[] = [
+    {
+      label: `Apply ${preset.label} to the selection`,
+      // Merged rather than written whole, unlike the canvas half: every layer
+      // this does not name keeps the values it had, and that is the whole
+      // promise of a narrow target.
+      target: STUDIO_LAYER_RECORD_TARGET,
+      type: "controls.setValue",
+      value: next as StudioLayerRecord,
+    },
+  ];
+
+  // The controls have to be moved too, and this is not tidiness.
+  //
+  // A layer lives in two places (R56): the record, and — while it is the
+  // selected one — the `selectedLayer.*` controls that edit it. The sync
+  // reconciles them, and with the selection unchanged it reads any difference
+  // between them as *an edit the user made in the controls* and folds the
+  // controls back into the record. Writing the record alone therefore lasts
+  // exactly until the next pass, which then restores the values the entry had
+  // just replaced — the write looks like it worked and the canvas never moves.
+  //
+  // The canvas half never meets this because it selects a layer that did not
+  // exist before, which sends the sync down its other branch.
+  //
+  // Nothing is projected when the selection is not one of the named layers:
+  // there is no stale surface to correct, and writing the controls anyway would
+  // put the entry's values onto whichever layer happened to be selected.
+  const selectedEntry = selectedLayerId ? next[selectedLayerId] : undefined;
+  if (selectedLayerId && layerIds.includes(selectedLayerId) && selectedEntry) {
+    for (const assignment of projectStudioLayerEntry(selectedEntry)) {
+      commands.push({
+        // Skipped for the same reason the sync's own projection is: loading a
+        // layer's values into the controls is a consequence of the record write
+        // above, not a second edit beside it. Recorded, one press would need two
+        // undos and the first would leave the two halves disagreeing.
+        history: "skip",
+        target: assignment.target,
+        type: "controls.setValue",
+        value: assignment.value,
+      });
+    }
+  }
+
+  return commands;
+}
+
+/**
  * What applying a preset asks the runtime to do.
  *
  * A plan rather than a dispatch, so the interesting part is testable without a
@@ -391,12 +601,31 @@ export function planStudioPresetApplication({
   preset,
   record: currentRecord,
   selectedLayerId,
+  target = STUDIO_APPLY_TO_CANVAS,
+  targetLayerIds,
 }: {
   readonly layers: readonly StudioRuntimeLayer[];
   readonly preset: StudioPreset;
   readonly record: StudioLayerRecord;
   readonly selectedLayerId: string | null;
+  readonly target?: StudioApplyTarget;
+  /** The layers a narrower target names, from `studioApplicationLayerIds`. */
+  readonly targetLayerIds?: readonly string[];
 }): readonly Readonly<Record<string, unknown>>[] {
+  // A target narrower than the canvas is a different operation, not a smaller
+  // version of this one: it restyles layers that already exist rather than
+  // deciding which layers exist. It therefore emits no layer command at all,
+  // which is what makes it additive, revertible by ordinary Undo, and free of
+  // the confirmation the canvas target needs.
+  if (target !== STUDIO_APPLY_TO_CANVAS) {
+    return planStudioTargetedApplication({
+      layerIds: targetLayerIds ?? [],
+      preset,
+      record: currentRecord,
+      selectedLayerId,
+    });
+  }
+
   const commands: Readonly<Record<string, unknown>>[] = [];
 
   // The snapshot is emitted here rather than by the caller so that it cannot be

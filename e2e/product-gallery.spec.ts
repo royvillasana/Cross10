@@ -1,12 +1,19 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import {
+  addStudioGroup,
+  addStudioLayer,
   openStudioSingleLayer,
   readStudioLayerIds,
+  readStudioLayerVisible,
+  readStudioOutputSignature,
   readStudioStackSignature,
+  selectStudioLayer,
+  setStudioSelectValue,
   setStudioSlider,
   setStudioTechnique,
   readStudioTechnique,
+  toggleStudioLayerVisibility,
   STUDIO_PRODUCT_OUTPUT,
 } from "./studio-product-helpers";
 import { STUDIO_PRESETS } from "../src/app/studio-presets";
@@ -15,7 +22,41 @@ import {
   expectToolcraftProductObservableToChange,
   getToolcraftProductObservableSnapshot,
 } from "./product-observable-helpers";
+import { getToolcraftApplicabilityRequirementId } from "../src/app/app-acceptance";
+import { expectToolcraftControlApplicabilityState } from "./browser-control-applicability-evidence";
+import { createToolcraftBrowserProofSession } from "./browser-proof-session";
+import { importStudioImage, writeImportFixture } from "./studio-import-fixture";
 import { test } from "./toolcraft-product-test";
+
+/**
+ * The four aims, and what each one makes visible.
+ *
+ * Declared once because both gated presses owe a case per aim: a gated control
+ * has to be proved present under every value that qualifies it and absent under
+ * every value that does not, and the aim's own four values are that domain.
+ */
+const STUDIO_APPLY_TARGETS = [
+  { label: "The whole canvas", value: "canvas" },
+  { label: "The selected layer", value: "layer" },
+  { label: "The selected group", value: "group" },
+  { label: "The pictures", value: "image" },
+] as const;
+
+function studioApplyTargetCase(
+  target: (typeof STUDIO_APPLY_TARGETS)[number],
+  control: string,
+  expectation: "hidden" | "visible",
+) {
+  return {
+    expectation,
+    selectorControlType: "select" as const,
+    selectorLabel: "Apply it to",
+    selectorOptionLabel: target.label,
+    selectorTarget: "gallery.target",
+    selectorValue: target.value,
+    target: control,
+  };
+}
 
 /**
  * Gallery acceptance domain.
@@ -89,13 +130,33 @@ async function settleStudioOutput(page: Page): Promise<void> {
     .toBe(true);
 }
 
+/** The press that offers a technique change, and the two that answer it. */
+function studioTechniqueButton(page: Page, name: string): Locator {
+  return page
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name })
+    .first();
+}
+
+function studioRestoreButton(page: Page): Locator {
+  return page
+    .locator('[data-toolcraft-control-target="gallery.restore"]')
+    .getByRole("button", { name: "Restore previous" })
+    .first();
+}
+
+/**
+ * A technique change carried all the way out.
+ *
+ * Both presses, deliberately, and it is correct either way round: over existing
+ * work the first press only offers and the second replaces, and over an empty
+ * canvas the first press applies and clears the offer, which leaves the second
+ * with nothing to confirm and nothing to do.
+ */
 async function applyStudioPreset(page: Page, label: string): Promise<void> {
   await setStudioTechnique(page, label);
-  await page
-    .locator('[data-toolcraft-control-target="gallery.actions"]')
-    .getByRole("button", { name: "Apply" })
-    .first()
-    .click();
+  await studioTechniqueButton(page, "Change the technique").click();
+  await studioTechniqueButton(page, "replace my work").click();
 }
 
 test("browser: studio gallery applies a composition and leaves every control live", async ({
@@ -153,18 +214,11 @@ test("browser: studio gallery applies a composition and leaves every control liv
 
   await setStudioTechnique(page, first.label);
 
-  await settleStudioOutput(page);
-  await expectToolcraftProductObservableToChange(
-    session,
-    session.controlAction("gallery.actions", async () => {
-      await page
-        .locator('[data-toolcraft-control-target="gallery.actions"]')
-        .getByRole("button", { name: "Apply" })
-        .first()
-        .click();
-    }),
-    { requirementId: "gallery.apply" },
-  );
+  // The press itself is proved in the confirmation test below, which is where
+  // the row's evidence lives: `gallery.actions` is gated on the aim, so its
+  // outcome has to be shown under the aim that makes it visible rather than on
+  // its own.
+  await applyStudioPreset(page, first.label);
 
   // Every entry, applied in turn. Each one has to replace the stack with rows
   // of its own and draw something: a preset whose layers arrived but rendered
@@ -229,11 +283,7 @@ test("browser: studio gallery restores the stack an application replaced", async
   // One press, not one per layer. The defect being fixed is that undo needed
   // N+M presses and still did not arrive, so a restore that scaled with the
   // stack would not have been a fix.
-  await page
-    .locator('[data-toolcraft-control-target="gallery.actions"]')
-    .getByRole("button", { name: "Restore previous" })
-    .first()
-    .click();
+  await studioRestoreButton(page).click();
 
   await expect
     .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
@@ -253,14 +303,309 @@ test("browser: studio gallery restores the stack an application replaced", async
   // No intermediate resting state: restoring again does nothing, because the
   // snapshot was cleared by the restore that used it. Offering it twice would
   // let a second press rebuild a stack the author had already come back from.
-  await page
-    .locator('[data-toolcraft-control-target="gallery.actions"]')
-    .getByRole("button", { name: "Restore previous" })
-    .first()
-    .click();
+  await studioRestoreButton(page).click();
 
   expect(
     await readStudioLayerIds(page),
     "a spent snapshot should restore nothing",
   ).toEqual(authorIds);
+});
+
+test("browser: studio gallery confirms before it replaces the work", async ({ page }) => {
+  test.setTimeout(300_000);
+
+  const { session } = await openStudioSingleLayer(page);
+
+  const authorIds = await readStudioLayerIds(page);
+  const authorNames = await readStudioLayerNames(page);
+  const authorFrame = await readSettledOutputSignature(page);
+  expect(authorIds, "the fixture starts from one layer of the author's own").toHaveLength(1);
+
+  const wide = STUDIO_PRESETS.find((preset) => preset.layers.length > 1);
+  if (!wide) throw new Error("the library needs an entry of more than one layer");
+
+  await setStudioTechnique(page, wide.label);
+
+  // The destructive press is offered for one aim and no other. Aiming anywhere
+  // narrower is an additive operation, and a press that replaces the whole
+  // composition must not be reachable from it -- so it is *absent* rather than
+  // present and inert.
+  for (const target of STUDIO_APPLY_TARGETS) {
+    if (target.value === "canvas") continue;
+    await expectToolcraftControlApplicabilityState(
+      session,
+      session.controlAction("gallery.target", async () => {
+        await setStudioSelectValue(page, "gallery.target", target.label);
+      }),
+      studioApplyTargetCase(target, "gallery.actions", "hidden"),
+      { baseRequirementId: "gallery.apply" },
+    );
+  }
+
+  const canvasTarget = STUDIO_APPLY_TARGETS[0];
+  await expectToolcraftControlApplicabilityState(
+    session,
+    session.controlAction("gallery.target", async () => {
+      await setStudioSelectValue(page, "gallery.target", canvasTarget.label);
+    }),
+    studioApplyTargetCase(canvasTarget, "gallery.actions", "visible"),
+    { baseRequirementId: "gallery.apply" },
+  );
+
+  // The offer changes nothing. Asserted on the layer list *and* on the frame:
+  // an offer that quietly wrote the record would leave the rows alone and
+  // repaint the canvas, which a row count cannot see.
+  await studioTechniqueButton(page, "Change the technique").click();
+  expect(
+    await readStudioLayerIds(page),
+    "the canvas must be untouched until the change is confirmed",
+  ).toEqual(authorIds);
+  expect(await readSettledOutputSignature(page)).toBe(authorFrame);
+
+  // Declining changes nothing either, and leaves the technique the canvas is in
+  // where it was.
+  await studioTechniqueButton(page, "Keep my work").click();
+  expect(await readStudioLayerIds(page)).toEqual(authorIds);
+  expect(await readStudioLayerNames(page)).toEqual(authorNames);
+  expect(await readSettledOutputSignature(page)).toBe(authorFrame);
+
+  // And a declined offer is spent: the next single press has to ask again
+  // rather than carrying out the change that was just refused.
+  await studioTechniqueButton(page, "Change the technique").click();
+  expect(
+    await readStudioLayerIds(page),
+    "a refused offer must not leave the change armed",
+  ).toEqual(authorIds);
+
+  // The evidence is taken over the confirming press, which is the one that
+  // actually replaces the stack. Taking it over the offering press would have
+  // recorded a change the offer is required not to make.
+  await settleStudioOutput(page);
+  await expectToolcraftProductObservableToChange(
+    session,
+    session.controlAction("gallery.actions", async () => {
+      await studioTechniqueButton(page, "replace my work").click();
+    }),
+    {
+      requirementId: getToolcraftApplicabilityRequirementId(
+        "gallery.apply",
+        studioApplyTargetCase(canvasTarget, "gallery.actions", "visible"),
+      ),
+    },
+  );
+  await expect
+    .poll(async () => readStudioLayerNames(page), { timeout: 15_000 })
+    .toEqual(wide.layers.map((layer) => layer.name));
+
+  // Confirming is agreeing to proceed, not agreeing to lose the work.
+  await studioRestoreButton(page).click();
+  await expect
+    .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
+    .toEqual(authorIds);
+});
+
+
+/**
+ * The composite once it has stopped moving.
+ *
+ * Every equality assertion below compares two frames, so both have to be frames
+ * the renderer has finished with. A read taken the instant a state change
+ * resolves is not: the panel commits, the pass redraws, and under a loaded
+ * suite those are far enough apart to catch a half-drawn frame and report a
+ * difference nothing in the product caused.
+ */
+async function readSettledOutputSignature(page: Page): Promise<string> {
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await readStudioOutputSignature(page));
+        if (recent.length > 3) recent.shift();
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [200], timeout: 30_000 },
+    )
+    .toBe(true);
+  return recent[recent.length - 1] ?? "";
+}
+
+/** The composite with one layer of the stack hidden, then put back. */
+async function readStudioStackWithout(page: Page, hidden: string): Promise<string> {
+  await toggleStudioLayerVisibility(page, hidden);
+  await expect
+    .poll(async () => readStudioLayerVisible(page, hidden), { timeout: 15_000 })
+    .toBe(false);
+  const signature = await readSettledOutputSignature(page);
+  await toggleStudioLayerVisibility(page, hidden);
+  await expect
+    .poll(async () => readStudioLayerVisible(page, hidden), { timeout: 15_000 })
+    .toBe(true);
+  return signature;
+}
+
+/**
+ * Aiming an entry at something narrower than the canvas.
+ *
+ * One test rather than three because the three aims share a fixture and the
+ * claim that matters is the same each time: the layers the aim names change and
+ * the layers it does not name are pixel-identical afterwards. Building three
+ * fixtures would have proved that claim three times over three different stacks
+ * and never once over a stack containing all three kinds of target.
+ *
+ * The fixture is built rather than taken from a helper because no helper has
+ * all of it: a picture, a group with a layer inside it, and a plain layer
+ * outside both. Each of the three aims needs one of those to change and at
+ * least one of the others to stay exactly as it was.
+ */
+test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
+  test.setTimeout(300_000);
+  writeImportFixture();
+
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+  });
+  await page.goto("/");
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+
+  // The session before the fixture, not after: opening one reloads the page,
+  // and this test clears storage on load, so a session opened afterwards would
+  // wipe the stack it was about to prove things about.
+  const session = await createToolcraftBrowserProofSession(page);
+
+  await importStudioImage(page);
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
+    .toContain("image");
+  const pictureLayerId = (await readStudioLayerIds(page))[0] ?? "";
+
+  // A plain layer outside everything, then a group with a layer inside it. The
+  // group becomes the selection when it is added, so the layer added after it
+  // lands inside.
+  await addStudioLayer(page);
+  const looseLayerId =
+    (await readStudioLayerIds(page)).find((id) => id !== pictureLayerId) ?? "";
+  await addStudioGroup(page);
+  const groupId =
+    (await readStudioLayerIds(page)).find(
+      (id) => id !== pictureLayerId && id !== looseLayerId,
+    ) ?? "";
+  await addStudioLayer(page);
+  const groupedLayerId =
+    (await readStudioLayerIds(page)).find(
+      (id) => id !== pictureLayerId && id !== looseLayerId && id !== groupId,
+    ) ?? "";
+
+  expect(
+    [pictureLayerId, looseLayerId, groupId, groupedLayerId].every(Boolean),
+    "the fixture needs a picture, a loose layer, a group, and a layer inside it",
+  ).toBe(true);
+
+  const engineEntry = STUDIO_PRESETS.find((preset) =>
+    preset.layers.some((layer) => typeof layer.values.engine === "string"),
+  );
+  if (!engineEntry) throw new Error("the library needs an entry carrying an engine");
+  await setStudioTechnique(page, engineEntry.label);
+
+  // Aimed at the canvas, the additive press is not offered at all. It is absent
+  // rather than disabled, because the canvas aim is a replacement and adding to
+  // the work is not one of the things it can do.
+  await expectToolcraftControlApplicabilityState(
+    session,
+    session.controlAction("gallery.target", async () => {
+      await setStudioSelectValue(page, "gallery.target", "The whole canvas");
+    }),
+    studioApplyTargetCase(STUDIO_APPLY_TARGETS[0], "gallery.engineActions", "hidden"),
+    { baseRequirementId: "gallery.engineActions" },
+  );
+
+  const pressEngine = async (): Promise<void> => {
+    await page
+      .locator('[data-toolcraft-control-target="gallery.engineActions"]')
+      .getByRole("button", { name: "Apply to the selection" })
+      .first()
+      .click();
+  };
+
+  for (const aim of [
+    {
+      // The selected layer: only it changes, and the picture beside it does not.
+      changes: looseLayerId,
+      select: looseLayerId,
+      target: STUDIO_APPLY_TARGETS[1],
+      untouched: pictureLayerId,
+    },
+    {
+      // The selected group: the layer inside it changes, the one outside does not.
+      changes: groupedLayerId,
+      select: groupId,
+      target: STUDIO_APPLY_TARGETS[2],
+      untouched: pictureLayerId,
+    },
+    {
+      // The pictures: the imported layer is restyled and stays a picture.
+      changes: pictureLayerId,
+      select: pictureLayerId,
+      target: STUDIO_APPLY_TARGETS[3],
+      untouched: groupedLayerId,
+    },
+  ]) {
+    await selectStudioLayer(page, aim.select);
+
+    await expectToolcraftControlApplicabilityState(
+      session,
+      session.controlAction("gallery.target", async () => {
+        await setStudioSelectValue(page, "gallery.target", aim.target.label);
+      }),
+      studioApplyTargetCase(aim.target, "gallery.engineActions", "visible"),
+      { baseRequirementId: "gallery.engineActions" },
+    );
+
+    // Each layer as it draws with the other one out of the way, so the two
+    // claims below are about layers rather than about a composite in which
+    // either could have moved.
+    const changesBefore = await readStudioStackWithout(page, aim.untouched);
+    const untouchedBefore = await readStudioStackWithout(page, aim.changes);
+    const idsBefore = await readStudioLayerIds(page);
+
+    await settleStudioOutput(page);
+    await expectToolcraftProductObservableToChange(
+      session,
+      session.controlAction("gallery.engineActions", pressEngine),
+      {
+        requirementId: getToolcraftApplicabilityRequirementId(
+          "gallery.engineActions",
+          studioApplyTargetCase(aim.target, "gallery.engineActions", "visible"),
+        ),
+      },
+    );
+
+    // Nothing was created, removed, or reordered: a narrow aim restyles layers
+    // that already exist, and that is the whole of what makes it additive.
+    expect(
+      await readStudioLayerIds(page),
+      `${aim.target.value}: an aimed application must not touch the layer list`,
+    ).toEqual(idsBefore);
+
+    await expect
+      .poll(async () => readStudioStackWithout(page, aim.untouched), {
+        timeout: 30_000,
+      })
+      .not.toBe(changesBefore);
+
+    // The assertion the whole aim exists for: an application that repainted the
+    // layers it was aimed at *and* their neighbours would pass every reading
+    // above this one.
+    expect(
+      await readStudioStackWithout(page, aim.changes),
+      `${aim.target.value}: a layer the aim did not name must render exactly as it did`,
+    ).toBe(untouchedBefore);
+  }
+
+  // The picture is still a picture. Applying an entry built out of band fields
+  // restyles it -- the engine, the treatment and the blending land -- and does
+  // not turn it into the bands, because a value the layer's own kind has no
+  // uniform for is dropped rather than stored.
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
+    .toContain("image");
 });

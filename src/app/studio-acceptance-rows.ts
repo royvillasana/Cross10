@@ -83,21 +83,76 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     userAction: "Choose a different composition in the gallery.",
   },
   {
-    actionCoverage: ["apply-preset"],
+    automated: true,
+    automatedTestName: "names the layers each target resolves to, and no others",
+    browser: true,
+    browserTestName: "browser: studio gallery aims an entry at one layer",
+    componentType: "select",
+    // Aiming changes nothing on its own; what it changes is which press is
+    // offered and what that press will write. The rendered claims belong to the
+    // two action rows below.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Choosing the whole canvas offers the technique change and its confirmation; choosing the selected layer, the selected group, or the pictures offers the single additive press instead, and the canvas is untouched by the choice itself.",
+    fixture: "Croix10 with a two-layer stack",
+    id: "gallery.target",
+    kind: "control",
+    // Named one by one rather than as a count: each target resolves to a
+    // different set of layers, and a proof of one says nothing about the rest.
+    optionCoverage: ["canvas", "layer", "group", "image"],
+    target: "gallery.target",
+    userAction: "Change what the chosen composition will be applied to.",
+  },
+  {
+    actionCoverage: ["apply-preset", "confirm-preset", "cancel-preset"],
     automated: true,
     automatedTestName:
       "replaces the stack with the preset's own layers, and writes a record for exactly those",
     browser: true,
-    browserTestName: "browser: studio gallery applies a composition and leaves every control live",
+    browserTestName: "browser: studio gallery confirms before it replaces the work",
     componentType: "actions",
     evidence: "rendered-pixels",
     expectedObservable:
-      "Pressing Apply replaces the stack with the chosen composition's layers -- the panel lists them under their own names and the canvas draws them -- and every control stays live over the result, so editing the selected layer immediately after moves the picture the preset just set.",
+      "Over existing work the first press changes nothing and offers the replacement; pressing Keep my work leaves every layer and every layer value exactly as it was; pressing Yes replaces the stack with the chosen composition's layers -- the panel lists them under their own names and the canvas draws them -- and every control stays live over the result. Over an empty canvas the first press applies without asking.",
     fixture: "Croix10 with the default stack",
     id: "gallery.apply",
     kind: "control",
     target: "gallery.actions",
-    userAction: "Choose a composition in the gallery and press Apply, then edit a control.",
+    userAction:
+      "Choose a composition, press Change the technique, then either confirm or keep the current work.",
+  },
+  {
+    actionCoverage: ["apply-engine"],
+    automated: true,
+    automatedTestName: "writes the entry onto the target's layers and no others",
+    browser: true,
+    browserTestName: "browser: studio gallery aims an entry at one layer",
+    componentType: "actions",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Pressing it repaints only the layers the target names -- the selected layer, every layer in the selected group, or every layer carrying a picture -- while every other layer draws exactly as it did, the layer list is unchanged, and nothing asks for confirmation.",
+    fixture: "Croix10 with a two-layer stack",
+    id: "gallery.engineActions",
+    kind: "control",
+    target: "gallery.engineActions",
+    userAction:
+      "Choose a composition, aim it at the selected layer, and press Apply to the selection.",
+  },
+  {
+    actionCoverage: ["restore-stack"],
+    automated: true,
+    automatedTestName: "restores the previous stack layer for layer with its own values",
+    browser: true,
+    browserTestName: "browser: studio gallery restores the stack an application replaced",
+    componentType: "actions",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "After a technique change, pressing it brings back the previous layer list layer for layer with the values and the selection those layers had, and the canvas draws that stack again. With nothing held it does nothing.",
+    fixture: "Croix10 with the default stack",
+    id: "gallery.restore",
+    kind: "control",
+    target: "gallery.restore",
+    userAction: "Replace the work with a composition, then press Restore previous.",
   },
 ];
 

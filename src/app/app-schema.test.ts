@@ -44,6 +44,11 @@ describe("appSchema", () => {
       // it out whatever the product declares, so the split is declared here to
       // keep the id nameable by the inventory.
       "Chosen composition",
+      // Its own section because what it acts on is the stack that preceded the
+      // last replacement rather than the entry that caused it -- and because
+      // beside the presses the aim above would have been its semantic peer,
+      // obliging a visibility proof under four aims it does not depend on.
+      "Previous Stack",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide
       // into explicit workflow stages, and the kind gate moves with the
