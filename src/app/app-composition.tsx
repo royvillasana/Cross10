@@ -11,6 +11,7 @@ import {
   planStudioStackRestoration,
   studioApplicationLayerIds,
   STUDIO_APPLY_TARGET_TARGET,
+  STUDIO_CURSOR_AWAY,
   STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
@@ -74,7 +75,16 @@ function renderStudioExportFrame({
     // Background is composited by the runtime for artifacts, so the product
     // frame draws the stack alone and lets the runtime own artifact background
     // rules — which is what keeps the transparent-image coverage claim true.
-    renderer.render(buildStudioSceneParameters(state, false), width, height);
+    //
+    // The pointer is at rest, rather than wherever it was left. An artifact that
+    // carried the live cursor would differ between two exports of one
+    // composition, and neither of them would be the composition -- a pointer
+    // effect is something the viewer drives, not a property of the still.
+    renderer.render(
+      buildStudioSceneParameters(state, false, new Map(), STUDIO_CURSOR_AWAY),
+      width,
+      height,
+    );
     // Drawn in scene coordinates; the runtime context already carries the
     // artifact transform, so the offscreen surface only supplies resolution.
     context.drawImage(surface, 0, 0, sceneWidth, sceneHeight);

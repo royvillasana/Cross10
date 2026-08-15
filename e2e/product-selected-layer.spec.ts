@@ -10,6 +10,7 @@ import {
   readStudioLayerIds,
   readStudioSelectedLayerId,
   readStudioOutputSignature,
+  readStudioStackSignature,
   STUDIO_PRODUCT_OUTPUT,
   openStudioTwoLayerStack,
   selectStudioLayer,
@@ -23,6 +24,12 @@ import {
   expectToolcraftProductObservableToChange,
   getToolcraftProductObservableSnapshot,
 } from "./product-observable-helpers";
+import { inspectToolcraftImageDownload } from "./image-artifact-inspection";
+import {
+  importStudioImage,
+  readStudioImageCorners,
+  writeImportFixture,
+} from "./studio-import-fixture";
 import { test } from "./toolcraft-product-test";
 
 /**
@@ -2757,6 +2764,76 @@ test("browser: studio layer flip folds only the selected layer", async ({
     },
     { requirementId: "selectedLayer.flipY", target: "selectedLayer.flipY" },
   );
+
+  // The same switch over an asymmetric picture, which is the reading a
+  // procedural field cannot give.
+  //
+  // A band field has no left that is distinguishable from its right except
+  // statistically -- that is why the stage above needed one wide off-centre band
+  // to have a side at all. A four-quadrant picture has named colours in named
+  // corners, so a horizontal fold is checkable rather than inferable: what was
+  // on the right has to be on the left afterwards, exactly, and if the fold ran
+  // in the frame's axes rather than the picture's it would not be.
+  writeImportFixture();
+
+  // Counted from before the import, so the import's own decode is in the total
+  // and the flip has to add nothing to it.
+  await page.evaluate(() => {
+    const scope = window as unknown as { __studioDecodes?: number };
+    scope.__studioDecodes = 0;
+    const decode = window.createImageBitmap.bind(window);
+    window.createImageBitmap = ((...args: Parameters<typeof decode>) => {
+      scope.__studioDecodes = (scope.__studioDecodes ?? 0) + 1;
+      return decode(...args);
+    }) as typeof window.createImageBitmap;
+  });
+
+  const readDecodes = async (): Promise<number> =>
+    page.evaluate(
+      () => (window as unknown as { __studioDecodes?: number }).__studioDecodes ?? 0,
+    );
+
+  const before = await readStudioLayerIds(page);
+  await importStudioImage(page);
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
+    .toContain("image");
+
+  const pictureLayerId =
+    (await readStudioLayerIds(page)).find((id) => !before.includes(id)) ?? "";
+  expect(pictureLayerId, "the import must have made a layer").toBeTruthy();
+  await selectStudioLayer(page, pictureLayerId);
+
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .toBe("topLeft=red topRight=blue");
+
+  const decodesBeforeFlip = await readDecodes();
+  expect(decodesBeforeFlip, "the import decodes the asset once").toBeGreaterThan(0);
+
+  await toggleStudioSwitch(page, "selectedLayer.flipX");
+
+  // The named colours swap sides. Not "the frame changed" -- the exact reading
+  // the fold owes: the left now carries what the right carried.
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .toBe("topLeft=blue topRight=red");
+
+  // And nothing was decoded again to do it. A flip is a coordinate the shader
+  // already reads, so re-decoding the source would be pure waste on every
+  // toggle -- and the way that regression would arrive is by routing the layer
+  // flip through the asset transform, which is keyed into the decode effect.
+  expect(
+    await readDecodes(),
+    "flipping a layer must not decode the source asset again",
+  ).toBe(decodesBeforeFlip);
+
+  // Folded back, the picture returns. Same claim as the band field above, made
+  // where it can be read exactly.
+  await toggleStudioSwitch(page, "selectedLayer.flipX");
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .toBe("topLeft=red topRight=blue");
 });
 
 /**
@@ -2830,6 +2907,30 @@ const POINTER_REACH = (
   };
 };
 
+/**
+ * The composite once it has stopped moving.
+ *
+ * Every equality below compares two frames, so both have to be frames the
+ * renderer has finished with. A read taken the instant a state change resolves
+ * is not one: the commit lands, the pass redraws, and under a loaded suite
+ * those are far enough apart to catch a half-drawn frame and report a
+ * difference nothing in the product caused.
+ */
+async function settleStudioFrame(page: Page): Promise<string> {
+  const recent: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        recent.push(await readStudioOutputSignature(page));
+        if (recent.length > 3) recent.shift();
+        return recent.length === 3 && new Set(recent).size === 1;
+      },
+      { intervals: [200], timeout: 30_000 },
+    )
+    .toBe(true);
+  return recent[recent.length - 1] ?? "";
+}
+
 test("browser: studio pointer subject reaches every layer", async ({ page }) => {
   test.setTimeout(180_000);
 
@@ -2893,6 +2994,41 @@ test("browser: studio pointer subject reaches every layer", async ({ page }) => 
     },
     { requirementId: "stack.pointerSubject", target: "stack.pointerSubject" },
   );
+
+  // The subject is a claim about the stack, not about the selection, so moving
+  // the selection must move nothing.
+  //
+  // This is the failure the stack-level control exists to avoid: an effect that
+  // lived on "whichever layer is selected" would follow the selection around,
+  // and an author who clicked a row to look at its settings would find the
+  // picture had changed underneath them. Read as the frame rather than as the
+  // control, because a control that stayed put while the render followed the
+  // selection is exactly what would slip through.
+  await setStudioSelectValue(page, "stack.pointerSubject", "Every layer");
+  await addStudioLayer(page);
+  const pointerLayerIds = await readStudioLayerIds(page);
+  expect(pointerLayerIds.length, "two layers, so the selection has somewhere to go")
+    .toBe(2);
+
+  await aim(0.4);
+  const reaching = await settleStudioFrame(page);
+
+  // The pointer is genuinely doing something at this state, or the equalities
+  // below would hold over a frame nothing was reaching in the first place.
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(600);
+  expect(
+    await settleStudioFrame(page),
+    "the pointer must be reaching the stack for this to prove anything",
+  ).not.toBe(reaching);
+
+  for (const id of [pointerLayerIds[0] ?? "", pointerLayerIds[1] ?? ""]) {
+    await selectStudioLayer(page, id);
+    await aim(0.4);
+    await expect
+      .poll(async () => readStudioOutputSignature(page), { timeout: 15_000 })
+      .toBe(reaching);
+  }
 });
 
 test("browser: studio pointer push displaces the field", async ({ page }) => {
@@ -3014,4 +3150,40 @@ test("browser: studio pointer push displaces the field", async ({ page }) => {
   ).toBe(atRest);
 
   expect(await readStudioSelectedLayerId(page)).toBe(layerId);
+
+  // An exported still carries the field at rest, wherever the pointer is.
+  //
+  // Two exports, one with the pointer parked over the canvas at full push and
+  // one with it away, decoded and compared pixel for pixel. Anything else and
+  // two exports of one composition would differ by where the mouse happened to
+  // be resting, and neither of them would be the composition.
+  //
+  // Dispatched rather than clicked, and that is the whole difficulty: pressing
+  // the button with a real pointer moves the pointer to the button, which
+  // commits the cursor away before the export runs and makes the comparison
+  // trivially true. A dispatched click fires no pointermove, so the cursor is
+  // still over the canvas when the artifact is rendered -- which is the state
+  // the requirement is actually about.
+  const exportedPixels = async (): Promise<string> => {
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export PNG" }).dispatchEvent("click");
+    const { inspection } = await inspectToolcraftImageDownload({
+      backgroundRgba: [0, 0, 0, 255],
+      download: await download,
+      page,
+    });
+    return inspection.decodedPixelHash;
+  };
+
+  await aim(0.35);
+  const exportedWithPointer = await exportedPixels();
+
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(600);
+  const exportedAtRest = await exportedPixels();
+
+  expect(
+    exportedWithPointer,
+    "an export must not depend on where the pointer was left",
+  ).toBe(exportedAtRest);
 });

@@ -94,6 +94,22 @@ export function buildStudioSceneParameters(
   state: StudioSceneStateSlice,
   includeBackground: boolean,
   images: ReadonlyMap<string, StudioLayerMedia> = new Map(),
+  /**
+   * Where the pointer is for *this* scene, when that is not where it is now.
+   *
+   * The export frame passes the at-rest position. An artifact must not depend
+   * on where the mouse happened to be resting when the button was pressed --
+   * two exports of one composition would then differ, and neither would be the
+   * composition. A pointer effect is something the *viewer* drives, so what an
+   * exported still can honestly carry is the field with nobody pointing at it.
+   *
+   * This is not the same claim as "the cursor is committed to state", which is
+   * about determinism *within* a render (R68) and stays true either way. The
+   * delivered shader is unaffected in the other direction: there the cursor is
+   * a live uniform rather than a baked value, so the recipient drives it and
+   * the position this scene carries never reaches the source.
+   */
+  cursor?: readonly [number, number],
 ): StudioStackSceneParameters {
   const record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
   const pruned = pruneStudioLayerRecord(
@@ -105,8 +121,9 @@ export function buildStudioSceneParameters(
     backgroundColor:
       studioColorToLinear(state.values[BACKGROUND_COLOR_TARGET]) ?? FALLBACK_COLOR,
     // Read from committed state rather than from a pointer event, which is what
-    // lets the export frame build the same scene as the preview (R68).
-    cursor: readStudioCursor(state.values[STUDIO_CURSOR_TARGET]),
+    // lets the export frame build the same scene as the preview (R68) -- unless
+    // the caller names a position, which the export path does.
+    cursor: cursor ?? readStudioCursor(state.values[STUDIO_CURSOR_TARGET]),
     // Passed in rather than read from `export.includeBackground`, because the
     // two are different questions. The switch says whether an exported artifact
     // carries the background; whether the *preview* shows it is the runtime's

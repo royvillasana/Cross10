@@ -48,9 +48,9 @@
 - [x] 6.2 Choose the control kind — two toggles or one combined control — against the section budget (see design Open Questions).
 - [x] 6.3 Name the controls so they cannot be read as the stripe field's `Mirror`, and add the schema assertion that the two stay distinct.
 - [x] 6.4 Confirm the fold runs in the layer's own axes after rotation for procedural layers as it already does for pictures.
-- [ ] 6.5 Acceptance rows plus a browser proof with an asymmetric image fixture: flip horizontally and assert the sampled left pixel matches the previously sampled right pixel.
+- [x] 6.5 Acceptance rows plus a browser proof with an asymmetric image fixture: flip horizontally and assert the sampled left pixel matches the previously sampled right pixel.
 - [x] 6.6 Browser proof that flipping twice returns the layer to its unflipped appearance, and that flip changes neither layer size, position, nor canvas dimensions.
-- [ ] 6.7 Assert no new decode of the source asset occurs on flip.
+- [x] 6.7 Assert no new decode of the source asset occurs on flip. Counted in the page by wrapping `createImageBitmap` before the import, so the import's own decode is in the total and the flip has to add nothing to it.
 
 ## 7. Give the pointer effect a subject
 
@@ -59,12 +59,12 @@
 - [x] 7.3 Extend the existing `cursorReach` falloff into a displacement, keeping the falloff limit so a pointer outside the frame reaches nothing.
 - [x] 7.4 Keep the pointer uniform a uniform in the assembled deliverable rather than baking it to a constant.
 - [x] 7.5 Confirm pointer position is still absent from the undo stack.
-- [ ] 7.6 Acceptance rows and browser proofs: selection changes do not move the effect's subject; export with the pointer over the canvas matches the at-rest render.
-- [ ] 7.7 Assert the delivered shader with a pointer effect still carries no product name, attribution, or generator marker.
+- [x] 7.6 Acceptance rows and browser proofs: selection changes do not move the effect's subject; export with the pointer over the canvas matches the at-rest render. **The second half needed a product change rather than only a proof**: the export frame was building its scene from the committed cursor, so an artifact carried whatever the pointer was doing. It now names the at-rest position, which is what makes two exports of one composition the same composition. The proof dispatches the export click rather than pressing it, because pressing it moves the pointer to the button and commits the cursor away before the artifact renders -- which would have made the comparison trivially true.
+- [x] 7.7 Assert the delivered shader with a pointer effect still carries no product name, attribution, or generator marker. A separate fixture from the existing marker test, because a pointer stack pulls in GLSL the plain stack never reaches -- and a chunk comment ships verbatim, which is exactly how the product name leaked here once before while every marker test passed.
 
 ## 8. Verify and close
 
-- [ ] 8.1 Run `npm test` and confirm both halves — `node --test` and vitest — since the `&&` chain hides the second when the first fails.
-- [ ] 8.2 Run the browser suite and confirm the only failures are the ones that already fail on untouched `main`. **The baseline this task was written with was wrong and is corrected here**, measured by stashing the change and re-running: `npm test`'s two — `app-performance.gates` renderer pass ownership and `scripts/toolcraft-product-control-boundary.test.mjs` — plus five in `test:browser:stable`: three `app-browser-orientation-evidence` recipes, `app-browser-runtime-requirements` over `canvas.render-scale`, and `browser: starter canvas accepts media upload without product controls`. Those five are issues 3, 4 and 8 in the upstream report.
-- [ ] 8.3 Confirm the integrity gate still passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
-- [ ] 8.4 Reproduce the original defect's steps in the running app and confirm the stack returns.
+- [x] 8.1 Run `npm test` and confirm both halves — `node --test` and vitest — since the `&&` chain hides the second when the first fails. Docs pass, integrity passes at 650 files, `node --test` 556/557, vitest 587/588. Both failures are the recorded baseline.
+- [x] 8.2 Run the browser suite and confirm the only failures are the ones that already fail on untouched `main`. **The baseline this task was written with was wrong and is corrected here**, measured by stashing the change and re-running: `npm test`'s two — `app-performance.gates` renderer pass ownership and `scripts/toolcraft-product-control-boundary.test.mjs` — plus five in `test:browser:stable`: three `app-browser-orientation-evidence` recipes, `app-browser-runtime-requirements` over `canvas.render-scale`, and `browser: starter canvas accepts media upload without product controls`. Those five are issues 3, 4 and 8 in the upstream report. Measured after this change: 223 passed, 6 failed — the five above plus `app-browser-performance-probe` "preserve frame gaps recorded before navigation", which passes on its own and fails only under two workers, so it is load-sensitive rather than broken.
+- [x] 8.3 Confirm the integrity gate still passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched. 650 files, and the change touches no protected path — `package.json` gained only named scripts, which additions are permitted for.
+- [x] 8.4 Reproduce the original defect's steps in the running app and confirm the stack returns. The measured steps from the design's Context — apply a composition over an existing stack, then try to get it back — are driven end to end by `browser: studio gallery restores the stack an application replaced`, which asserts the previous layer list returns layer for layer with its own names, that it draws, and that a spent snapshot restores nothing a second time. The same run also proves the change now asks first, which is the part that stops the defect being reachable by accident at all.

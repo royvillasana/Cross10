@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { buildStudioSceneParameters, readStudioRenderScale } from "./studio-scene";
-import { STUDIO_LAYER_RECORD_TARGET } from "./studio-stack-state";
+import {
+  STUDIO_CURSOR_AWAY,
+  STUDIO_CURSOR_TARGET,
+  STUDIO_LAYER_RECORD_TARGET,
+} from "./studio-stack-state";
 
 const layer = (id: string, overrides: Partial<{ kind: string; visible: boolean }> = {}) => ({
   id,
@@ -100,5 +104,52 @@ describe("studio scene parameters", () => {
     expect(
       readStudioRenderScale({ layers: [], values: { "canvas.renderScale": 0 } }),
     ).toBe(1);
+  });
+});
+
+/**
+ * The pointer and the artifact.
+ *
+ * Preview and export share one scene builder deliberately, so the one thing
+ * they are allowed to disagree about has to be stated rather than assumed --
+ * and this is it. A still that carried the live cursor would differ between two
+ * exports of one composition, and neither of them would be the composition.
+ */
+describe("the pointer in an exported scene", () => {
+  const parked = {
+    layers: [layer("only")],
+    values: {
+      [STUDIO_CURSOR_TARGET]: [0.2, -0.1],
+      [STUDIO_LAYER_RECORD_TARGET]: {
+        only: { typeId: "stripes", values: { count: 8 } },
+      },
+    },
+  };
+
+  it("carries the committed cursor when no position is named", () => {
+    // Which is what the preview does, and what keeps a render deterministic
+    // within itself rather than reading a live event (R68).
+    expect(buildStudioSceneParameters(parked, true).cursor).toEqual([0.2, -0.1]);
+  });
+
+  it("carries the named position instead when the caller names one", () => {
+    expect(
+      buildStudioSceneParameters(parked, false, new Map(), STUDIO_CURSOR_AWAY).cursor,
+    ).toEqual(STUDIO_CURSOR_AWAY);
+  });
+
+  it("builds the same scene at rest whether or not a pointer was ever there", () => {
+    // The claim the export makes: a render taken with the pointer parked over
+    // the canvas is the render of a canvas nobody is pointing at. Compared over
+    // the whole scene rather than the cursor alone, because the pointer reaches
+    // the layers through their own values and a difference could land there.
+    const untouched = {
+      layers: parked.layers,
+      values: { [STUDIO_LAYER_RECORD_TARGET]: parked.values[STUDIO_LAYER_RECORD_TARGET] },
+    };
+
+    expect(
+      buildStudioSceneParameters(parked, false, new Map(), STUDIO_CURSOR_AWAY),
+    ).toEqual(buildStudioSceneParameters(untouched, false, new Map(), STUDIO_CURSOR_AWAY));
   });
 });

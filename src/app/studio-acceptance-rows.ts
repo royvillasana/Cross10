@@ -165,7 +165,7 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
     componentType: "select",
     evidence: "rendered-pixels",
     expectedObservable:
-      "With the subject set to every layer, moving the pointer across the canvas changes a layer whose own Follow the pointer switch is off; setting it back to layers that follow it leaves that layer still again, and a layer whose switch is on keeps following either way.",
+      "With the subject set to every layer, moving the pointer across the canvas changes a layer whose own Follow the pointer switch is off; setting it back to layers that follow it leaves that layer still again, and a layer whose switch is on keeps following either way. Selecting a different layer while every layer is the subject moves nothing: the same layers keep responding, because the subject is a claim about the stack rather than about the selection.",
     fixture: "Croix10 with a two-layer stack, one layer following the pointer and one not",
     id: "stack.pointerSubject",
     kind: "control",
@@ -175,7 +175,7 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
     optionCoverage: "each-visible-item",
     target: "stack.pointerSubject",
     userAction:
-      "Set Pointer reaches to Every layer, move the pointer over the canvas, then set it back.",
+      "Set Pointer reaches to Every layer, move the pointer over the canvas, select a different layer, then set it back.",
   },
   {
     automated: true,
@@ -185,12 +185,13 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
     componentType: "slider",
     evidence: "rendered-pixels",
     expectedObservable:
-      "Raising Pointer push with the pointer over the canvas bends the bands near it away from the pointer, leaving the field at the far edge where it was; a pointer that has left the frame reaches nothing at any amount.",
+      "Raising Pointer push with the pointer over the canvas bends the bands near it away from the pointer, leaving the field at the far edge where it was; a pointer that has left the frame reaches nothing at any amount. An exported image is unmoved by it either way -- an artifact exported with the pointer parked over the canvas decodes to the same pixels as one exported with the pointer away, because a still carries the field at rest rather than wherever the mouse was.",
     fixture: "Croix10 with one layer following the pointer",
     id: "stack.pointerPush",
     kind: "control",
     target: "stack.pointerPush",
-    userAction: "Point at the canvas and raise Pointer push.",
+    userAction:
+      "Point at the canvas, raise Pointer push, and export an image with the pointer still over it.",
   },
 ];
 
@@ -434,13 +435,14 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     componentType: "switch",
     evidence: "rendered-pixels",
     expectedObservable:
-      "Turning Flip horizontally on reverses the selected layer's field across the frame -- a tapered band that widened to the right now widens to the left -- while every other layer draws exactly as it did, and turning it off again returns the layer to what it was.",
+      "Turning Flip horizontally on reverses the selected layer's field across the frame -- a tapered band that widened to the right now widens to the left -- while every other layer draws exactly as it did, and turning it off again returns the layer to what it was. Over an imported picture the reading is exact rather than statistical: the corner that carried one colour carries the colour the opposite corner had, the fold runs in the picture's own axes, and the source asset is not decoded again to do it.",
     fixture: SELECTED_LAYER_FIXTURE,
     id: "selectedLayer.flipX",
     kind: "control",
     layerCoverage: "selected-layer-controls",
     target: "selectedLayer.flipX",
-    userAction: "Turn Flip horizontally on for the selected layer, then off again.",
+    userAction:
+      "Turn Flip horizontally on for the selected layer, then off again, on a band field and on an imported picture.",
   },
   {
     automated: true,

@@ -5,6 +5,8 @@ import zlib from "node:zlib";
 
 import { type Page } from "@playwright/test";
 
+import { STUDIO_PRODUCT_OUTPUT } from "./studio-product-helpers";
+
 /**
  * A four-quadrant fixture, written to a real file so a real input can take it.
  *
@@ -76,6 +78,37 @@ function writeImportFixture(): void {
       chunk("IEND", Buffer.alloc(0)),
     ]),
   );
+}
+
+/** Two corners of the picture, named rather than measured, for a legible expectation. */
+export async function readStudioImageCorners(page: Page): Promise<string> {
+  return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl) return "nogl";
+    const at = (fx: number, fy: number): string => {
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.round(canvas.width * fx),
+        Math.round(canvas.height * fy),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      const [red, green, blue] = [pixel[0] ?? 0, pixel[1] ?? 0, pixel[2] ?? 0];
+      if (red > 180 && green < 120 && blue < 120) return "red";
+      if (blue > 180 && red < 120) return "blue";
+      if (red > 180 && green > 180 && blue < 120) return "yellow";
+      if (red > 180 && green > 180 && blue > 180) return "white";
+      return "other";
+    };
+    // Read inside the shape the layer arrives with (R65) -- a sample outside it
+    // finds bare ground -- and remember readPixels counts from the bottom, so
+    // the picture's top row is the larger y fraction.
+    return `topLeft=${at(0.45, 0.6)} topRight=${at(0.55, 0.6)}`;
+  });
 }
 
 export async function importStudioImage(page: Page): Promise<void> {
