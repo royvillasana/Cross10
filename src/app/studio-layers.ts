@@ -651,6 +651,16 @@ vec4 studioImageBody(
   vec2 fragmentPosition,
   vec2 resolution,
   vec2 cursor,
+  // Accepted and unused. The call site hands every body the loop position, so
+  // the signature is part of the calling convention rather than a statement
+  // about this technique -- a body that omitted it would not compile, and the
+  // whole stack it appears in would fail to compile with it.
+  //
+  // Unused on purpose, though. A picture does not drift: what travels in the
+  // other techniques is a viewer's position along a band field, and there is no
+  // equivalent for an imported photograph. Drifting it would be moving the
+  // subject rather than moving past it.
+  float loop,
   vec2 shapeLocal,
   float shapeHalfWidth,
   float shapeHalfHeight,

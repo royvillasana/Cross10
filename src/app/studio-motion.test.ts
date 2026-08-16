@@ -175,3 +175,37 @@ describe("the cost of a running clock", () => {
     );
   });
 });
+
+describe("the calling convention every body shares", () => {
+  /**
+   * The regression this exists to prevent, stated as the rule that was broken.
+   *
+   * The assembled call site hands every layer body the same leading arguments,
+   * loop position among them. That makes the parameter part of the *convention*
+   * rather than a statement about a technique: a body that leaves it out does
+   * not compile, and because the bodies are concatenated into one program,
+   * neither does anything else in the stack.
+   *
+   * Which is exactly how it escaped. `studioImageBody` never got the parameter,
+   * so only stacks containing a picture failed -- every band-field proof passed,
+   * the type checker had nothing to say about a string, and the failure surfaced
+   * as five image tests going red for what looked like an unrelated reason.
+   */
+  it("declares the loop parameter in every layer body", () => {
+    const source = studioAssembleStackFragmentShader([
+      { typeId: "stripes" },
+      { typeId: "gradient" },
+      { typeId: "image" },
+    ]);
+
+    const bodies = source.match(/vec4 studio\w+Body\(([\s\S]*?)\)\s*\{/g) ?? [];
+    // Three bodies, so a fourth technique added without the parameter fails here
+    // rather than at the moment someone happens to put a picture on the canvas.
+    expect(bodies).toHaveLength(3);
+    for (const body of bodies) {
+      expect(body, `${body.slice(0, 40)} must accept the loop position`).toMatch(
+        /\bfloat loop\b/,
+      );
+    }
+  });
+});
