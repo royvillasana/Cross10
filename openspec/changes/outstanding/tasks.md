@@ -15,7 +15,7 @@ behind it can be read rather than re-derived. `SS` is
 
 ## 2. Unbuilt features, scoped and decided
 
-- [ ] 2.1 **Per-layer animation (SS group 6).** The one pending requirement in the main specs. Each layer animatable over the runtime timeline, loop seams held per layer, and a proof that two layers at different rates both return to their first frame. Declaring a timeline obliges playback coverage in the same batch — which is why it was never half-started
+- [x] 2.1 **Per-layer animation (SS group 6).** *Done. Drift is per-layer and counted in whole cycles per loop (`video-export-and-motion`); the two-layer proof this task asks for is `browser: studio returns two layers drifting at different rates`, and writing it found a real bug — the gradient's drift translated a ramp that has an end, so a layer went black mid-loop while its seam still closed.* The one pending requirement in the main specs. Each layer animatable over the runtime timeline, loop seams held per layer, and a proof that two layers at different rates both return to their first frame. Declaring a timeline obliges playback coverage in the same batch — which is why it was never half-started
 - [ ] 2.2 **MCP delivery (SS group 9).** The primary delivery path: a package outside the signed app so it carries no integrity obligation, exposing the gallery and the assembled source for a named entry with parameter overrides
 - [ ] 2.3 **Preset corrections (SS group 10).** The palettes shipped in the gallery are Croix10's, recorded there as *plausible rather than verified*. Checking them against primary sources is its own task, and the library says so in its own comment
 - [ ] 2.4 **Final delivery gate (SS group 11)**, which depends on everything above and on 3.1

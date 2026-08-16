@@ -106,26 +106,37 @@ describe("the assembled shader", () => {
     expect(source.match(/uniform float uLoop;/g)).toHaveLength(1);
   });
 
-  it("drifts by adding to what the author set, in every body that drifts", () => {
-    // Additive, and asserted on the GLSL rather than on a JavaScript copy of
-    // it, because the GLSL is the only version that draws anything. A body that
-    // assigned instead of added would render the drift alone and silently throw
-    // away the angle and phase the author chose -- which at loop position zero
-    // would still look exactly right.
+  it("drifts by adding to what the author set, in each body's own terms", () => {
+    // Additive in both, and asserted on the GLSL rather than on a JavaScript
+    // copy of it, because the GLSL is the only version that draws anything. A
+    // body that assigned instead of added would render the drift alone and
+    // silently throw away the angle and phase the author chose -- which at loop
+    // position zero would still look exactly right.
+    //
+    // The two bodies compose it differently and that difference is the point.
+    // A band field is periodic: the drift goes into the coordinate and the
+    // fract() downstream wraps it, so travel is unbounded and always returns. A
+    // ramp is not periodic, so translating it far enough walks off the end --
+    // which it did, going black a third of the way through the loop while the
+    // seam still closed. The gradient therefore wraps its drift explicitly and
+    // leaves the author's own Offset translating as it always did.
     const source = studioAssembleStackFragmentShader([
       { typeId: "stripes" },
       { typeId: "gradient" },
     ]);
 
-    const angles = source.match(
-      /float driftedAngle = angle \+ driftAngle \* 360\.0 \* loop;/g,
-    );
-    const phases = source.match(/float driftedPhase = phase \+ driftPhase \* loop;/g);
-
-    // One of each per drifting body, so a third technique added without drift
-    // fails here rather than quietly rendering a still layer inside a loop.
-    expect(angles).toHaveLength(2);
-    expect(phases).toHaveLength(2);
+    expect(
+      source.match(/float driftedPhase = phase \+ driftPhase \* loop;/g),
+      "the band field folds the drift into the coordinate it already wraps",
+    ).toHaveLength(1);
+    expect(
+      source.match(/fract\(position \+ driftPhase \* loop\)/g),
+      "the ramp wraps its drift, because a ramp has an end to walk off",
+    ).toHaveLength(1);
+    expect(
+      source.match(/float driftedAngle = angle \+ driftAngle \* 360\.0 \* loop;/g),
+      "the angle drifts the same way in both, because a turn is periodic already",
+    ).toHaveLength(2);
     expect(STUDIO_DRIFT_TURN_DEGREES).toBe(360);
   });
 });

@@ -9,7 +9,9 @@ import {
 import { expectToolcraftStandardTimelinePlayback } from "./browser-standard-timeline-evidence";
 import {
   openStudioSingleLayer,
+  openStudioTwoLayerStack,
   readStudioOutputSignature,
+  selectStudioLayer,
   setStudioSelectValue,
   setStudioSlider,
   toggleStudioSwitch,
@@ -344,4 +346,60 @@ test("browser: studio timeline switch is presentation only", async ({ page }) =>
 
   await toggleStudioSwitch(page, "panels.timeline.extended");
   expect(await readStudioOutputSignature(page)).toBe(framed);
+});
+
+/**
+ * Two layers drifting at different rates, and both home at the seam.
+ *
+ * The claim a single-layer proof cannot make. One layer returning proves the
+ * arithmetic; two layers at *different* rates returning together proves they
+ * share one clock and that the clock is the loop rather than each layer's own
+ * idea of elapsed time. A per-layer timer, a per-layer phase accumulator, or a
+ * rate applied to wall-clock seconds instead of loop position would each pass
+ * the one-layer proof and fail here — the fast layer would arrive somewhere the
+ * slow one is not.
+ *
+ * Rates chosen coprime-ish and both whole: one and three. A pair like two and
+ * four would close at the seam even if the drift were being applied to half the
+ * loop, because both are even; one and three cannot agree by accident.
+ */
+test("browser: studio returns two layers drifting at different rates", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { fixture } = await openStudioTwoLayerStack(page);
+  const scrubber = await timelineScrubber(page);
+
+  await selectStudioLayer(page, fixture.stripesLayerId);
+  await setStudioSlider(page, "Travel per loop", 1);
+  await selectStudioLayer(page, fixture.gradientLayerId);
+  await setStudioSlider(page, "Travel per loop", 3);
+  // The top layer at half strength, so the composite depends on both of them.
+  // At full opacity the gradient covers the stripes and every reading below
+  // would be about one layer while claiming to be about two.
+  await setStudioSlider(page, "Opacity", 0.5);
+
+  await scrubber.press("Home");
+  const start = await readStudioOutputSignature(page);
+
+  // Sampled at a fifth and two fifths, and the choice matters. At a *third* of
+  // the loop the rate-three layer has completed exactly one whole cycle and is
+  // home again -- so a comparison there is blind to it, and the proof would be
+  // asserting two-layer behaviour while reading one. At 0.2 and 0.4 neither
+  // layer is home and no two of the four positions coincide.
+  await scrubStudioTimelineTo(page, scrubber, 0.2);
+  const early = await readStudioOutputSignature(page);
+  await scrubStudioTimelineTo(page, scrubber, 0.4);
+  const later = await readStudioOutputSignature(page);
+
+  expect(early, "a two-layer stack must move over the loop").not.toBe(start);
+  expect(later, "the two rates must not move in lockstep").not.toBe(early);
+
+  // The seam, with both layers on it. This is the assertion the task asks for.
+  await scrubber.press("End");
+  expect(
+    await readStudioOutputSignature(page),
+    "two layers at different rates must both return to their first frame",
+  ).toBe(start);
 });

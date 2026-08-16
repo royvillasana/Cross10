@@ -588,7 +588,9 @@ vec4 studioGradientBody(
   // not move, because a field whose colours change is a different field rather
   // than the same one seen from somewhere else.
   float driftedAngle = angle + driftAngle * 360.0 * loop;
-  float driftedPhase = phase + driftPhase * loop;
+  // The gradient composes these separately below: the author's offset
+  // translates, the drift wraps.
+
   float radians = driftedAngle * 0.017453292519943295;
 
   float position;
@@ -603,7 +605,26 @@ vec4 studioGradientBody(
   // Applied here rather than at the palette read, so the engines below read the
   // ramp the author sees. An offset that moved only the fill would leave an
   // induced fringe sitting on a seam that is no longer there.
-  position += driftedPhase;
+  position += phase;
+
+  // The drift wraps; the author's own Offset does not, and the difference is
+  // deliberate. Offset slides the ramp and saturates at its ends, which is what
+  // an author setting a fixed position expects. Drift is a viewer *travelling*
+  // along the work, and a ramp is not periodic -- translating it far enough
+  // walks off the end, which is exactly what happened: a third of the way
+  // through the loop the whole layer went black. The seam still closed, because
+  // loop position wraps to zero there, so a one-layer seam proof saw nothing
+  // wrong. It took two layers at different rates to show it.
+  //
+  // A mix on a step rather than a branch, so at rate zero this is the identity
+  // and an undrifted gradient renders exactly as it did. (No backticks in this
+  // file's comments: the shader lives inside a JS template literal, and one
+  // closes it.)
+  position = mix(
+    position,
+    fract(position + driftPhase * loop),
+    step(0.0001, abs(driftPhase))
+  );
 
   vec3 colour = studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD);
 
