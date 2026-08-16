@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import {
   expectToolcraftInfinityCanvasModeEvidence,
   observeInfinityCanvas,
@@ -131,4 +134,82 @@ test("browser: studio enters infinity canvas and restores the exact finite artbo
       target: "canvas.infinity",
     },
   );
+});
+
+/**
+ * An infinite canvas has no viewport to export, so the artifact is the work.
+ *
+ * On a finite canvas the exported rectangle is the artboard: an obvious, fixed
+ * answer. Infinity removes that answer, and the tempting replacement — export
+ * what is currently on screen — would make the artifact depend on where the
+ * author happened to have scrolled when they pressed the button. Two exports of
+ * one composition would differ, and neither would be the composition.
+ *
+ * So the crop is the union of the visible layers' bounds, and this asserts the
+ * consequence that matters: pan the workspace, export again, get the same file.
+ * Bytes rather than dimensions, because a crop that shifted while keeping its
+ * size would pass a dimension check and be exactly the bug.
+ */
+test("browser: studio infinite export crops to the union of visible scene bounds", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  await toggleStudioSwitch(page, "canvas.infinity");
+
+  const exportPng = async () => {
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export PNG" }).click();
+    const path = await (await download).path();
+    expect(path).toBeTruthy();
+    return createHash("sha256").update(await readFile(path as string)).digest("hex");
+  };
+
+  /** The view's own transform, which the artifact must be independent of. */
+  const readView = async () =>
+    page.evaluate(() => {
+      const world = document.querySelector("[data-toolcraft-canvas-world]");
+      if (!world) return "no-world-element";
+      return [
+        world.getAttribute("data-toolcraft-canvas-offset-x") ?? "?",
+        world.getAttribute("data-toolcraft-canvas-offset-y") ?? "?",
+        world.getAttribute("data-toolcraft-canvas-zoom") ?? "?",
+      ].join(",");
+    });
+
+  const before = await exportPng();
+  const viewBefore = await readView();
+
+  // Pan the workspace. The gesture is the runtime's; what matters here is only
+  // that the viewport genuinely moved, which is asserted rather than assumed --
+  // a drag that did nothing would make the comparison below vacuous.
+  const viewport = page.getByRole("application", { name: "Canvas viewport" });
+  const box = await viewport.boundingBox();
+  expect(box).toBeTruthy();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+  // Zoom rather than pan, and the substitution is deliberate rather than
+  // convenient. Panning is a left drag, and in this product the left button
+  // belongs to the canvas -- it tracks the pointer for the cursor uniform and
+  // for the region handles -- so a test cannot pan without also moving the
+  // work, which would change the artifact for a legitimate reason and prove
+  // nothing. Zoom is the same claim in a gesture the product does not own: it
+  // changes the view and nothing else, so the artifact must not notice.
+  await page.mouse.move(centerX, centerY);
+  for (const delta of [-120, -120, -120]) {
+    await page.mouse.wheel(0, delta);
+  }
+
+  // Asserted rather than assumed: a gesture that moved nothing would make the
+  // comparison below vacuous, and it did exactly that twice while I was
+  // looking for a gesture this product does not intercept.
+  await expect
+    .poll(async () => readView(), { timeout: 10_000 })
+    .not.toBe(viewBefore);
+
+  expect(
+    await exportPng(),
+    "an infinite export must be the work, not the view of it",
+  ).toBe(before);
 });

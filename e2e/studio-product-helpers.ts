@@ -610,3 +610,64 @@ export async function readStudioTechnique(page: Page): Promise<string> {
   );
 }
 
+
+/**
+ * The composite along a centred row, as a signature.
+ *
+ * `readStudioOutputSignature` samples nine points spread across the frame, which
+ * is right for asking "did the frame change" and wrong for asking about a layer:
+ * a layer is a shape confined to the middle of the frame (R65), so most of those
+ * points land on bare ground and a real change to the layer's own pixels reads
+ * as no change at all. That is not hypothetical — three proofs written against
+ * the spread reader failed while the controls they exercised were working.
+ *
+ * This reads a row through the middle instead, wide enough to cross several
+ * bands and narrow enough to stay inside the shape.
+ */
+export async function readStudioCentreSignature(
+  page: Page,
+  /**
+   * Which way the strip runs. A row is invariant under a vertical fold and a
+   * column under a horizontal one, so a flip proof that reads the wrong axis
+   * sees nothing and blames the control.
+   */
+  axis: "column" | "row" = "row",
+): Promise<string> {
+  return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((element, stripAxis) => {
+    const canvas = element as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl || canvas.width === 0 || canvas.height === 0) return "absent";
+
+    const along = Math.max(
+      1,
+      Math.min(
+        stripAxis === "row" ? canvas.width : canvas.height,
+        Math.floor((stripAxis === "row" ? canvas.height : canvas.width) * 0.4),
+      ),
+    );
+    const pixels = new Uint8Array(along * 4);
+    gl.readPixels(
+      stripAxis === "row"
+        ? Math.floor((canvas.width - along) / 2)
+        : Math.floor(canvas.width / 2),
+      stripAxis === "row"
+        ? Math.floor(canvas.height / 2)
+        : Math.floor((canvas.height - along) / 2),
+      stripAxis === "row" ? along : 1,
+      stripAxis === "row" ? 1 : along,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+
+    // Quantised, so an antialiased edge landing a third of a pixel differently
+    // is not reported as a change of colour.
+    const steps: string[] = [];
+    for (let index = 0; index < pixels.length; index += 4) {
+      steps.push(
+        [0, 1, 2].map((offset) => Math.round(pixels[index + offset] / 8)).join(","),
+      );
+    }
+    return steps.join("|");
+  }, axis);
+}

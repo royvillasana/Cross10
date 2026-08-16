@@ -184,7 +184,8 @@ export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[]
     automated: true,
     automatedTestName: "declares travel drifts the field and returns it",
     browser: true,
-    browserTestName: "browser: studio timeline plays, scrubs, and loops the drift",
+    browserTestName:
+      "browser: studio returns two layers drifting at different rates",
     componentType: "slider",
     evidence: "rendered-pixels",
     expectedObservable:
@@ -200,7 +201,7 @@ export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[]
     automated: true,
     automatedTestName: "declares turns drift the reading angle and return it",
     browser: true,
-    browserTestName: "browser: studio timeline plays, scrubs, and loops the drift",
+    browserTestName: "browser: studio turns drift the reading angle and return",
     componentType: "slider",
     evidence: "rendered-pixels",
     expectedObservable:
@@ -553,7 +554,8 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     automated: true,
     automatedTestName: "declares a vertical flip folds only the selected layer",
     browser: true,
-    browserTestName: "browser: studio layer flip folds only the selected layer",
+    browserTestName:
+      "browser: studio vertical flip folds only the selected layer",
     componentType: "switch",
     evidence: "rendered-pixels",
     expectedObservable:
@@ -585,7 +587,8 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     automated: true,
     automatedTestName: "declares the second layer colour recolours only that layer",
     browser: true,
-    browserTestName: "browser: studio layer colours recolour only the selected layer",
+    browserTestName:
+      "browser: studio second layer colour recolours its own slot",
     componentType: "color",
     evidence: "rendered-pixels",
     expectedObservable:
@@ -1179,7 +1182,8 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
       automated: true,
       automatedTestName: "declares the video format options the pipeline fixes",
       browser: true,
-      browserTestName: "browser: studio export video loops without a seam",
+      browserTestName:
+        "browser: studio video export format changes the encoded artifact type",
       componentType: "select",
       evidence: "exported-bytes",
       expectedObservable:
@@ -1195,7 +1199,8 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
       automated: true,
       automatedTestName: "declares the video resolution options the pipeline fixes",
       browser: true,
-      browserTestName: "browser: studio export video loops without a seam",
+      browserTestName:
+        "browser: studio video export resolution changes the encoded dimensions",
       componentType: "select",
       evidence: "exported-bytes",
       expectedObservable:
@@ -1253,7 +1258,8 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
       automatedTestName:
         "declares infinite video export unions every frame's scene bounds",
       browser: true,
-      browserTestName: "browser: studio export video loops without a seam",
+      browserTestName:
+        "browser: studio infinite video export holds one frame size across the loop",
       componentType: "canvas",
       evidence: "exported-bytes",
       expectedObservable:

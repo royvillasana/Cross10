@@ -9,6 +9,7 @@ import {
 import { expectToolcraftStandardTimelinePlayback } from "./browser-standard-timeline-evidence";
 import {
   openStudioSingleLayer,
+  readStudioCentreSignature,
   openStudioTwoLayerStack,
   readStudioOutputSignature,
   selectStudioLayer,
@@ -401,5 +402,41 @@ test("browser: studio returns two layers drifting at different rates", async ({
   expect(
     await readStudioOutputSignature(page),
     "two layers at different rates must both return to their first frame",
+  ).toBe(start);
+});
+
+/**
+ * Turns per loop, on its own.
+ *
+ * Split from the main transport proof because each acceptance row owes its own
+ * browser evidence, and because the angle is the drift most likely to be wired
+ * to the wrong thing: it is the only one measured in degrees, and a rate applied
+ * as a fraction of a turn instead of whole turns would still close the seam at
+ * whole numbers while reading the field from the wrong direction in between.
+ */
+test("browser: studio turns drift the reading angle and return", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+
+  // Enough bands that a centre row crosses several: turning a field of one wide
+  // band moves nothing a single row can see.
+  await setStudioSlider(page, "Band count", 12);
+  await scrubber.press("Home");
+  const start = await readStudioCentreSignature(page);
+
+  await setStudioSlider(page, "Turns per loop", 1);
+  await scrubStudioTimelineTo(page, scrubber, 0.25);
+
+  expect(
+    await readStudioCentreSignature(page),
+    "a whole turn per loop must turn the field as the loop runs",
+  ).not.toBe(start);
+
+  await scrubber.press("End");
+  expect(
+    await readStudioCentreSignature(page),
+    "a whole turn returns, so the seam closes",
   ).toBe(start);
 });

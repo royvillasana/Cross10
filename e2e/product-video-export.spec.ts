@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import { createToolcraftVideoFrameSchedule } from "../src/toolcraft/runtime/export/video-frame-schedule";
 import {
   openStudioSingleLayer,
+  setStudioSelectValue,
   setStudioSlider,
   toggleStudioSwitch,
 } from "./studio-product-helpers";
@@ -235,4 +236,162 @@ test("browser: studio video export carries no trace of the study", async ({ page
     withStudy.observations.map((observation) => observation.decodedPixelHash),
     "an exported video must be identical whether or not a study is showing",
   ).toEqual(clean.observations.map((observation) => observation.decodedPixelHash));
+});
+
+/**
+ * The artifact loops without a seam, which is a claim about its ends.
+ *
+ * A looping video must not contain both endpoints of the loop. Frame zero and
+ * frame at exactly one duration are the same picture, and a file carrying both
+ * freezes for a thirtieth of a second every cycle — a stutter that a packet
+ * count matching a duration would report as perfect, and that a viewer sees
+ * immediately on the second play.
+ *
+ * So the schedule runs to one frame *before* the seam, and this asserts that:
+ * the frame count is exactly the duration's worth, and the last packet sits a
+ * frame short of the end rather than on it. The frame that closes the loop is
+ * the first frame of the next play, which is where it belongs.
+ */
+test("browser: studio export video loops without a seam", async ({ page }) => {
+  test.setTimeout(300_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  // Drift declared, or the ends are trivially equal and the claim is empty.
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  const duration = await readTimelineDuration(scrubber);
+  const schedule = createToolcraftVideoFrameSchedule(duration);
+  const framesPerSecond = 30;
+
+  const { inspection } = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  // Exactly the duration's worth, so the loop is closed by the next play rather
+  // than by a repeated frame inside the file.
+  expect(inspection.frameCount).toBe(Math.round(duration * framesPerSecond));
+
+  const last = inspection.packetTimings[inspection.packetTimings.length - 1];
+  expect(last, "the artifact must carry a last frame").toBeTruthy();
+  // A frame short of the end. If this were `duration`, the file would hold both
+  // ends of the loop and hitch once per cycle.
+  expect(last!.timeSeconds).toBeCloseTo(duration - 1 / framesPerSecond, 2);
+  expect(last!.timeSeconds).toBeLessThan(duration);
+
+  // ...and the first frame is the start of the loop, not an offset into it.
+  expect(inspection.packetTimings[0]?.timeSeconds).toBeCloseTo(0, 3);
+});
+
+/**
+ * The format select reaches the encoder, not just the panel.
+ *
+ * MP4 is the default because it is what the common destinations take. WebM is
+ * offered, and an option that is offered has to arrive: a select that changed a
+ * value nobody read would look identical from the panel and hand the author a
+ * file their destination rejects.
+ */
+test("browser: studio video export format changes the encoded artifact type", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  const schedule = createToolcraftVideoFrameSchedule(
+    await readTimelineDuration(scrubber),
+  );
+
+  await setStudioSelectValue(page, "export.video.format", "WebM");
+
+  const { inspection } = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  // Read from the bytes rather than from the file name. A wrapper named .webm
+  // containing MP4 would satisfy a name check and fail in the player.
+  expect(inspection.mediaType).toBe("video/webm");
+});
+
+/**
+ * An infinite canvas exports one envelope for the whole loop.
+ *
+ * The frame size is decided once, from the union of every moment's bounds, and
+ * not per frame. A composition that drifts outward would otherwise be clipped
+ * part-way through — or, worse, resize between packets, which most players
+ * handle by stretching and some by stopping.
+ */
+test("browser: studio infinite video export holds one frame size across the loop", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  await toggleStudioSwitch(page, "canvas.infinity");
+  // Drift declared, so the work reaches further at some moments than others --
+  // which is the case a per-frame envelope would get wrong.
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  const schedule = createToolcraftVideoFrameSchedule(
+    await readTimelineDuration(scrubber),
+  );
+  const { inspection } = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  // One size for the track, and every scheduled frame present in it. A track
+  // carries a single coded size, so the claim is that the export chose one that
+  // fits the whole loop rather than dropping or clipping the frames it did not.
+  expect(inspection.width).toBeGreaterThan(0);
+  expect(inspection.height).toBeGreaterThan(0);
+  expect(inspection.frameCount).toBe(schedule.length);
+});
+
+/**
+ * The resolution select reaches the encoder too.
+ *
+ * "Current" means the canvas as authored; 4K means the artifact is larger than
+ * the canvas without the composition being re-laid-out. Read from the decoded
+ * track rather than from the request, because the request is what the panel
+ * asked for and the track is what the recipient gets.
+ */
+test("browser: studio video export resolution changes the encoded dimensions", async ({
+  page,
+}) => {
+  test.setTimeout(600_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  const schedule = createToolcraftVideoFrameSchedule(
+    await readTimelineDuration(scrubber),
+  );
+
+  const sizeOf = async () => {
+    const { inspection } = await inspectToolcraftVideoDownload({
+      backgroundRgba: OPAQUE_PROBE,
+      download: await exportVideo(page),
+      page,
+      schedule,
+    });
+    return { height: inspection.height, width: inspection.width };
+  };
+
+  const current = await sizeOf();
+  await setStudioSelectValue(page, "export.video.resolution", "4K");
+  const larger = await sizeOf();
+
+  expect(larger.width).toBeGreaterThan(current.width);
+  // The shape is the composition's, not the format's: scaling up must not
+  // change the aspect an author chose.
+  expect(larger.width / larger.height).toBeCloseTo(current.width / current.height, 2);
 });

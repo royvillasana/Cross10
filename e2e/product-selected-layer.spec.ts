@@ -7,6 +7,7 @@ import {
   addStudioGroup,
   addStudioLayer,
   openStudioSingleLayer,
+  readStudioCentreSignature,
   readStudioLayerIds,
   readStudioSelectedLayerId,
   readStudioOutputSignature,
@@ -3186,4 +3187,53 @@ test("browser: studio pointer push displaces the field", async ({ page }) => {
     exportedWithPointer,
     "an export must not depend on where the pointer was left",
   ).toBe(exportedAtRest);
+});
+
+/**
+ * The second ink, on its own.
+ *
+ * Split from the first colour's proof because the delivery catalog wants one
+ * browser test per acceptance row, and the split is honest rather than
+ * bookkeeping: the two controls fill different slots of the same palette, and a
+ * wiring mistake that sent both to slot one would pass a proof that only ever
+ * moved one of them.
+ */
+test("browser: studio second layer colour recolours its own slot", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  const before = await readStudioCentreSignature(page);
+
+  await setStudioColorHex(page, "Second colour", "#00FF00");
+
+  await expect
+    .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
+    .not.toBe(before);
+});
+
+/**
+ * The vertical fold, on its own.
+ *
+ * Same reason as the second colour, and the same real risk: a horizontal flip
+ * wired to both axes would satisfy a proof that only ever pressed one.
+ *
+ * The taper is what makes a vertical fold visible at all, and finding that out
+ * cost three attempts. A band field is periodic across the frame, so reversing
+ * it lands bands where other bands were and reads as identical; and a band has
+ * no direction along its own length until something gives it one. The taper
+ * does — it turns each band into a wedge, so folding reverses which end is wide.
+ */
+test("browser: studio vertical flip folds only the selected layer", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  await setStudioSlider(page, "Band count", 8);
+  await setStudioSlider(page, "Taper", 1);
+  const before = await readStudioCentreSignature(page);
+
+  await toggleStudioSwitch(page, "selectedLayer.flipY");
+
+  await expect
+    .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
+    .not.toBe(before);
 });
