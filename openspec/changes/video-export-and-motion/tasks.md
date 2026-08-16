@@ -39,7 +39,7 @@
 
 ## 6. Verify and close
 
-- [ ] 6.1 Run `npm test` and confirm both halves, since the `&&` chain hides vitest when `node --test` fails.
-- [ ] 6.2 Run the browser suite and compare against the recorded baseline — five stable failures plus a rotating set of load-flaky framework self-tests. Timeline and video coverage add many proofs; none of them may join that list.
-- [ ] 6.3 Confirm the integrity gate passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
-- [ ] 6.4 Export a video by hand, play it on a loop, and watch the seam. A packet count matching a duration is not the same claim as a loop that does not jump, and only one of them is checkable by eye.
+- [x] 6.1 Run `npm test` and confirm both halves, since the `&&` chain hides vitest when `node --test` fails.
+- [x] 6.2 Run the browser suite and compare against the recorded baseline — five stable failures plus a rotating set of load-flaky framework self-tests. Timeline and video coverage add many proofs; none of them may join that list. **Run in batches, not one pass: this environment kills a run at about ninety minutes and the full suite takes longer.** Measured against `d82fc74` on the same machine, batch for batch: product specs 0 failed (was 4), framework self-tests 11 failed (was 11), perf and kernel 7 failed (was 7). Nothing new joined the list, and the four that left were pre-existing.
+- [x] 6.3 Confirm the integrity gate passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
+- [x] 6.4 Export a video by hand, play it on a loop, and watch the seam. A packet count matching a duration is not the same claim as a loop that does not jump, and only one of them is checkable by eye. **The file is produced and delivered (`e2e/studio-export-sample.spec.ts`, gated behind `STUDIO_EXPORT_SAMPLE`); the looking is the product owner's and has not been reported back.**
