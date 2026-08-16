@@ -9,8 +9,8 @@
 - [x] 2.1 Enable `panels.timeline` with `mode: "playback"` and `defaultDurationSeconds` equal to the declared period.
 - [x] 2.2 Author no transport. No play, pause, restart, animate, or loop-length control in the panel — the runtime owns all of it, and a product that adds one has two transports that disagree.
 - [x] 2.3 Satisfy the timeline acceptance recipe in full: duration, scrub, pause/resume, keyframes, and loop each have a fixed helper and none is optional once a timeline exists. **This is the largest cost in the change and it lands here, before anything animates.**
-- [ ] 2.4 Prove the Setup `Timeline` switch is presentation only: playback state, product values, and export behaviour are unchanged by toggling it.
-- [ ] 2.5 Declare the sustained performance path playback introduces, and measure it. The existing paths describe discrete edits and viewport gestures; a renderer that runs continuously is a different claim against the same workload dimensions.
+- [x] 2.4 Prove the Setup `Timeline` switch is presentation only: playback state, product values, and export behaviour are unchanged by toggling it.
+- [ ] 2.5 Declare the sustained performance path playback introduces, and measure it. The existing paths describe discrete edits and viewport gestures; a renderer that runs continuously is a different claim against the same workload dimensions. **Blocked upstream — filed as issue 15.** `deriveToolcraftPerformancePaths` produces no playback path, so the declaration has nowhere to attach and a scenario claiming one fails the same gate that would have required it. Left open rather than fitted to a path that means something else.
 
 ## 3. Drift
 
@@ -19,7 +19,7 @@
 - [x] 3.3 Refuse drift over colours, band count, separators, and region by default, and make the surface say which kind of parameter an author is looking at — a work that changes its own inks is a different work each frame, not the same one seen from elsewhere.
 - [x] 3.4 Decide per-layer against stack-level (see design Open Questions). Two layers drifting against each other is the interference these techniques are built on, which argues for per-layer.
 - [x] 3.5 Assert a still is unchanged: an export at timeline zero is compared against an export taken before drift existed, not merely inspected.
-- [ ] 3.6 Look at a moiré entry specifically. Drifting phase over a field that already beats is how a pattern starts to crawl, and a plain band field will not show it.
+- [x] 3.6 Look at a moiré entry specifically. Drifting phase over a field that already beats is how a pattern starts to crawl, and a plain band field will not show it.
 
 ## 4. Video export
 
@@ -28,7 +28,7 @@
 - [x] 4.3 Give the export renderer the timeline's timestamp and resolve drift at it. The renderer already draws a deterministic scene at a size; time is the one input it lacks.
 - [x] 4.4 Keep the still's at-rest pointer rule intact while letting the loop supply a pointer path for video. Two exports of one composition must still be the same composition.
 - [x] 4.5 Prove the artifact: duration and packet count follow the timeline, the cadence is the 30 FPS schedule regardless of render cost, editing duration changes the artifact, the last frame meets the first, and the background survives with Background off.
-- [ ] 4.6 Check the loop period against what the common destinations accept — a vertical video is usually watched on a phone where anything past a minute or so is a different kind of post — and make the declared period a reason rather than a round number. MP4 is already the specified default and is the format those destinations take, so nothing here needs a new format.
+- [x] 4.6 Check the loop period against what the common destinations accept — a vertical video is usually watched on a phone where anything past a minute or so is a different kind of post — and make the declared period a reason rather than a round number. MP4 is already the specified default and is the format those destinations take, so nothing here needs a new format.
 - [x] 4.7 Assert the product allocates no export canvas, calls no `toBlob` or `toDataURL`, creates no object URL, instantiates no encoder, and downloads nothing. The runtime owns delivery and this is the line that says so.
 
 ## 5. Posting is the user's, and nothing here does it

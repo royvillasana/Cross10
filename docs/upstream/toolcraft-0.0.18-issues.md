@@ -599,6 +599,37 @@ a second press in the panel instead.
 
 ---
 
+## 15. Playback is a performance path the derivation does not produce
+
+A product may declare `panels.timeline` with `mode: "playback"`, and the runtime
+will then drive the renderer continuously for as long as the transport runs.
+That is a different cost profile from anything the workload envelope currently
+describes: the existing derived paths are `initial-render`, `control-change`,
+`control-drag`, `viewport-drag`, `viewport-zoom` and `export` — a discrete edit,
+a gesture, and a batch. None of them is *sustained*.
+
+`deriveToolcraftPerformancePaths` contains no playback interaction, so no such
+path is derived, and the gate that requires exactly one scenario per derived
+path is satisfied by a product that has never measured its own animation. The
+gap is not that the gate is wrong — it is enforcing what it was told — but that
+a product cannot declare the measurement even if it wants to: authoring a
+scenario whose `interaction` is `"playback"` fails the same gate, because there
+is no path for it to cover.
+
+**Effect here.** Croix10 animates, and its sustained cost is unmeasured in the
+declared sense. The frames it produces are checked (the timeline recipe, the
+video packet schedule), but "does a six-second loop hold its frame budget on a
+dense stack" is a question this product currently cannot ask through the
+framework's own machinery. The change that introduced motion recorded the task
+and left it open rather than inventing a path id that the derivation would not
+recognise, or weakening the scenario until it fitted a path that means something
+else.
+
+**What would fix it.** A `sustained` profile beside `interactive-continuous`,
+derived when the schema declares a playback timeline, with the workload
+dimensions the preview path already names. The measurement helpers exist; what
+is missing is the declaration that makes them addressable.
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

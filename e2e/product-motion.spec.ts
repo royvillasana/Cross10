@@ -10,7 +10,9 @@ import { expectToolcraftStandardTimelinePlayback } from "./browser-standard-time
 import {
   openStudioSingleLayer,
   readStudioOutputSignature,
+  setStudioSelectValue,
   setStudioSlider,
+  toggleStudioSwitch,
 } from "./studio-product-helpers";
 import { expect, test } from "./toolcraft-product-test";
 
@@ -269,4 +271,77 @@ test("browser: studio timeline plays, scrubs, and loops the drift", async ({
     markerSelector: "[data-toolcraft-product-output]",
     requirementId: "timeline.playback",
   });
+});
+
+/**
+ * The beating field, which is the case a plain band field will not show.
+ *
+ * A chromointerference lays a second band sequence over the first at a different
+ * pitch, so the composite already carries a low-frequency beat before anything
+ * moves. Drifting phase over that is where a pattern starts to crawl: the beat
+ * has its own period, and if it is not commensurate with the loop the seam that
+ * closes for the bands does not close for the beat. That failure is invisible in
+ * a single frame and obvious after two plays, which is exactly the kind of thing
+ * that reaches a user rather than a test.
+ *
+ * It closes here because the drift moves the *coordinate* both sequences are
+ * read from, not each sequence separately -- one whole travel cycle returns the
+ * coordinate, so both sequences and their beat return with it.
+ */
+test("browser: studio drift closes the seam on a beating field", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+
+  await setStudioSelectValue(page, "selectedLayer.engine", "Interference");
+  await setStudioSlider(page, "Engine amount", 1);
+  // Deliberately not a whole multiple of the band count. A commensurate pitch
+  // would beat at the band period and close for the wrong reason -- the proof
+  // would pass without the awkward case ever having been drawn.
+  await setStudioSlider(page, "Interference pitch", 1.15);
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  await scrubber.press("Home");
+  const start = await readStudioOutputSignature(page);
+  await scrubStudioTimelineTo(page, scrubber, 0.5);
+  expect(
+    await readStudioOutputSignature(page),
+    "the beating field must actually move, or the seam closes trivially",
+  ).not.toBe(start);
+  await scrubber.press("End");
+  expect(
+    await readStudioOutputSignature(page),
+    "the beat must return with the bands, not crawl past them",
+  ).toBe(start);
+});
+
+/**
+ * The Setup `Timeline` switch shows and hides a panel. That is all it does.
+ *
+ * Worth asserting because a presentation toggle sitting next to a transport
+ * invites exactly one assumption -- that turning the timeline "off" stops the
+ * animation -- and a product that quietly honoured that assumption would have
+ * two transports disagreeing about whether playback is running.
+ */
+test("browser: studio timeline switch is presentation only", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  await setStudioSlider(page, "Travel per loop", 1);
+  await scrubStudioTimelineTo(page, scrubber, 0.5);
+
+  const framed = await readStudioOutputSignature(page);
+  const values = await readStudioLayerValues(page);
+
+  await toggleStudioSwitch(page, "panels.timeline.extended");
+  expect(
+    await readStudioOutputSignature(page),
+    "hiding the timeline must not move the frame it was showing the position of",
+  ).toBe(framed);
+  expect(await readStudioLayerValues(page)).toEqual(values);
+
+  await toggleStudioSwitch(page, "panels.timeline.extended");
+  expect(await readStudioOutputSignature(page)).toBe(framed);
 });
