@@ -731,6 +731,37 @@ export type StudioApplyTarget =
   | typeof STUDIO_APPLY_TO_GROUP
   | typeof STUDIO_APPLY_TO_IMAGE;
 
+/**
+ * What an application is aimed at, read from the selection rather than asked.
+ *
+ * The author has already answered this by selecting something. A group selected
+ * means the group; a layer selected means that layer. A separate "apply to"
+ * control asked the same question a second time, in different words, and could
+ * disagree with the selection on screen -- an author looking at a highlighted
+ * group could press Apply and have it land on a layer, because a select they had
+ * set once and forgotten still said "layer".
+ *
+ * Nothing selected returns null, which is not "the canvas": there is no
+ * composition-wide application any more (7.3), so an aim with no subject is an
+ * operation that should not be offered at all.
+ */
+export function studioApplyTargetFromSelection({
+  layers,
+  selectedLayerId,
+}: {
+  readonly layers: readonly StudioRuntimeLayer[];
+  readonly selectedLayerId: string | null;
+}): StudioApplyTarget | null {
+  const selected = layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  if (!selected) return null;
+
+  // A member of a group selects the member, not the group. The reverse -- that a
+  // selection inside a group counts as the group -- is what the old explicit
+  // "the selected group" meant, and it stays available by selecting the group
+  // row itself, which is the surface saying so rather than a control claiming it.
+  return selected.kind === "group" ? STUDIO_APPLY_TO_GROUP : STUDIO_APPLY_TO_LAYER;
+}
+
 export function readStudioApplyTarget(value: unknown): StudioApplyTarget {
   return value === STUDIO_APPLY_TO_LAYER ||
     value === STUDIO_APPLY_TO_GROUP ||

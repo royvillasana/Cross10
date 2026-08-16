@@ -101,22 +101,6 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     userAction: "Choose a different composition.",
   },
   {
-    automated: true,
-    automatedTestName: "names the layers each target resolves to, and no others",
-    browser: true,
-    browserTestName: "browser: studio gallery aims an entry at one layer",
-    componentType: "select",
-    evidence: "command-side-effect",
-    expectedObservable:
-      "Choosing the selected layer, the selected group, or the pictures decides which layers the next press writes to, and the canvas is untouched by the choice itself.",
-    fixture: "Croix10 with a two-layer stack",
-    id: "gallery.target",
-    kind: "control",
-    optionCoverage: ["layer", "group", "image"],
-    target: "gallery.target",
-    userAction: "Change what a composition will be applied to.",
-  },
-  {
     actionCoverage: ["apply-engine"],
     automated: true,
     automatedTestName: "writes the entry onto the target's layers and no others",

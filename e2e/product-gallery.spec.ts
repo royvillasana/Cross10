@@ -11,7 +11,6 @@ import {
   readStudioOutputSignature,
   readStudioStackSignature,
   selectStudioLayer,
-  setStudioSelectValue,
   setStudioSlider,
   setStudioTechnique,
   readStudioTechnique,
@@ -28,7 +27,6 @@ import {
   expectToolcraftProductObservableToChange,
   getToolcraftProductObservableSnapshot,
 } from "./product-observable-helpers";
-import { getToolcraftApplicabilityRequirementId } from "../src/app/app-acceptance";
 import { expectToolcraftControlApplicabilityState } from "./browser-control-applicability-evidence";
 import { createToolcraftBrowserProofSession } from "./browser-proof-session";
 import { importStudioImage, writeImportFixture } from "./studio-import-fixture";
@@ -37,31 +35,15 @@ import { test } from "./toolcraft-product-test";
 /**
  * The four aims, and what each one makes visible.
  *
- * Declared once because both gated presses owe a case per aim: a gated control
- * has to be proved present under every value that qualifies it and absent under
- * every value that does not, and the aim's own four values are that domain.
+ * Declared once because both presses read the same aim. The aim is no longer a
+ * control with a value domain -- it is whatever the layers panel has highlighted
+ * -- so what varies here is which row is selected, and the expectation is about
+ * which layers the press reaches.
  */
-const STUDIO_APPLY_TARGETS = [
-  { label: "The selected layer", value: "layer" },
-  { label: "The selected group", value: "group" },
-  { label: "The pictures", value: "image" },
+const STUDIO_APPLY_AIMS = [
+  { kind: "layer", label: "the selected layer" },
+  { kind: "group", label: "the selected group" },
 ] as const;
-
-function studioApplyTargetCase(
-  target: (typeof STUDIO_APPLY_TARGETS)[number],
-  control: string,
-  expectation: "hidden" | "visible",
-) {
-  return {
-    expectation,
-    selectorControlType: "select" as const,
-    selectorLabel: "Apply it to",
-    selectorOptionLabel: target.label,
-    selectorTarget: "gallery.target",
-    selectorValue: target.value,
-    target: control,
-  };
-}
 
 /**
  * Gallery acceptance domain.
@@ -525,37 +507,32 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
 
   for (const aim of [
     {
-      // The selected layer: only it changes, and the picture beside it does not.
+      // A layer row selected: only that layer changes, and the picture beside
+      // it does not.
       changes: looseLayerId,
+      kind: STUDIO_APPLY_AIMS[0],
       select: looseLayerId,
-      target: STUDIO_APPLY_TARGETS[0],
       untouched: pictureLayerId,
     },
     {
-      // The selected group: the layer inside it changes, the one outside does not.
+      // A group row selected: the layer inside it changes, the one outside does
+      // not. Selecting the group *row* is what says "the group" now -- there is
+      // no second control that could say otherwise.
       changes: groupedLayerId,
+      kind: STUDIO_APPLY_AIMS[1],
       select: groupId,
-      target: STUDIO_APPLY_TARGETS[1],
       untouched: pictureLayerId,
     },
     {
-      // The pictures: the imported layer is restyled and stays a picture.
+      // A picture row selected: it is restyled and stays a picture. Reached the
+      // same way as any other layer, because it is one.
       changes: pictureLayerId,
+      kind: STUDIO_APPLY_AIMS[0],
       select: pictureLayerId,
-      target: STUDIO_APPLY_TARGETS[2],
       untouched: groupedLayerId,
     },
   ]) {
     await selectStudioLayer(page, aim.select);
-
-    await expectToolcraftControlApplicabilityState(
-      session,
-      session.controlAction("gallery.target", async () => {
-        await setStudioSelectValue(page, "gallery.target", aim.target.label);
-      }),
-      studioApplyTargetCase(aim.target, "gallery.engineActions", "visible"),
-      { baseRequirementId: "gallery.engineActions" },
-    );
 
     // Each layer as it draws with the other one out of the way, so the two
     // claims below are about layers rather than about a composite in which
@@ -568,19 +545,14 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
     await expectToolcraftProductObservableToChange(
       session,
       session.controlAction("gallery.engineActions", pressEngine),
-      {
-        requirementId: getToolcraftApplicabilityRequirementId(
-          "gallery.engineActions",
-          studioApplyTargetCase(aim.target, "gallery.engineActions", "visible"),
-        ),
-      },
+      { requirementId: "gallery.engineActions" },
     );
 
     // Nothing was created, removed, or reordered: a narrow aim restyles layers
     // that already exist, and that is the whole of what makes it additive.
     expect(
       await readStudioLayerIds(page),
-      `${aim.target.value}: an aimed application must not touch the layer list`,
+      `${aim.kind.label}: an aimed application must not touch the layer list`,
     ).toEqual(idsBefore);
 
     await expect
@@ -594,7 +566,7 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
     // above this one.
     expect(
       await readStudioStackWithout(page, aim.changes),
-      `${aim.target.value}: a layer the aim did not name must render exactly as it did`,
+      `${aim.kind.label}: a layer the aim did not name must render exactly as it did`,
     ).toBe(untouchedBefore);
   }
 
@@ -605,4 +577,59 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
   await expect
     .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
     .toContain("image");
+});
+
+/**
+ * With nothing selected there is nothing to apply to, and the press says so by
+ * doing nothing.
+ *
+ * **"Not offered" is the claim this cannot make, and the reason is worth
+ * keeping.** An applicability predicate may only name a rendered control's
+ * target, and what is selected in the layers panel is runtime state with no
+ * control of its own — so the button cannot be hidden or disabled on it. What is
+ * expressible is that pressing it is inert, which is asserted here on the frame
+ * rather than on the handler: an author who presses it gets nothing, which is
+ * the same outcome a disabled button would have produced, arrived at one step
+ * later than it should be.
+ *
+ * Filed as part of the applicability gap already recorded upstream.
+ */
+test("browser: studio offers no application when nothing is selected", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  // An empty stack, reached by answering the flow with "start from nothing".
+  // That is the honest way to have no selection: the runtime owns selection and
+  // there is no gesture that clears it, so the state to test is the one an
+  // author actually lands in before they have made anything.
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+  });
+  await page.reload();
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
+  expect(await readStudioLayerIds(page)).toHaveLength(0);
+
+  const before = await readStudioOutputSignature(page);
+
+  await page
+    .locator('[data-toolcraft-control-target="gallery.engineActions"]')
+    .getByRole("button", { name: "Apply to the selection" })
+    .first()
+    .click();
+
+  // Nothing appeared, and nothing was drawn. An application that fell back to
+  // "the whole canvas" when it could not find a subject would create layers here
+  // -- which is exactly the behaviour that was removed, and the failure mode a
+  // press with no aim invites.
+  expect(
+    await readStudioLayerIds(page),
+    "a press with no subject must not create anything",
+  ).toHaveLength(0);
+  expect(
+    await readStudioOutputSignature(page),
+    "a press with no subject must not change the frame",
+  ).toBe(before);
 });

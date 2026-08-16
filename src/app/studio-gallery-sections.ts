@@ -80,27 +80,15 @@ export const STUDIO_GALLERY_SECTIONS = [
       // additive half: applying a chosen construction to a layer, a group, or
       // the pictures. That is an edit to work that exists, which is what the
       // panel is for.
-      target: {
-        semanticGroup: "apply",
-        applicability: { mode: "always" },
-        defaultValue: "layer",
-        label: "Apply a composition to",
-        options: [
-          { label: "The selected layer", value: "layer" },
-          { label: "The selected group", value: "group" },
-          { label: "The pictures", value: "image" },
-        ],
-        performanceReason:
-          "Names which layers the next press writes to; nothing is rendered until the press.",
-        performanceRole: "responsiveness",
-        target: "gallery.target",
-        type: "select",
-      },
       engine: {
         semanticGroup: "apply",
         applicability: { mode: "always" },
         actions: [{ label: "Apply to the selection", value: "apply-engine" }],
-        label: "The rest of the stack is left alone",
+        // Says what is aimed at, because the aim is no longer a control: it is
+        // whatever the layers panel has highlighted. An author who wants it
+        // somewhere else selects somewhere else, which is one gesture rather
+        // than two and cannot disagree with what they are looking at.
+        label: "Applies to the selection; the rest of the stack is left alone",
         performanceReason:
           "Writes one record of per-layer values; the frame is redrawn by the same pass any edit uses.",
         performanceRole: "responsiveness",

@@ -44,11 +44,11 @@
 
 ## 7. The aim comes from where the application started
 
-- [ ] 7.1 Delete `gallery.target` and the applicability that gated the two presses on it.
-- [ ] 7.2 Derive the target from the surface: the selected layer, the selected group, or the canvas.
+- [x] 7.1 Delete `gallery.target` and the applicability that gated the two presses on it.
+- [x] 7.2 Derive the target from the surface: the selected layer, the selected group, or the canvas.
 - [x] 7.3 Drop the image-set target from the canvas aim. The canvas aim itself went with the technique change; what is left is the narrow half, which is where aiming belonged.
-- [ ] 7.4 Re-aim the layer and group proofs at the surfaces that start them, keeping the assertion that matters: the layers the aim did not name render pixel-for-pixel as they did.
-- [ ] 7.5 Prove an application is not offered when the selection names no layer that could receive one.
+- [x] 7.4 Re-aim the layer and group proofs at the surfaces that start them, keeping the assertion that matters: the layers the aim did not name render pixel-for-pixel as they did.
+- [x] 7.5 Prove an application is not offered when the selection names no layer that could receive one. **Half of this is not expressible and the proof says so.** An applicability predicate may only name a rendered control's target, and what the layers panel has selected is runtime state with no control of its own -- so the press cannot be hidden or disabled on it. What is proved is that pressing it is inert: nothing created, frame unchanged. Verified against a build that fell back to applying across the canvas.
 
 ## 8. Layer-row actions — blocked
 

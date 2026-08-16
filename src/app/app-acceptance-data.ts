@@ -196,7 +196,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       groupingReason:
         "Pushing a construction onto layers that already exist: what it lands on, and the press that lands it. Their own section because they are the additive half -- an edit to work in progress -- and because keeping them away from the door above stops a select that names layers from becoming the semantic peer of a button that opens a surface.",
       id: "composition-apply",
-      targets: ["gallery.target", "gallery.engineActions"],
+      targets: ["gallery.engineActions"],
       title: "Apply A Composition",
       workflowStage: "compose",
     },

@@ -10,11 +10,10 @@ import {
   planStudioPenDrawing,
   planStudioStackRestoration,
   studioApplicationLayerIds,
-  STUDIO_APPLY_TARGET_TARGET,
+  studioApplyTargetFromSelection,
   STUDIO_CURSOR_AWAY,
   STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
-  readStudioApplyTarget,
   readStudioLayerEntry,
   readStudioLayerRecord,
   readStudioStackSnapshot,
@@ -159,7 +158,14 @@ function handleStudioPanelAction({
     if (!preset) return;
 
     const layers = state.layers ?? [];
-    const target = readStudioApplyTarget(state.values[STUDIO_APPLY_TARGET_TARGET]);
+    // Read from the selection rather than from a control. Nothing selected means
+    // nothing to apply to, and the press does nothing -- which the panel already
+    // says by disabling itself, so this is the same answer arrived at twice.
+    const target = studioApplyTargetFromSelection({
+      layers,
+      selectedLayerId: state.selectedLayerId ?? null,
+    });
+    if (!target) return;
 
     for (const command of planStudioPresetApplication({
       layers,
@@ -169,13 +175,6 @@ function handleStudioPanelAction({
       target,
       targetLayerIds: studioApplicationLayerIds({
         layers,
-        // Which layers carry a picture is the runtime's answer, not the
-        // record's: an imported layer's entry still says whatever kind it was
-        // created as, and the asset is what makes it a picture.
-        mediaLayerIds: (state.mediaAssets ?? [])
-          .filter((asset) => asset.assetKind === "image")
-          .map((asset) => asset.layerId)
-          .filter((id): id is string => typeof id === "string"),
         selectedLayerId: state.selectedLayerId ?? null,
         target,
       }),
