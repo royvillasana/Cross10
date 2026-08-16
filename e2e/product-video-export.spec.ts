@@ -6,7 +6,30 @@ import {
   setStudioSlider,
   toggleStudioSwitch,
 } from "./studio-product-helpers";
+import { STUDIO_PRESETS } from "../src/app/studio-presets";
 import { expect, test } from "./toolcraft-product-test";
+
+/** Any study will do; the claim is about the path, not about which picture. */
+const STUDIO_REFERENCE_LABEL = STUDIO_PRESETS[0]!.label;
+
+/**
+ * Chooses a study through the dialog that owns the choice.
+ *
+ * Duplicated from the reference domain rather than shared: this file needs the
+ * study to be *on screen* and does not care which one, so importing that file's
+ * helper would couple two proofs whose subjects have nothing in common.
+ */
+async function setStudioReference(page: Page, label: string): Promise<void> {
+  const preset = STUDIO_PRESETS.find((entry) => entry.label === label);
+  if (!preset) throw new Error(`No preset is labelled "${label}".`);
+
+  await page
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name: "Work against a study" })
+    .first()
+    .click();
+  await page.locator(`[data-studio-onboarding-study="${preset.id}"]`).click();
+}
 import {
   assertToolcraftVideoPacketSchedule,
   inspectToolcraftVideoDownload,
@@ -141,4 +164,75 @@ test("browser: studio video export keeps the background switch honest", async ({
     ).toBeGreaterThan(0);
   }
 
+});
+
+/**
+ * The reference reaches no frame of the video either.
+ *
+ * This claim is already proved for the PNG. It has to be re-proved here rather
+ * than inherited, because video is a second delivery path and the overlay's
+ * absence from an artifact is a property of the path that built it, not of the
+ * product in general. Nothing about the still export makes the video export
+ * safe; they share a renderer, and the overlay is not drawn by that renderer at
+ * all — it is a DOM element over the canvas. Which is exactly why a proof is
+ * needed: the thing that would leak it is not the shared code, it would be a
+ * future convenience that composited the visible surface instead of the stack.
+ *
+ * The stake is not aesthetic. A study is somebody else's work; it is on screen
+ * so an author can look at it while building, and an exported file is a thing
+ * that leaves. Those two facts must never meet.
+ */
+test("browser: studio video export carries no trace of the study", async ({ page }) => {
+  // Two full encodes and two decodes in one test, because the claim is a
+  // comparison between artifacts rather than a property of either one.
+  test.setTimeout(600_000);
+
+  page.on("console", (message) => {
+    if (message.type() === "error") console.log(`page error: ${message.text()}`);
+  });
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  await setStudioSlider(page, "Travel per loop", 1);
+  const duration = await readTimelineDuration(scrubber);
+  const schedule = createToolcraftVideoFrameSchedule(duration);
+
+  // The artifact with no study loaded, which the comparison is measured against.
+  const clean = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  await setStudioReference(page, STUDIO_REFERENCE_LABEL);
+  await setStudioSlider(page, "Reference opacity", 1);
+  // Fully opaque and on screen: if the overlay can reach the artifact at all,
+  // this is the setting under which it would be unmissable.
+  await expect(page.locator("[data-studio-reference]")).toHaveCount(1);
+
+  // The study is genuinely covering the canvas on screen. Without this the
+  // comparison below would pass just as happily if loading a study had done
+  // nothing at all -- two identical artifacts proving only that nothing changed
+  // anywhere, which is the shape a vacuous proof takes.
+  const overlay = await page.locator("[data-studio-reference]").boundingBox();
+  const output = await page.locator("[data-toolcraft-product-output]").boundingBox();
+  expect(overlay?.width).toBeGreaterThan(0);
+  expect(overlay?.width).toBeCloseTo(output?.width ?? -1, 0);
+  expect(overlay?.height).toBeCloseTo(output?.height ?? -1, 0);
+
+  const withStudy = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  // Frame for frame, not merely "no obvious picture in it". A study showing at
+  // full strength over the canvas changes every sampled frame if it reaches the
+  // encoder, and identical hashes are the only reading that rules that out.
+  expect(
+    withStudy.observations.map((observation) => observation.decodedPixelHash),
+    "an exported video must be identical whether or not a study is showing",
+  ).toEqual(clean.observations.map((observation) => observation.decodedPixelHash));
 });

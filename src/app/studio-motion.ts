@@ -29,6 +29,13 @@
  * the induced colour never holds long enough for the eye to make it — and that
  * making is the phenomenon. Over about eight it stops reading as a single pass.
  *
+ * The destinations these files are headed for did not choose the number, and
+ * that is deliberate. Six seconds is comfortably inside what every common
+ * vertical-video surface accepts, so nothing here is shaped around a limit —
+ * but a period picked to match a platform's maximum would be a claim about that
+ * platform, and platforms change their numbers. The reason above is a fact about
+ * how the induced colour is made, which does not.
+ *
  * Held here rather than beside the intent that declares it, because the schema
  * needs it too and the intent module already imports the schema; a constant that
  * both need belongs below both.
