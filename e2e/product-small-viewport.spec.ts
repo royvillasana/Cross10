@@ -1,7 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 
 import { isStudioBoxReachable } from "../src/app/studio-small-viewport";
-import { STUDIO_PRODUCT_OUTPUT } from "./studio-product-helpers";
+import {
+  dismissStudioOnboarding, STUDIO_PRODUCT_OUTPUT } from "./studio-product-helpers";
 import { test } from "./toolcraft-product-test";
 
 /**
@@ -96,6 +97,13 @@ async function openStudioAt(
     await page.reload();
   }
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is measured. On a first visit it opens
+  // over the whole shell -- which is what it is for -- and every panel reading
+  // below is about where the panels sit *after* an author has landed on the
+  // canvas. Measuring through the backdrop reported the Controls header as
+  // buried, which was true and meant nothing: it was under the dialog the author
+  // had not dismissed yet, not under another panel.
+  await dismissStudioOnboarding(page);
   // The arrangement runs once on load and dispatches through the runtime, so it
   // lands a frame or two after the canvas appears rather than with it.
   await page.waitForTimeout(1200);
@@ -138,7 +146,18 @@ test("browser: studio panels are reachable on a phone-sized viewport", async ({
       if (!panel) return "absent";
       const rect = panel.getBoundingClientRect();
       const hit = document.elementFromPoint(rect.left + 24, rect.top + 12);
-      return hit && panel.contains(hit) ? "on top" : "covered";
+      if (hit && panel.contains(hit)) return "on top";
+      // Names what is in the way. "Covered" tells you the bug exists; the next
+      // question is always which surface is doing the covering, and answering it
+      // from a trace afterwards means reproducing the whole thing again.
+      if (!hit) return "covered by nothing (the point is outside the document)";
+      const owner = hit.closest("[data-panel-type]")?.getAttribute("data-panel-type");
+      const description = `${hit.tagName.toLowerCase()}${
+        hit.className && typeof hit.className === "string"
+          ? `.${hit.className.trim().split(/\s+/).join(".")}`
+          : ""
+      }`;
+      return `covered by ${owner ? `panel "${owner}" via ` : ""}${description}`;
     };
     return {
       controls: at('[data-panel-type="controls"]'),
