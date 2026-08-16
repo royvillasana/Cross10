@@ -20,7 +20,7 @@
 - [x] 3.4 Note that **1080x1350 has no runtime aspect preset**. `canvas-aspect-ratio-presets.ts` ships 1:1, 3:2, 16:9, 3:4, 9:16, 2:3 and 4:3, and 4:5 is not among them — which is why these are set as real dimensions rather than as a ratio. Check what the Setup aspect select shows once a size lands outside its list, and file it upstream if the answer is misleading rather than merely blank.
 - [x] 3.5 Name the shapes for the shape, not for the company: "Portrait (4:5)" rather than a platform's name. The dimensions are facts about a picture, and a product that brands them takes on a claim it cannot keep when the platform changes its mind.
 - [x] 3.6 Create nothing until it is confirmed: no canvas, no layer, no value. Prove that leaving mid-step is indistinguishable from never having started.
-- [ ] 3.7 Record honestly that these controls remain in the runtime Setup section, because a product cannot suppress it. File the gap upstream rather than describing the duplicate as intended.
+- [x] 3.7 Record honestly that these controls remain in the runtime Setup section, because a product cannot suppress it. File the gap upstream rather than describing the duplicate as intended.
 
 ## 4. Move the technique choice
 
@@ -52,9 +52,9 @@
 
 ## 8. Layer-row actions — blocked
 
-- [ ] 8.1 File the upstream issue: `layers-panel-row.tsx` hardcodes visibility and delete at lines 262 and 277 with no product hook, and `shader-authoring` forbids a product-authored layer list, so a duplicate or settings action on a row cannot be built from the product side. Name both the requested icons and the operations that already exist behind them.
-- [ ] 8.2 Do not approximate it. Record in this task why each approximation is worse than waiting: a product row list is forbidden, a per-layer panel control is what this change removes, and a gear opened from anywhere but the row is a second way to do one thing.
-- [ ] 8.3 Leave the existing duplicate action working until the runtime offers the hook.
+- [x] 8.1 File the upstream issue: `layers-panel-row.tsx` hardcodes visibility and delete at lines 262 and 277 with no product hook, and `shader-authoring` forbids a product-authored layer list, so a duplicate or settings action on a row cannot be built from the product side. Name both the requested icons and the operations that already exist behind them.
+- [x] 8.2 Do not approximate it. Record in this task why each approximation is worse than waiting: a product row list is forbidden, a per-layer panel control is what this change removes, and a gear opened from anywhere but the row is a second way to do one thing.
+- [x] 8.3 Leave the existing duplicate action working until the runtime offers the hook.
 
 ## 9. Verify and close
 

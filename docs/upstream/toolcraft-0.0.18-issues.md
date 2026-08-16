@@ -630,6 +630,78 @@ derived when the schema declares a playback timeline, with the workload
 dimensions the preview path already names. The measurement helpers exist; what
 is missing is the declaration that makes them addressable.
 
+## 16. A layer row takes exactly two actions, and a product cannot add a third
+
+`layers-panel-row.tsx` renders the row's action cluster itself: a visibility
+toggle and a delete, hardcoded as two `<Button>` elements with `onToggleVisibility`
+and `onDelete` wired straight to runtime handlers. There is no `layerRowActions`
+prop, no slot, no composition point — the set is closed at two.
+
+The obvious workaround is closed too. `shader-authoring` forbids a
+product-authored layer list, so a product cannot render its own rows and put the
+actions where it wants them; the runtime panel is the only layer list a product
+of this kind is allowed to have.
+
+**What was asked for here.** Two icons on each row: duplicate, and a gear that
+opens the composition application aimed at that layer. Both operations already
+exist and both already work — `duplicate-layer` and the aimed application are
+product panel actions today. The gap is not capability. It is that neither can
+be reached from the row the author is looking at, which is the only place either
+one means anything: "duplicate *this*" and "apply to *this*" are questions about
+a specific row, and a control that lives elsewhere has to be told which row
+first, which is the whole problem it was meant to solve.
+
+**Why no approximation was shipped.** Three were considered and each is worse
+than the gap:
+
+- *A product-authored row list.* Forbidden outright, and it would fork layer
+  selection, drag ordering, group nesting and keyboard handling away from the
+  runtime that owns them.
+- *A per-layer control in the panel.* This is precisely what the dialog-first
+  change removed. Putting it back to serve a row action would undo the change
+  that motivated the request.
+- *A gear opened from somewhere other than the row.* Two ways to do one thing,
+  and the second way is the one that already existed and was found wanting.
+
+So the existing duplicate action stays where it is, working, until the row can
+hold it.
+
+**What would fix it.** A `layerRowActions` composition point taking the same
+shape a panel section's `actions` already takes — label, icon, value, dispatched
+back through `onPanelAction` with the row's layer id. The product side of that is
+already written.
+
+## 17. Setup is unconditional, so a product-owned setup step is a duplicate
+
+`runtime-setup-section.ts` always renders Aspect ratio, Canvas width, Canvas
+height, Resolution scale and Background into the Setup section. A product has no
+way to hide any of them: there is no flag on the schema that suppresses a runtime
+section or an individual runtime control within one.
+
+That is right for a product whose sizing is incidental. It is wrong for one whose
+sizing is a *decision made before there is anything to size*. Croix10 was asked
+for a flow that opens on a dialog, asks what to make and how big, and then lands
+the author on a canvas — with those questions gone from the sidebar afterwards,
+because they have been answered.
+
+The first half is buildable and was built. The second half is not. The flow
+writes through the runtime's own targets — `canvas.setSize`, the aspect target,
+the background target — precisely so there is one owner rather than two, and the
+result is that the same five controls are still sitting in Setup after the flow
+closes. An author who has just answered "how big" finds the question again, in a
+panel, phrased differently.
+
+**This is a duplicate, not a design.** Describing it as "the dialog for setup,
+the panel for adjustment" would be a rationalisation written after the fact: the
+panel controls were not chosen for adjustment, they are simply the ones the
+runtime always shows. The product's own setup section was removed; the runtime's
+remains.
+
+**What would fix it.** Either a per-control suppression on the runtime Setup
+section, or — better, because it states the reason rather than the mechanism — a
+schema declaration that setup is product-owned, which the runtime honours by
+withholding the controls whose answers the product has taken responsibility for.
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
