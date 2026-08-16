@@ -1,13 +1,14 @@
 # The work starts in a dialog, not in a sidebar
 
-> **Blocked. Do not implement.** Group 1 was written as a gate and the gate failed:
-> a product may import the runtime's Dialog and has nowhere to render it. The three
-> surfaces that could paint over the app each exclude it — `controlRenderers` needs a
-> fit check that modality cannot honestly supply, `canvasContent` may not contain
-> buttons or settings UI, and `infiniteCanvasContent` takes no pointer input. Filed
-> as upstream issue 14 with the smallest fix. The proposal is kept intact because the
-> problem it describes is real and the design is what to build the day a modal
-> surface exists.
+> **Unblocked by decision, not by discovery.** Group 1's gate failed as written: no
+> decision contract permits a product modal, and upstream issue 14 records why. The
+> product owner, told that, instructed that it be built regardless. So it is, in
+> product code, using the runtime's own Dialog composite — which the boundary does
+> permit importing — with the framework untouched and the integrity gate green.
+>
+> The deviation is recorded at the top of `studio-onboarding.ts` rather than buried
+> here. It is a contract judgement, which can be revisited; the alternative on the
+> table was editing signed framework source, which cannot.
 
 ## Why
 

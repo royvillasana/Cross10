@@ -150,44 +150,44 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
 export const appControlSectionInventory: readonly ToolcraftControlSectionInventoryEntry[] =
   [
     {
-      entity: "Gallery",
-      entityId: "gallery",
+      entity: "Composition",
+      entityId: "composition",
       groupingReason:
-        "Choosing a technique by looking at it. The thumbnails are the whole content of this section, and imagePicker is a standalone control, so the runtime gives it a section of its own whether or not the product asks -- declared explicitly here so the id stays nameable.",
-      id: "gallery",
-      targets: ["gallery.entry"],
-      title: "Gallery",
+        "Everything the panel still does with a composition, once choosing one moved into the flow: the door back to it, the way back from a replacement it caused, and applying one to layers that already exist. They sit together because they are read together -- an author looking at their work decides to change what it is, to undo having changed it, or to push a construction onto part of it.",
+      id: "composition",
+      targets: ["gallery.actions"],
+      title: "Composition",
       workflowStage: "start",
     },
     {
-      entity: "Chosen composition",
-      entityId: "gallery-apply",
+      entity: "Composition source",
+      entityId: "composition-source",
       groupingReason:
-        "Doing something with the technique that was chosen: aiming it, putting it there, and taking that back. Adjacent to the picker because the two are one act read in order -- look, aim, then press -- and they share an entityId for the same reason. The target sits with the presses because it gates them: aiming at the canvas is a replacement and asks first, aiming at a layer, a group, or the pictures adds to the work and does not, and each press is offered only for the aim it belongs to.",
-      id: "gallery-apply",
-      targets: ["gallery.target", "gallery.actions", "gallery.engineActions"],
-      title: "Chosen composition",
-      workflowStage: "start",
+        "Which composition a narrow application pushes onto layers that already exist. Its own section because imagePicker is standalone and the runtime splits it out whatever the product declares -- and its own entity because it answers a different question from the technique the canvas is working in, which the flow owns.",
+      id: "composition-source",
+      targets: ["gallery.entry"],
+      title: "Composition Source",
+      workflowStage: "compose",
+    },
+    {
+      entity: "Applied composition",
+      entityId: "composition-apply",
+      groupingReason:
+        "Pushing a construction onto layers that already exist: what it lands on, and the press that lands it. Their own section because they are the additive half -- an edit to work in progress -- and because keeping them away from the door above stops a select that names layers from becoming the semantic peer of a button that opens a surface.",
+      id: "composition-apply",
+      targets: ["gallery.target", "gallery.engineActions"],
+      title: "Apply A Composition",
+      workflowStage: "compose",
     },
     {
       entity: "Previous stack",
-      entityId: "gallery-restore",
+      entityId: "composition-restore",
       groupingReason:
-        "Coming back from the last replacement. Its own entity because what it acts on is not the chosen entry but the stack that preceded it, whatever entry caused the replacement -- and keeping it out of the applicator means the aim above is not a condition on it, which it is not.",
-      id: "gallery-restore",
+        "Coming back from the last replacement. Its own entity because what it acts on is the stack that preceded the change rather than anything chosen since, and it is read at a different moment from everything else -- after a change, looking at the result, deciding against it.",
+      id: "composition-restore",
       targets: ["gallery.restore"],
       title: "Previous Stack",
       workflowStage: "recover",
-    },
-    {
-      entity: "Reference",
-      entityId: "reference",
-      groupingReason:
-        "Choosing something to work against by looking at it. The thumbnails are the whole content of this section, and imagePicker is a standalone control, so the runtime gives it a section of its own whether or not the product asks -- declared explicitly here so the id stays nameable.",
-      id: "reference",
-      targets: ["reference.entry"],
-      title: "Reference",
-      workflowStage: "aim",
     },
     {
       entity: "Reference view",

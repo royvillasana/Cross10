@@ -27,14 +27,23 @@ import {
   STUDIO_ONBOARDING_CHOICE_TARGET,
   STUDIO_ONBOARDING_CHOOSING,
   STUDIO_ONBOARDING_CLOSED,
+  STUDIO_ONBOARDING_REFERENCE,
+  STUDIO_ONBOARDING_REPLACING,
   STUDIO_ONBOARDING_SETTLED_TARGET,
   STUDIO_ONBOARDING_SIZING,
+  planStudioOnboardingReplacement,
+  planStudioOnboardingStep,
   STUDIO_OUTPUT_SHAPES,
 } from "./studio-onboarding";
 import {
   readStudioLayerRecord,
   STUDIO_LAYER_RECORD_TARGET,
 } from "./studio-stack-state";
+import {
+  STUDIO_REFERENCE_ENTRY_TARGET,
+  STUDIO_REFERENCE_ITEMS,
+  STUDIO_REFERENCE_OPACITY_TARGET,
+} from "./studio-reference";
 
 /**
  * The first thing a user meets, and the steps between opening the app and having
@@ -175,7 +184,13 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                     className={styles.card}
                     data-studio-onboarding-card={card.value}
                     key={card.value}
-                    onClick={() => run(planStudioOnboardingChoice(card.value))}
+                    onClick={() =>
+                      run(
+                        planStudioOnboardingChoice(card.value, {
+                          hasWork: layers.length > 0,
+                        }),
+                      )
+                    }
                     type="button"
                   >
                     {card.src ? (
@@ -184,6 +199,95 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                       <span className={`${styles.thumb} ${styles.blank}`}>+</span>
                     )}
                     <span className={styles.cardLabel}>{card.label}</span>
+                  </button>
+                ))}
+              </div>
+            </DialogBody>
+          </>
+        ) : step === STUDIO_ONBOARDING_REPLACING ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>This replaces what you have</DialogTitle>
+              <DialogDescription>
+                A technique is a whole construction, not a setting — starting{" "}
+                {chosen?.label ?? "a new one"} means becoming that stack. Your
+                current work goes. You can bring it back with Restore previous.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <button
+                className={styles.shape}
+                data-studio-onboarding-keep=""
+                onClick={() => run(planStudioOnboardingStep(STUDIO_ONBOARDING_CHOOSING))}
+                type="button"
+              >
+                Keep my work
+              </button>
+              <button
+                className={styles.shape}
+                data-studio-onboarding-replace=""
+                onClick={() =>
+                  run(
+                    planStudioOnboardingReplacement({
+                      choice,
+                      layers,
+                      record: readStudioLayerRecord(values[STUDIO_LAYER_RECORD_TARGET]),
+                      selectedLayerId: state.selectedLayerId ?? null,
+                    }),
+                  )
+                }
+                type="button"
+              >
+                Replace it
+              </button>
+            </DialogFooter>
+          </>
+        ) : step === STUDIO_ONBOARDING_REFERENCE ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>What are you working against?</DialogTitle>
+              <DialogDescription>
+                A study sits behind the canvas so you can see how far off you are.
+                It is never part of the work and never reaches an export. Set how
+                strongly it shows in the panel.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody>
+              <div className={styles.grid}>
+                {STUDIO_REFERENCE_ITEMS.map((item) => (
+                  <button
+                    aria-label={item.alt}
+                    aria-pressed={item.value === values[STUDIO_REFERENCE_ENTRY_TARGET]}
+                    className={styles.card}
+                    data-studio-onboarding-study={item.value}
+                    key={item.value}
+                    onClick={() =>
+                      run([
+                        {
+                          history: "skip",
+                          target: STUDIO_REFERENCE_ENTRY_TARGET,
+                          type: "controls.setValue",
+                          value: item.value,
+                        },
+                        // Shown at once, because a study nobody can see is a
+                        // study nobody chose. The strength stays adjustable in
+                        // the panel, where it is looked at against the work.
+                        ...(Number(values[STUDIO_REFERENCE_OPACITY_TARGET] ?? 0) > 0
+                          ? []
+                          : [
+                              {
+                                target: STUDIO_REFERENCE_OPACITY_TARGET,
+                                type: "controls.setValue",
+                                value: 0.5,
+                              },
+                            ]),
+                        ...planStudioOnboardingDismissal(),
+                      ])
+                    }
+                    type="button"
+                  >
+                    <img alt="" className={styles.thumb} src={item.src} />
+                    <span className={styles.cardLabel}>{item.alt}</span>
                   </button>
                 ))}
               </div>

@@ -12,23 +12,21 @@ import {
   studioApplicationLayerIds,
   STUDIO_APPLY_TARGET_TARGET,
   STUDIO_CURSOR_AWAY,
-  STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SNAPSHOT_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
   readStudioApplyTarget,
   readStudioLayerEntry,
   readStudioLayerRecord,
-  readStudioPendingTechnique,
   readStudioStackSnapshot,
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
 import {
-  findStudioPreset,
-  planStudioPresetApplication,
-  planStudioTechniqueChange,
-  planStudioTechniqueDecline,
-} from "./studio-presets";
+  STUDIO_ONBOARDING_CHOOSING,
+  STUDIO_ONBOARDING_REFERENCE,
+  STUDIO_ONBOARDING_TARGET,
+} from "./studio-onboarding";
+import { findStudioPreset, planStudioPresetApplication } from "./studio-presets";
 import { createStudioStackRenderer } from "./studio-stack-render";
 
 /**
@@ -125,37 +123,19 @@ function handleStudioPanelAction({
     return;
   }
 
-  if (action.value === "apply-preset" || action.value === "confirm-preset") {
-    // The gallery is an applicator, not a mode (R58): this replaces the stack
-    // and stores nothing about having done so. The entry the picker names is
-    // read at the moment of the press rather than followed, which is what makes
-    // the select a picker rather than a switch.
-    const preset = findStudioPreset(state.values["gallery.entry"]);
-    if (!preset) return;
-
-    // Whether this press offers or carries out is the plan's decision, not
-    // this dispatcher's: the snapshot that makes the change reversible is
-    // emitted by the same plan, so a caller cannot apply without capturing
-    // first and cannot apply without having asked first either.
-    for (const command of planStudioTechniqueChange({
-      confirmed: action.value === "confirm-preset",
-      layers: state.layers ?? [],
-      pendingTechnique: readStudioPendingTechnique(
-        state.values[STUDIO_PENDING_TECHNIQUE_TARGET],
-      ),
-      preset,
-      record: readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
-      selectedLayerId: state.selectedLayerId ?? null,
-    })) {
-      dispatch(command as Parameters<typeof dispatch>[0]);
-    }
-    return;
-  }
-
-  if (action.value === "cancel-preset") {
-    for (const command of planStudioTechniqueDecline()) {
-      dispatch(command as Parameters<typeof dispatch>[0]);
-    }
+  if (action.value === "open-onboarding" || action.value === "open-reference") {
+    // The panel's door into the flow. It changes nothing but which step is
+    // showing; every decision, and every question about losing work, belongs to
+    // the surface it opens.
+    dispatch({
+      history: "skip",
+      target: STUDIO_ONBOARDING_TARGET,
+      type: "controls.setValue",
+      value:
+        action.value === "open-reference"
+          ? STUDIO_ONBOARDING_REFERENCE
+          : STUDIO_ONBOARDING_CHOOSING,
+    } as Parameters<typeof dispatch>[0]);
     return;
   }
 

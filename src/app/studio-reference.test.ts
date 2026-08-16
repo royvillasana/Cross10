@@ -57,13 +57,20 @@ describe("what the reference shows", () => {
     ).toBe("");
   });
 
-  it("shows nothing for an entry that names no render", () => {
+  it("falls back to the first study when none has been chosen", () => {
+    // The choice lives in a dialog now, so the value starts undefined rather
+    // than at a control's default. Without the fallback the strength slider in
+    // the panel moves with nothing to show, which reads as a broken slider
+    // rather than as an unmade choice.
     expect(
       readStudioReferenceView({
         [STUDIO_REFERENCE_ENTRY_TARGET]: "no-such-entry",
         [STUDIO_REFERENCE_OPACITY_TARGET]: 1,
       }).src,
-    ).toBe("");
+    ).toBe(STUDIO_REFERENCE_ITEMS[0]?.src);
+    expect(
+      readStudioReferenceView({ [STUDIO_REFERENCE_OPACITY_TARGET]: 1 }).src,
+    ).toBe(STUDIO_REFERENCE_ITEMS[0]?.src);
   });
 
   it("falls back to laying it over for anything it does not recognise", () => {

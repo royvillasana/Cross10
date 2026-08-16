@@ -39,20 +39,17 @@ describe("appSchema", () => {
     // also why it carries no inventory entry of its own.
     expect(sections.map((section) => section.title)).toEqual([
       "Setup",
-      "Gallery",
-      // Its own section because imagePicker is standalone: the runtime splits
-      // it out whatever the product declares, so the split is declared here to
-      // keep the id nameable by the inventory.
-      "Chosen composition",
-      // Its own section because what it acts on is the stack that preceded the
-      // last replacement rather than the entry that caused it -- and because
-      // beside the presses the aim above would have been its semantic peer,
-      // obliging a visibility proof under four aims it does not depend on.
+      // One section where four used to be. Choosing a technique and choosing a
+      // study both moved into the onboarding flow, because they decide what the
+      // canvas *is* rather than shaping work that exists. What is left is the
+      // door back to that flow, the way back from a replacement, and the narrow
+      // application that edits layers already on the canvas.
+      "Composition",
+      "Composition Source",
+      "Apply A Composition",
       "Previous Stack",
-      // Before everything that changes the composition, because it changes
-      // none of it: a reference is something to aim at, chosen after seeing
-      // the techniques and before building anything.
-      "Reference",
+      // Stays in the panel: how hard to look at a study, and how to read it
+      // against the work, are both adjusted while looking at the canvas.
       "Reference View",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide

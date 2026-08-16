@@ -75,8 +75,17 @@ export function readStudioReferenceOpacity(value: unknown): number {
     : 0;
 }
 
+/**
+ * The render a chosen entry names, or the first one when nothing is chosen yet.
+ *
+ * The fallback exists because the choice moved into a dialog. As a control it
+ * carried a `defaultValue`; as a plain value it starts undefined, and without a
+ * fallback the strength slider in the panel moved with nothing to show — which
+ * reads as a broken slider rather than as an unmade choice.
+ */
 export function readStudioReferenceSource(value: unknown): string {
-  return typeof value === "string" ? (STUDIO_TECHNIQUE_THUMBNAILS[value] ?? "") : "";
+  const chosen = typeof value === "string" ? STUDIO_TECHNIQUE_THUMBNAILS[value] : undefined;
+  return chosen ?? STUDIO_REFERENCE_ITEMS[0]?.src ?? "";
 }
 
 export type StudioReferenceView = Readonly<{

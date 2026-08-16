@@ -58,15 +58,28 @@ export const STUDIO_ONBOARDING_SETTLED_TARGET = "stack.onboardingSettled";
 export const STUDIO_ONBOARDING_CLOSED = "closed";
 export const STUDIO_ONBOARDING_CHOOSING = "choosing";
 export const STUDIO_ONBOARDING_SIZING = "sizing";
+/** Reopened over existing work, which is a replacement and has to be agreed to. */
+export const STUDIO_ONBOARDING_REPLACING = "replacing";
+/** Choosing what to work against, rather than what to make. */
+export const STUDIO_ONBOARDING_REFERENCE = "reference";
 
 export type StudioOnboardingStep =
   | typeof STUDIO_ONBOARDING_CHOOSING
   | typeof STUDIO_ONBOARDING_CLOSED
+  | typeof STUDIO_ONBOARDING_REFERENCE
+  | typeof STUDIO_ONBOARDING_REPLACING
   | typeof STUDIO_ONBOARDING_SIZING;
 
+const STUDIO_ONBOARDING_STEPS = new Set<string>([
+  STUDIO_ONBOARDING_CHOOSING,
+  STUDIO_ONBOARDING_REFERENCE,
+  STUDIO_ONBOARDING_REPLACING,
+  STUDIO_ONBOARDING_SIZING,
+]);
+
 export function readStudioOnboardingStep(value: unknown): StudioOnboardingStep {
-  return value === STUDIO_ONBOARDING_CHOOSING || value === STUDIO_ONBOARDING_SIZING
-    ? value
+  return typeof value === "string" && STUDIO_ONBOARDING_STEPS.has(value)
+    ? (value as StudioOnboardingStep)
     : STUDIO_ONBOARDING_CLOSED;
 }
 
@@ -151,9 +164,17 @@ export function shouldStudioOnboardingOpen({
   return step === STUDIO_ONBOARDING_CLOSED && !settled && layerCount === 0;
 }
 
-/** Choosing a card: recorded, and the flow moves on. Nothing is applied yet. */
+/**
+ * Choosing a card: recorded, and the flow moves on. Nothing is applied yet.
+ *
+ * Where it moves to depends on whether there is work to lose. On an empty canvas
+ * the next question is how big it should be. Over an existing composition the
+ * next question is whether the author means to replace it, because a technique
+ * *is* a stack (R71) and changing it means becoming that stack.
+ */
 export function planStudioOnboardingChoice(
   choice: string,
+  { hasWork = false }: { readonly hasWork?: boolean } = {},
 ): readonly StudioOnboardingCommand[] {
   return [
     {
@@ -166,8 +187,51 @@ export function planStudioOnboardingChoice(
       history: "skip",
       target: STUDIO_ONBOARDING_TARGET,
       type: "controls.setValue",
-      value: STUDIO_ONBOARDING_SIZING,
+      value: hasWork ? STUDIO_ONBOARDING_REPLACING : STUDIO_ONBOARDING_SIZING,
     },
+  ];
+}
+
+/** Going back a step, which changes nothing but where the flow is. */
+export function planStudioOnboardingStep(
+  step: StudioOnboardingStep,
+): readonly StudioOnboardingCommand[] {
+  return [
+    {
+      history: "skip",
+      target: STUDIO_ONBOARDING_TARGET,
+      type: "controls.setValue",
+      value: step,
+    },
+  ];
+}
+
+/**
+ * Agreeing to replace the current work.
+ *
+ * The canvas is not resized here: an author who already has a composition chose
+ * its dimensions once, and a technique change is not the moment to take that
+ * back. Only the stack is replaced, through the same planner the gallery used,
+ * so the snapshot that makes it revertible is captured by the plan rather than
+ * by this caller.
+ */
+export function planStudioOnboardingReplacement({
+  choice,
+  layers,
+  record,
+  selectedLayerId,
+}: {
+  readonly choice: string;
+  readonly layers: readonly StudioRuntimeLayer[];
+  readonly record: StudioLayerRecord;
+  readonly selectedLayerId: string | null;
+}): readonly StudioOnboardingCommand[] {
+  const preset = findStudioPreset(choice);
+  if (!preset) return planStudioOnboardingDismissal();
+
+  return [
+    ...planStudioPresetApplication({ layers, preset, record, selectedLayerId }),
+    ...planStudioOnboardingDismissal(),
   ];
 }
 

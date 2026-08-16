@@ -2,9 +2,7 @@ import { type StudioLayerTypeId } from "./studio-layers";
 import {
   STUDIO_APPLY_TO_CANVAS,
   STUDIO_LAYER_RECORD_TARGET,
-  STUDIO_PENDING_TECHNIQUE_TARGET,
   STUDIO_SNAPSHOT_TARGET,
-  STUDIO_TECHNIQUE_TARGET,
   captureStudioStackSnapshot,
   collectStudioSelectedLayerEdit,
   projectStudioLayerEntry,
@@ -915,102 +913,20 @@ export function studioPresetLayerEntry(layer: StudioPresetLayer): StudioLayerRec
   );
 }
 
-/**
- * A technique change, and the offer that has to precede it.
+/*
+ * The two-press technique change was removed with R74.
  *
- * Two presses rather than one, and the decision about which of them is being
- * made lives here rather than in the dispatcher, for the same reason every
- * other plan in this module does: the interesting part is *when it refuses to
- * act*, and that is worth asserting without a runtime.
+ * `planStudioTechniqueChange` and `planStudioTechniqueDecline` lived here
+ * because the product had no modal and a destructive change still had to be
+ * agreed to, so the agreement was expressed as a second press on an actions
+ * control. The onboarding dialog asks the question properly now, so keeping the
+ * pair would have left two ways to confirm one thing -- and the panel one would
+ * have been the one nobody saw.
  *
- * Three outcomes, in the order they can happen:
- *
- * - **Nothing to lose.** An empty canvas has no work to replace, so the first
- *   press applies. Asking anyway is how a confirmation becomes something a user
- *   learns to click through.
- * - **Not yet agreed.** The offer is recorded and *nothing else is emitted*.
- *   The canvas has to be untouched until the change is confirmed, so this
- *   deliberately returns one command rather than a smaller application.
- * - **Agreed to this entry.** The replacement runs, the offer is cleared, and
- *   the canvas records which construction it was set to.
- *
- * The confirming press is matched against the entry that was armed. An author
- * who arms a change, browses the thumbnails, and then confirms is agreeing to
- * what they were shown, not to whichever entry is under the cursor — and a
- * confirmation that could apply something never offered would be worse than
- * none.
- *
- * Confirming does not waive the revert: the application still captures its
- * snapshot, because agreeing to proceed is not agreeing to lose the work.
+ * What did not change is the part that mattered: the change is still revertible,
+ * because the snapshot is still captured by `planStudioPresetApplication` rather
+ * than by whoever calls it.
  */
-export function planStudioTechniqueChange({
-  confirmed,
-  layers,
-  pendingTechnique,
-  preset,
-  record,
-  selectedLayerId,
-}: {
-  /** True for the confirming press, false for the one that offers. */
-  readonly confirmed: boolean;
-  readonly layers: readonly StudioRuntimeLayer[];
-  readonly pendingTechnique: string | null;
-  readonly preset: StudioPreset;
-  readonly record: StudioLayerRecord;
-  readonly selectedLayerId: string | null;
-}): readonly Readonly<Record<string, unknown>>[] {
-  const agreed = pendingTechnique === preset.id;
-
-  if (confirmed && !agreed) return [];
-
-  if (!confirmed && !agreed && layers.length > 0) {
-    return [
-      {
-        label: `Offer to replace the work with ${preset.label}`,
-        target: STUDIO_PENDING_TECHNIQUE_TARGET,
-        type: "controls.setValue",
-        value: preset.id,
-      },
-    ];
-  }
-
-  return [
-    ...planStudioPresetApplication({ layers, preset, record, selectedLayerId }),
-    {
-      label: "Clear the pending technique",
-      target: STUDIO_PENDING_TECHNIQUE_TARGET,
-      type: "controls.setValue",
-      value: "",
-    },
-    {
-      label: `Record ${preset.label} as the canvas technique`,
-      target: STUDIO_TECHNIQUE_TARGET,
-      type: "controls.setValue",
-      value: preset.id,
-    },
-  ];
-}
-
-/**
- * Declining, which writes one thing and touches nothing else.
- *
- * No layer command, no record write, and no write to the technique the canvas
- * is already in — "declining changes nothing" is a claim about the whole
- * composition, and the cheapest way to keep it true is for there to be nothing
- * else here to get wrong.
- */
-export function planStudioTechniqueDecline(): readonly Readonly<
-  Record<string, unknown>
->[] {
-  return [
-    {
-      label: "Keep the current work",
-      target: STUDIO_PENDING_TECHNIQUE_TARGET,
-      type: "controls.setValue",
-      value: "",
-    },
-  ];
-}
 
 /**
  * Applying an entry to layers that already exist.

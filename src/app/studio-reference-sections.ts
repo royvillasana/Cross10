@@ -1,49 +1,18 @@
 import {
-  STUDIO_REFERENCE_ITEMS,
   STUDIO_REFERENCE_COMPARE_TARGET,
-  STUDIO_REFERENCE_ENTRY_TARGET,
   STUDIO_REFERENCE_OPACITY_TARGET,
 } from "./studio-reference";
 
 /**
  * The reference: something to aim at, and how hard to look at it.
  *
- * Two sections rather than one for the same reason the gallery is two:
- * `imagePicker` is a standalone control, so the runtime gives it a section of
- * its own whatever the product declares. Declaring the split keeps the ids
- * nameable by the inventory.
- *
- * Placed after the gallery and before the layer sections, which is the order
- * the work happens in: see what the techniques look like, put one behind the
- * canvas to work against, then build.
+ * One section now. *Which* study to work against is chosen in the onboarding
+ * dialog, because that is a decision taken before building and revisited
+ * occasionally rather than a control that shapes the work. What stays is how
+ * hard to look at it and how to read it against the work -- both adjusted while
+ * looking at the canvas, which is exactly what the panel is for.
  */
 export const STUDIO_REFERENCE_SECTIONS = [
-  {
-    controls: {
-      // The same pictures the gallery offers, and deliberately the same ones:
-      // the library is what this product knows how to make, so it is also what
-      // it can honestly ask an author to reproduce.
-      //
-      // The verbs are opposite and the titles carry that. The gallery's picker
-      // *replaces the canvas*. This one changes nothing about the composition —
-      // it puts a picture behind the work so the author can see how far off
-      // they are, and pressing nothing is what applies it.
-      entry: {
-        semanticGroup: "reference",
-        applicability: { mode: "always" },
-        defaultValue: STUDIO_REFERENCE_ITEMS[0]?.value ?? "",
-        items: STUDIO_REFERENCE_ITEMS,
-        label: "Study",
-        performanceReason:
-          "Names a picture already held in memory; it is drawn by the browser beside the canvas rather than by the renderer.",
-        performanceRole: "responsiveness",
-        target: STUDIO_REFERENCE_ENTRY_TARGET,
-        type: "imagePicker",
-      },
-    },
-    id: "reference",
-    title: "Reference",
-  },
   {
     controls: {
       // Zero by default, and zero is how a reference is dismissed.

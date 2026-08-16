@@ -60,27 +60,45 @@ export const studioHistoryAcceptanceRows: readonly ToolcraftComponentAcceptance[
  */
 export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
+    actionCoverage: ["open-onboarding", "open-reference"],
+    automated: true,
+    automatedTestName: "opens the flow at the step each door names",
+    browser: true,
+    browserTestName: "browser: studio reopens the flow from the panel",
+    componentType: "actions",
+    // Opening changes nothing but which surface is showing. The rendered claim
+    // belongs to what it opens, and to the rows below -- the half of the old
+    // gallery that still edits work from the panel.
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Pressing Change the technique opens the flow on the technique cards; pressing Work against a study opens it on the studies. Neither changes a layer, a layer value, or the rendered composition until a choice is made inside it.",
+    fixture: "Croix10 with a two-layer stack",
+    id: "gallery.actions",
+    kind: "control",
+    target: "gallery.actions",
+    userAction: "Press Change the technique, then Work against a study.",
+  },
+  {
     automated: true,
     automatedTestName: "names every entry in the library exactly once",
     browser: true,
     browserTestName: "browser: studio gallery applies a composition and leaves every control live",
     componentType: "imagePicker",
     // Naming an entry is a choice, not a render: what it changes is what the
-    // action beside it will apply. The rendered claim belongs to that action's
-    // row, and splitting them this way is what keeps each honest.
+    // press beside it will push. The rendered claim belongs to that press.
     evidence: "command-side-effect",
     expectedObservable:
-      "Choosing a different composition in the gallery changes which entry Apply will bring in, and changes nothing on the canvas until it is pressed.",
+      "Choosing a different composition changes which entry Apply to the selection will push onto the layers the aim names, and changes nothing on the canvas until it is pressed.",
     fixture: "Croix10 with the default stack",
     id: "gallery.entry",
     kind: "control",
-    // Every entry, and it is not ceremony: a preset that failed to render
-    // would look exactly like one nobody had proved, and the library is the
-    // one place in this product where ten separate compositions are asserted
-    // to be compositions at all.
+    // Every entry, and it is not ceremony: a preset that failed to render would
+    // look exactly like one nobody had proved, and the library is the one place
+    // in this product where nineteen separate compositions are asserted to be
+    // compositions at all.
     optionCoverage: "each-visible-item",
     target: "gallery.entry",
-    userAction: "Choose a different composition in the gallery.",
+    userAction: "Choose a different composition.",
   },
   {
     automated: true,
@@ -88,38 +106,15 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     browser: true,
     browserTestName: "browser: studio gallery aims an entry at one layer",
     componentType: "select",
-    // Aiming changes nothing on its own; what it changes is which press is
-    // offered and what that press will write. The rendered claims belong to the
-    // two action rows below.
     evidence: "command-side-effect",
     expectedObservable:
-      "Choosing the whole canvas offers the technique change and its confirmation; choosing the selected layer, the selected group, or the pictures offers the single additive press instead, and the canvas is untouched by the choice itself.",
+      "Choosing the selected layer, the selected group, or the pictures decides which layers the next press writes to, and the canvas is untouched by the choice itself.",
     fixture: "Croix10 with a two-layer stack",
     id: "gallery.target",
     kind: "control",
-    // Named one by one rather than as a count: each target resolves to a
-    // different set of layers, and a proof of one says nothing about the rest.
-    optionCoverage: ["canvas", "layer", "group", "image"],
+    optionCoverage: ["layer", "group", "image"],
     target: "gallery.target",
-    userAction: "Change what the chosen composition will be applied to.",
-  },
-  {
-    actionCoverage: ["apply-preset", "confirm-preset", "cancel-preset"],
-    automated: true,
-    automatedTestName:
-      "replaces the stack with the preset's own layers, and writes a record for exactly those",
-    browser: true,
-    browserTestName: "browser: studio gallery confirms before it replaces the work",
-    componentType: "actions",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "Over existing work the first press changes nothing and offers the replacement; pressing Keep my work leaves every layer and every layer value exactly as it was; pressing Yes replaces the stack with the chosen composition's layers -- the panel lists them under their own names and the canvas draws them -- and every control stays live over the result. Over an empty canvas the first press applies without asking.",
-    fixture: "Croix10 with the default stack",
-    id: "gallery.apply",
-    kind: "control",
-    target: "gallery.actions",
-    userAction:
-      "Choose a composition, press Change the technique, then either confirm or keep the current work.",
+    userAction: "Change what a composition will be applied to.",
   },
   {
     actionCoverage: ["apply-engine"],
@@ -136,7 +131,7 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     kind: "control",
     target: "gallery.engineActions",
     userAction:
-      "Choose a composition, aim it at the selected layer, and press Apply to the selection.",
+      "Aim a composition at the selected layer and press Apply to the selection.",
   },
   {
     actionCoverage: ["restore-stack"],
@@ -206,26 +201,6 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
  * looks right".
  */
 export const studioReferenceAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
-  {
-    automated: true,
-    automatedTestName: "offers every built-in render as a reference",
-    browser: true,
-    browserTestName: "browser: studio reference shows behind the work and reaches no artifact",
-    componentType: "imagePicker",
-    // Choosing a study changes what is shown *behind* the composition, so the
-    // rendered claim is about the editor surface rather than about the product
-    // output -- which is exactly the distinction the row has to keep, since the
-    // product output must be identical either way.
-    evidence: "command-side-effect",
-    expectedObservable:
-      "Choosing a different study changes the picture shown behind the composition, and changes no layer, no layer value, and nothing in the rendered composition.",
-    fixture: "Croix10 with the default stack and a reference showing",
-    id: "reference.entry",
-    kind: "control",
-    optionCoverage: "each-visible-item",
-    target: "reference.entry",
-    userAction: "Choose a different study in the reference picker.",
-  },
   {
     automated: true,
     automatedTestName: "shows nothing at zero and the chosen study above it",

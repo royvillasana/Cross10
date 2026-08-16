@@ -2,52 +2,60 @@ import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
 import { STUDIO_PRESETS, studioPresetPickerLabel } from "./studio-presets";
 
 /**
- * The gallery: a picker, and the action that applies what it names (R71).
+ * What is left in the panel now that choosing happens in a dialog.
  *
- * Two sections rather than one, and not by choice: `imagePicker` is a
- * standalone control, so the runtime gives it a section of its own whatever the
- * product declares. Declaring the split here rather than letting it happen is
- * what keeps the section ids stable -- an auto-split section is named with a
- * generated hash, which no inventory entry can name back.
+ * The thumbnails, the technique change and its confirmation all moved to the
+ * onboarding flow, where they belong: they decide what the canvas *is*, and a
+ * decision taken before there is work does not belong beside the controls that
+ * shape the work afterwards. What stays here is the door back to that flow, the
+ * way back from a replacement, and the narrow application -- the one that adds
+ * to the work rather than replacing it.
  *
- * Two controls rather than one select that applies on change, because every
- * rendered control's value is persisted and R58 decided the gallery stores no
- * claim about the stack. A select that applied on change would store exactly
- * that claim, and it would be false the moment anything was edited. Named as a
- * picker, its value stays true whatever the author does next: it is the entry
- * you are looking at, not the composition you are in.
- *
- * The action sits in this section because that is where what it acts on is, and
- * because a preset is applied rather than configured -- there is nothing here to
- * gate and nothing gated by it.
+ * `gallery.entry` is still a value and is still what a narrow application
+ * applies; it simply has no control any more. The dialog writes it, the panel
+ * reads it, and one target keeps one meaning across both.
  */
 export const STUDIO_GALLERY_SECTIONS = [
   {
     controls: {
-      // A picker of thumbnails rather than a list of names, because a name is
-      // not what anyone is choosing between. "Four-Ink Relief" and "Lamella
-      // Sweep" tell an author which investigation they are in and nothing about
-      // which one they want; the pictures do, and they are the first thing the
-      // panel shows.
+      // The door. It reopens the flow rather than doing anything itself, which
+      // is why it is one press with no confirmation attached: what it opens asks
+      // its own question, and asking twice trains the answer out of anyone.
+      open: {
+        semanticGroup: "composition",
+        applicability: { mode: "always" },
+        actions: [
+          { label: "Change the technique", value: "open-onboarding" },
+          { label: "Work against a study", value: "open-reference" },
+        ],
+        label: "What the canvas is working in",
+        performanceReason:
+          "Opens a product surface; nothing is rendered and no value changes until a choice is made in it.",
+        performanceRole: "responsiveness",
+        target: "gallery.actions",
+        type: "actions",
+      },
+    },
+    id: "composition",
+    title: "Composition",
+  },
+  {
+    controls: {
+      // Which composition the narrow application pushes.
       //
-      // `imagePicker` is the built-in for exactly this -- choosing one visual
-      // option from a set of thumbnails -- and it owns its own grid, so the
-      // item list is all that is passed. A product-authored gallery panel is
-      // not an option in any case: custom controls may not recreate runtime
-      // panels, and the runtime's dialog composites reach no product surface.
+      // This is *not* the technique picker that moved into the flow, and the
+      // difference is the whole reason it is here. The flow decides what the
+      // canvas *is* -- a replacement, asked about, taken before there is work.
+      // This decides what gets pushed onto a layer that already exists, which is
+      // an edit to work in progress and belongs beside the press that makes it.
       //
-      // Every thumbnail is a render the product itself produced from the entry
-      // it selects (`npm run thumbnails`). An approximation would be a second
-      // renderer free to drift, and a picture of something the app would not
-      // actually draw misdescribes the technique it is selling.
+      // Without it there was no user path to a narrow application at all: the
+      // press read an entry only the flow could set, and setting it there
+      // replaced the canvas. The proofs caught that by losing their fixture.
       entry: {
-        semanticGroup: "gallery",
+        semanticGroup: "apply",
         applicability: { mode: "always" },
         defaultValue: STUDIO_PRESETS[0]?.id ?? "",
-        // Named through the library's own function rather than from the label
-        // alone, so the series -- and, for the four the canvas can only evoke,
-        // that it is an evocation -- travels with every place an entry is
-        // offered. A picker of pictures has nowhere else to say it.
         items: STUDIO_PRESETS.map((preset) => ({
           alt: studioPresetPickerLabel(preset),
           src: STUDIO_TECHNIQUE_THUMBNAILS[preset.id] ?? "",
@@ -61,32 +69,23 @@ export const STUDIO_GALLERY_SECTIONS = [
         type: "imagePicker",
       },
     },
-    id: "gallery",
-    title: "Gallery",
+    id: "composition-source",
+    title: "Composition Source",
   },
   {
     controls: {
-      // What the entry is aimed at, and the reason there are two action
-      // controls below rather than one.
+      // What a composition is aimed at, for the half that stays in the panel.
       //
-      // The canvas target and the narrow targets are different verbs with
-      // different blast radii. Aiming at the canvas *replaces* the composition:
-      // it decides which layers exist, so it asks first. Aiming at a layer, a
-      // group, or the pictures restyles layers that already exist: it creates
-      // and destroys nothing, so it does not ask, and ordinary Undo takes it
-      // back because the only thing it writes is one `controls.setValue`.
-      //
-      // Naming the target first and gating the presses on it is what keeps
-      // those two verbs from sitting side by side under one label -- a
-      // destructive press one pixel from an additive one is how a user learns
-      // to dismiss the confirmation that protects them.
+      // The canvas aim went with the technique change, so what is left is the
+      // additive half: applying a chosen construction to a layer, a group, or
+      // the pictures. That is an edit to work that exists, which is what the
+      // panel is for.
       target: {
-        semanticGroup: "gallery",
+        semanticGroup: "apply",
         applicability: { mode: "always" },
-        defaultValue: "canvas",
-        label: "Apply it to",
+        defaultValue: "layer",
+        label: "Apply a composition to",
         options: [
-          { label: "The whole canvas", value: "canvas" },
           { label: "The selected layer", value: "layer" },
           { label: "The selected group", value: "group" },
           { label: "The pictures", value: "image" },
@@ -97,45 +96,9 @@ export const STUDIO_GALLERY_SECTIONS = [
         target: "gallery.target",
         type: "select",
       },
-      // The destructive press, and its confirmation, as one deliberate pair.
-      //
-      // Two presses rather than one, because there is no modal to raise:
-      // product code may not author panels or dialogs, and the runtime exposes
-      // neither composite. What is available is a control whose labels say what
-      // is about to happen, so the labels carry the statement the confirmation
-      // has to make.
-      //
-      // The first press arms and changes nothing on the canvas; the second
-      // carries it out; the third abandons it. Arming is skipped entirely when
-      // there is no work to replace -- an empty canvas has nothing to lose, and
-      // asking anyway is how a confirmation becomes noise.
-      apply: {
-        semanticGroup: "gallery",
-        applicability: {
-          all: [{ oneOf: ["canvas"], target: "gallery.target" }],
-          mode: "conditional",
-        },
-        actions: [
-          { label: "Change the technique", value: "apply-preset" },
-          { label: "Yes — replace my work", value: "confirm-preset" },
-          { label: "Keep my work", value: "cancel-preset" },
-        ],
-        label: "Changing the technique replaces the current work",
-        performanceReason:
-          "Replaces the stack once through runtime layer commands; the frame is redrawn by the same pass any edit uses.",
-        performanceRole: "responsiveness",
-        target: "gallery.actions",
-        type: "actions",
-      },
-      // The additive press. One button, no confirmation, and deliberately so:
-      // confirming an action that adds to the work trains the user to dismiss
-      // confirmations, which is what makes the destructive one dangerous.
       engine: {
-        semanticGroup: "gallery",
-        applicability: {
-          all: [{ oneOf: ["group", "image", "layer"], target: "gallery.target" }],
-          mode: "conditional",
-        },
+        semanticGroup: "apply",
+        applicability: { mode: "always" },
         actions: [{ label: "Apply to the selection", value: "apply-engine" }],
         label: "The rest of the stack is left alone",
         performanceReason:
@@ -145,33 +108,22 @@ export const STUDIO_GALLERY_SECTIONS = [
         type: "actions",
       },
     },
-    id: "gallery-apply",
-    title: "Chosen composition",
+    id: "composition-apply",
+    title: "Apply A Composition",
   },
   {
     controls: {
-      // Its own section, and its own entity, because what it acts on is not the
-      // chosen entry -- it is the stack that was there before the last
-      // replacement, whatever entry caused it. Sitting it beside the presses
-      // would also make the target above its semantic peer, which would oblige
-      // a proof that an ungated button is visible under each of four aims that
-      // have nothing to do with it.
-      //
       // Restore wants to appear only once there is a stack to come back to, and
-      // that is not expressible: an applicability predicate may only name a
-      // rendered control's target, and the snapshot is product-owned state with
-      // no control of its own. A discriminant target written beside the snapshot
-      // was rejected by the schema with "predicate target does not exist".
+      // that is still not expressible: an applicability predicate may only name
+      // a rendered control's target, and the snapshot is product-owned state
+      // with no control of its own. So it is always offered and does nothing
+      // when nothing is held.
       //
-      // So it is always offered and does nothing when nothing is held. The
-      // alternative -- giving the snapshot a rendered control purely so a
-      // predicate could read it -- would put a control in the panel that exists
-      // for the schema rather than for the user.
-      //
-      // Restore exists at all because the runtime cannot express it as undo:
-      // `layers.*` commands carry no `historyGroup`, so an application's deletes
-      // and adds are separate history entries and no press count reaches the
-      // stack underneath. Issue 7 in `docs/upstream/toolcraft-0.0.18-issues.md`.
+      // It stays in the panel rather than moving to the dialog because it is
+      // read at a different moment from everything else here -- after a change,
+      // looking at the result, deciding against it. A dialog you would have to
+      // reopen in order to undo something is a worse home than a button beside
+      // the work.
       restore: {
         semanticGroup: "previous-stack",
         applicability: { mode: "always" },
@@ -184,7 +136,7 @@ export const STUDIO_GALLERY_SECTIONS = [
         type: "actions",
       },
     },
-    id: "gallery-restore",
+    id: "composition-restore",
     title: "Previous Stack",
   },
 ] as const;

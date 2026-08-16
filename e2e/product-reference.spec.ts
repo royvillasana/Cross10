@@ -39,15 +39,25 @@ function studioReference(page: Page) {
   return page.locator(REFERENCE_OVERLAY);
 }
 
+/**
+ * Chooses a study, through the dialog that now owns the choice.
+ *
+ * Which study to work against is decided before building and revisited
+ * occasionally, so it moved into the flow with the rest of that kind of
+ * decision. How hard it shows and how it is read against the work stayed in the
+ * panel, because those are adjusted while looking at the canvas.
+ */
 async function setStudioReference(page: Page, label: string): Promise<void> {
   const preset = STUDIO_PRESETS.find((entry) => entry.label === label);
   if (!preset) throw new Error(`No preset is labelled "${label}".`);
+  void studioPresetPickerLabel;
 
   await page
-    .locator('[data-toolcraft-control-target="reference.entry"]')
-    .getByRole("button", { name: studioPresetPickerLabel(preset), exact: true })
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name: "Work against a study" })
     .first()
     .click();
+  await page.locator(`[data-studio-onboarding-study="${preset.id}"]`).click();
 }
 
 /** The study the overlay is currently showing, or an empty string for none. */

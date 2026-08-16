@@ -105,10 +105,24 @@ describe("the undo stack carries edits and nothing else", () => {
     // which is how a green suite sat over an apply whose previous stack no
     // number of Undo presses could reach. What actually covers that is the
     // test below and `studio-snapshot.test.ts`.
+    //
+    // **One `skip` is expected and is not an edit.** Opening the onboarding
+    // flow writes which step is showing, which is a consequence of pressing a
+    // door rather than a change to the work — recording it would put a surface
+    // on the undo stack, so a user's first Undo would close a dialog instead of
+    // taking back what they did. Everything the flow *applies* is dispatched by
+    // the ordinary planners and stays recorded.
     const modes = readDispatchedHistoryModes("app-composition.tsx");
 
     expect(modes.length).toBeGreaterThan(0);
-    expect(modes).toEqual(modes.map(() => null));
+    expect(
+      modes.filter((mode) => mode === null).length,
+      "the edits this file dispatches stay on the undo stack",
+    ).toBe(modes.length - 1);
+    expect(
+      modes.filter((mode) => mode === "skip"),
+      "only the flow's own step write is skipped",
+    ).toEqual(["skip"]);
   });
 });
 

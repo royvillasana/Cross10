@@ -156,6 +156,30 @@ export async function readStudioLayerVisible(
  * exposes its current value as its name, so a name-based query would match
  * whichever option happens to be selected.
  */
+/**
+ * Closes the onboarding flow if it opened.
+ *
+ * Every fixture below starts from an empty app, and an empty app is exactly what
+ * the flow exists to greet — so without this each of them builds its stack
+ * behind a modal and every panel click times out. Dismissing rather than
+ * completing it, because these fixtures are about the editor: what the flow does
+ * has its own proofs.
+ */
+export async function dismissStudioOnboarding(page: Page): Promise<void> {
+  const dialog = page.locator("[data-studio-onboarding]");
+  // It arrives a frame or two after the canvas, so wait for it rather than
+  // racing it — a fixture that checked once and moved on would be flaky in
+  // exactly the way that is hardest to read.
+  await expect
+    .poll(async () => dialog.count(), { timeout: 10_000 })
+    .toBeGreaterThan(0)
+    .catch(() => undefined);
+
+  if ((await dialog.count()) === 0) return;
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => dialog.count(), { timeout: 10_000 }).toBe(0);
+}
+
 export async function setStudioLayerKind(
   page: Page,
   kind: "Gradient" | "Stripes",
@@ -373,6 +397,7 @@ export async function openStudioSingleLayer(
 }> {
   await page.goto("/");
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
 
   await addStudioLayer(page);
   const layerId = (await readStudioLayerIds(page))[0] ?? "";
@@ -412,6 +437,7 @@ export async function openStudioGroupedStack(
 }> {
   await page.goto("/");
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
 
   await addStudioLayer(page);
   const looseLayerId = (await readStudioLayerIds(page))[0] ?? "";
@@ -461,6 +487,7 @@ export async function openStudioTwoLayerStack(
 ): Promise<{ fixture: StudioTwoLayerFixture; session: ReturnType<typeof createToolcraftBrowserProofSession> }> {
   await page.goto("/");
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
 
   await addStudioLayer(page);
   await addStudioLayer(page);
@@ -513,25 +540,13 @@ export async function openStudioTwoLayerStack(
 }
 
 /**
- * Chooses a gallery entry from the technique thumbnails.
+ * Chooses which composition a narrow application will push.
  *
- * Not `setStudioSelectValue`: the gallery stopped being a select when the
- * entries became pictures, and an `imagePicker` renders neither a combobox nor
- * a popup.
- *
- * Matched as a *button*, not as an image. Each item is a button carrying the
- * entry's name as its `aria-label`, wrapping an `img` whose own `alt` is
- * deliberately empty because the picture is decorative once the button is
- * named. Reaching for the image finds nothing at all.
- *
- * Takes the plain label and composes the rest through the library's own
- * function. The name a picker item carries is the label plus its series -- and,
- * for the four the canvas can only evoke, that it is an evocation -- and a test
- * that spelled that out itself would be a second implementation of it, free to
- * drift and failing silently when it did: the locator would simply find nothing
- * and the capture would be of whatever was already selected.
+ * The panel's picker, which is a different act from changing the technique: this
+ * names what gets pushed onto layers that already exist and applies nothing, and
+ * the canvas is untouched until the press beside it.
  */
-export async function setStudioTechnique(
+export async function chooseStudioComposition(
   page: Page,
   label: string,
 ): Promise<void> {
@@ -545,14 +560,53 @@ export async function setStudioTechnique(
     .click();
 }
 
-/** The technique the picker currently shows as chosen. */
-export async function readStudioTechnique(page: Page): Promise<string> {
-  return page
-    .locator('[data-toolcraft-control-target="gallery.entry"]')
-    .evaluate(
-      (node) =>
-        node
-          .querySelector('[data-selected="true"]')
-          ?.getAttribute("aria-label") ?? "",
-    );
+/**
+ * Changes the technique the canvas is working in, through the dialog.
+ *
+ * The panel's picker is gone: choosing what the canvas is working in is a
+ * decision taken before there is work, so it moved into the onboarding flow with
+ * the rest of that decision. Opening the flow is a press in the panel; the cards
+ * are inside it.
+ *
+ * Over existing work the flow asks before replacing, which is the whole reason
+ * it moved -- so this answers that question too, and callers keep meaning "make
+ * this the technique" by one call.
+ */
+export async function setStudioTechnique(
+  page: Page,
+  label: string,
+): Promise<void> {
+  const preset = STUDIO_PRESETS.find((entry) => entry.label === label);
+  if (!preset) throw new Error(`No preset is labelled "${label}".`);
+
+  if ((await page.locator("[data-studio-onboarding]").count()) === 0) {
+    await page
+      .locator('[data-toolcraft-control-target="gallery.actions"]')
+      .getByRole("button", { name: "Change the technique" })
+      .first()
+      .click();
+  }
+
+  await page.locator(`[data-studio-onboarding-card="${preset.id}"]`).click();
+
+  // Over existing work the next step is the question; over an empty canvas it is
+  // the size. Both are answered here so the helper means one thing either way.
+  const replace = page.locator("[data-studio-onboarding-replace]");
+  if ((await replace.count()) > 0) {
+    await replace.click();
+    return;
+  }
+
+  await page.locator("[data-studio-onboarding-confirm]").click();
 }
+
+/** The technique the flow currently shows as chosen. */
+export async function readStudioTechnique(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      document
+        .querySelector('[data-studio-onboarding-card][aria-pressed="true"]')
+        ?.getAttribute("aria-label") ?? "",
+  );
+}
+
