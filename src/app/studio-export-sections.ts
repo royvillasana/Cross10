@@ -57,9 +57,64 @@ export const STUDIO_EXPORT_SECTIONS = [
   },
   {
     controls: {
+      // MP4 first, and it is the only one of the two that matters here: it is
+      // what the destinations this output is sized for accept. WebM is offered
+      // because the contract fixes the option list, not because anything asks
+      // for it.
+      format: {
+        applicability: { mode: "always" },
+        defaultValue: "mp4",
+        label: "Format",
+        options: [
+          { label: "MP4", value: "mp4" },
+          { label: "WebM", value: "webm" },
+        ],
+        performanceReason:
+          "Format selects the runtime encoder for one export action; the renderer draws the same frames either way.",
+        performanceRole: "responsiveness",
+        target: "export.video.format",
+        type: "select",
+      },
+      // "Current" rather than 4K by default, and that is a real choice: a video
+      // is watched at the size it was made for, and encoding a six-second loop
+      // at 4096 costs minutes of the author's time for pixels the destination
+      // immediately throws away.
+      resolution: {
+        applicability: { mode: "always" },
+        defaultValue: "current",
+        label: "Resolution",
+        options: [
+          { label: "Current", value: "current" },
+          { label: "4K", value: "4k" },
+        ],
+        performanceReason:
+          "Resolution sets the exported long edge, but the runtime owns artifact backing allocation and encoding; the contract also mandates a select here, which cannot carry the numeric schema bounds a workload dimension requires.",
+        performanceRole: "responsiveness",
+        target: "export.video.resolution",
+        type: "select",
+      },
+    },
+    id: "video-export",
+    layoutGroups: [
+      { columns: 2, controls: ["format", "resolution"], layout: "inline" },
+    ],
+    title: "Video Export",
+  },
+  {
+    controls: {
       delivery: {
         applicability: { mode: "always" },
         actions: [
+          // Video first, because `export-pipeline` requires it primary once the
+          // intent declares it. Worth naming rather than absorbing: an author
+          // who only ever wanted stills now finds their button demoted, and
+          // that is the spec's call rather than this change's.
+          {
+            icon: "upload-simple",
+            label: "Export Video",
+            role: "export-video",
+            value: "export-video",
+          },
           {
             icon: "upload-simple",
             label: "Export PNG",

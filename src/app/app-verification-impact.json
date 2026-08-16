@@ -253,6 +253,15 @@
     },
     {
       "acceptanceIds": [
+        "timeline.playback",
+        "export.video-action",
+        "export.video-format"
+      ],
+      "kind": "performance",
+      "path": "src/app/studio-motion.ts"
+    },
+    {
+      "acceptanceIds": [
         "gallery.entry"
       ],
       "kind": "presentation",

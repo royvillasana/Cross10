@@ -5,6 +5,7 @@ import type {
   ToolcraftTransferMode,
 } from "./acceptance/types";
 import { appSchema } from "./app-schema";
+import { STUDIO_LOOP_SECONDS } from "./studio-motion";
 import {
   studioBackgroundAcceptanceRows,
   studioExportAcceptanceRows,
@@ -12,6 +13,7 @@ import {
   studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
   studioPointerAcceptanceRows,
+  studioTimelineAcceptanceRows,
   studioReferenceAcceptanceRows,
 } from "./studio-acceptance-rows";
 
@@ -21,20 +23,36 @@ const persistenceSlices =
     : [];
 
 export const appTransferMode: ToolcraftTransferMode = {
-  // Animation is a later group. Declaring a timeline before one exists would
-  // oblige playback coverage in this batch and fail correspondence, the same way
-  // Croix10's video intent had to wait for its export section.
-  animationIntent: { mode: "none" },
+  animationIntent: {
+    loopDuration: {
+      evidence:
+        "One loop is one pass of a viewer along a static work. Under about four seconds a phase drift across a dense band field reads as flicker rather than travel, because the induced colour never holds long enough for the eye to make it; over about eight it stops reading as a single pass. Six seconds sits between those and matches the loop lengths phone-first destinations autoplay.",
+      seconds: STUDIO_LOOP_SECONDS,
+      source: "product-derived",
+    },
+    mode: "timeline-playback",
+  },
   mode: "new-toolcraft-app",
 };
+
+
 
 export const appProductReadiness: ToolcraftProductReadiness = {
   exportIntent: {
     image: { mode: "toolcraft-default" },
-    // Shader source is not an artifact (R55). It leaves through a clipboard
-    // action or the MCP, both outside the export pipeline the runtime owns, so
-    // intent describes only what this app actually produces as a file.
-    video: { mode: "not-requested" },
+    // Asked for, so declared. `export-pipeline` has required `Export Video` all
+    // along and required this to say `user-requested` *with the evidence
+    // recorded* -- so until now the product and its own spec disagreed, and the
+    // request is what settles which of them was wrong.
+    //
+    // Shader source is still not an artifact (R55): it leaves through a
+    // clipboard action, outside the export pipeline the runtime owns, and is
+    // not what this intent describes.
+    video: {
+      evidence:
+        "The product owner asked for the outcome to leave as a video as well as a still, in MP4, sized for the phone-first destinations they post to.",
+      mode: "user-requested",
+    },
   },
   interactionOwnership: [
     // `ToolcraftInteractionSurface` is "canvas" | "panel" only — there is no
@@ -137,6 +155,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
   ...studioPointerAcceptanceRows,
+  ...studioTimelineAcceptanceRows,
   ...studioExportAcceptanceRows,
 ];
 
@@ -326,6 +345,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       ],
       title: "Layer Treatment",
       workflowStage: "treat",
+    },
+    {
+      entity: "Video export",
+      entityId: "video-export",
+      groupingReason:
+        "What a video artifact is encoded as and how large it comes out. Its own section beside the image settings because they are two artifacts a user chooses between, and the pipeline requires this one directly above the sticky actions that produce it.",
+      id: "video-export",
+      targets: ["export.video.format", "export.video.resolution"],
+      title: "Video Export",
+      workflowStage: "deliver",
     },
     {
       entity: "Image export",

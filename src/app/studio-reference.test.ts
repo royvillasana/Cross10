@@ -169,17 +169,30 @@ describe("the reference reaches no artifact", () => {
     }
   });
 
-  it("produces no video artifact to leak into", () => {
-    // The requirement asks for the video export to be identical with and
-    // without a reference. This product exports no video, so the honest proof
-    // is that there is no video path rather than a comparison of two artifacts
-    // that do not exist -- and it is asserted against the declared intent, so
-    // the day this product does export video the claim fails rather than
-    // quietly continuing to describe a product that no longer exists.
+  it("cannot leak into a video either, for the same structural reason", () => {
+    // This assertion used to say "there is no video path", and it was written to
+    // fail the day one appeared rather than quietly keep describing a product
+    // that no longer existed. It did exactly that, so here is the real claim.
+    //
+    // A video is the same scene drawn at a series of times, and the scene has no
+    // field for a reference at any of them. The pixel-level proof lives in the
+    // browser suite, where a real artifact is decoded; what is asserted here is
+    // the property that makes it true.
     expect(
       appProductReadiness.mode === "product"
         ? appProductReadiness.exportIntent.video.mode
         : "",
-    ).toBe("not-requested");
+    ).toBe("user-requested");
+
+    for (const timeSeconds of [0, 1.5, 3, 5.999]) {
+      const scene = buildStudioSceneParameters(
+        { ...WITH_REFERENCE, values: { ...WITH_REFERENCE.values } },
+        true,
+      ) as Record<string, unknown>;
+      expect(
+        Object.keys(scene).some((key) => key.toLowerCase().includes("reference")),
+        `no reference field at ${timeSeconds}s`,
+      ).toBe(false);
+    }
   });
 });

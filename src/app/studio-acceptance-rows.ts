@@ -151,6 +151,41 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
   },
 ];
 
+/**
+ * The transport, which is a runtime capability this product now depends on.
+ *
+ * A row for a runtime surface earns its place the same way the history one did:
+ * enabling a timeline is what makes video export possible, and every claim the
+ * artifact makes about duration and cadence is really a claim about this.
+ */
+export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares playback transport with the loop period the intent states",
+    browser: true,
+    browserTestName: "browser: studio timeline plays, scrubs, and loops the drift",
+    componentType: "timeline",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "The runtime timeline plays a six-second loop: the frame changes while it runs, holds still when paused, and follows a scrub to a named time. Editing the duration changes how long one pass takes without changing what the loop is of, and the last frame meets the first with no visible jump.",
+    fixture: "Croix10 with a drifting one-layer stack",
+    id: "timeline.playback",
+    kind: "runtime",
+    target: "timeline.playback",
+    timelineCoverage: "playback",
+    timelinePlaybackCoverage: "all-playback-behavior",
+    // The seam is the claim a loop lives or dies on, and it is the one thing a
+    // duration and a packet count cannot tell you.
+    timelineLoopProof: {
+      direction: "forward-only",
+      durationChange: "reproved-after-edit",
+      reversePlayback: "forbidden",
+      seam: "first-last-match",
+    },
+    userAction: "Press play, pause, scrub to a time, and edit the duration.",
+  },
+];
+
 export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
@@ -1030,6 +1065,10 @@ export const studioBackgroundAcceptanceRows: readonly ToolcraftComponentAcceptan
         "preview-hidden-when-excluded",
         "image-transparent-when-excluded",
         "infinity-viewport-color-and-dependency",
+        // Video keeps its ground even when the image drops it: an exported video
+        // has no transparency to fall back to, so Background off still encodes
+        // the selected colour rather than nothing.
+        "video-background-preserved",
       ],
       browser: true,
       browserTestName: "browser: studio background switch grounds the composite",
@@ -1109,7 +1148,42 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
         "Select each Resolution option in turn and export the image after each.",
     },
     {
-      actionCoverage: ["copy-source", "export-image"],
+      automated: true,
+      automatedTestName: "declares the video format options the pipeline fixes",
+      browser: true,
+      browserTestName: "browser: studio export video loops without a seam",
+      componentType: "select",
+      evidence: "exported-bytes",
+      expectedObservable:
+        "Exporting at MP4 produces a decodable MP4; exporting at WebM produces a decodable WebM. The frames are the same either way -- the format selects the runtime's encoder, not what the renderer draws.",
+      fixture: "Croix10 with a drifting one-layer stack",
+      id: "export.video-format",
+      kind: "control",
+      optionCoverage: ["mp4", "webm"],
+      target: "export.video.format",
+      userAction: "Change the video format and export again.",
+    },
+    {
+      automated: true,
+      automatedTestName: "declares the video resolution options the pipeline fixes",
+      browser: true,
+      browserTestName: "browser: studio export video loops without a seam",
+      componentType: "select",
+      evidence: "exported-bytes",
+      expectedObservable:
+        "Exporting at Current produces an artifact at the canvas's own dimensions; exporting at 4K produces one whose long edge is 4096. Duration and packet count are the same either way, because those follow the timeline rather than the size.",
+      fixture: "Croix10 with a drifting one-layer stack",
+      id: "export.video-resolution",
+      kind: "control",
+      optionCoverage: ["current", "4k"],
+      target: "export.video.resolution",
+      userAction: "Change the video resolution and export again.",
+    },
+    {
+      // The footer is one surface and its coverage is checked against every
+      // action in it, whichever row declares them -- so this names all three
+      // while the row below carries the video artifact's own obligations.
+      actionCoverage: ["copy-source", "export-image", "export-video"],
       automated: true,
       automatedTestName: "declares complete image export artifact behaviour",
       browser: true,
@@ -1125,6 +1199,43 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
       kind: "control",
       target: "export.actions",
       userAction: "Press Export PNG in the sticky footer.",
+    },
+    {
+      // Every footer action again: the check runs per row, and the footer is one
+      // surface whichever row is describing it. What differs between the two
+      // rows is the artifact each one proves, not the buttons they can see.
+      actionCoverage: ["copy-source", "export-image", "export-video"],
+      automated: true,
+      automatedTestName: "declares complete video export artifact behaviour",
+      browser: true,
+      browserTestName: "browser: studio export video loops without a seam",
+      componentType: "panelActions",
+      evidence: "exported-bytes",
+      expectedObservable:
+        "Export Video produces a non-empty decodable artifact whose duration and packet count follow the runtime timeline at its fixed 30 FPS schedule, whose last frame meets its first with no visible jump on repeat, and which keeps the selected background even when the image export would drop it. The sticky footer indicator advances through render and download work before hiding.",
+      exportArtifactCoverage: "all-required-video-export-behavior",
+      fixture: "Croix10 with a drifting one-layer stack",
+      id: "export.video-action",
+      kind: "control",
+      target: "export.actions",
+      userAction: "Press Export Video in the sticky footer.",
+    },
+    {
+      automated: true,
+      automatedTestName:
+        "declares infinite video export unions every frame's scene bounds",
+      browser: true,
+      browserTestName: "browser: studio export video loops without a seam",
+      componentType: "canvas",
+      evidence: "exported-bytes",
+      expectedObservable:
+        "Exporting video from Infinity canvas crops to one envelope that contains every frame of the loop, so a composition that drifts outward is not clipped part-way through and the frame does not resize between packets.",
+      fixture: "Croix10 on Infinity canvas with a drifting one-layer stack",
+      id: "canvas.infinity-video-export",
+      infinityCanvasCoverage: "scene-bounds-video-export",
+      kind: "runtime",
+      target: "canvas.infinity",
+      userAction: "Turn Infinity canvas on, give a layer a drift, and press Export Video.",
     },
     {
       automated: true,
@@ -1177,12 +1288,13 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
       fixture: "Croix10 with a two-layer stack at its default values",
       id: "canvas.render-scale",
       kind: "runtime",
-      // "playback" is deliberately absent: this app declares no timeline yet, so
-      // there is no playback state for the scale to apply during. It joins the
-      // list in the animation group, alongside the transport that creates it.
+      // "playback" joined the list with the transport that creates it, exactly
+      // as the note here predicted it would: a render scale now has a playback
+      // state to apply during, because the renderer runs continuously rather
+      // than on edit.
       renderScaleCoverage: {
         kind: "selected-backing-pixels",
-        states: ["interaction", "steady"],
+        states: ["interaction", "playback", "steady"],
       },
       target: "canvas.renderScale",
       userAction: "Drag Render scale in Setup.",

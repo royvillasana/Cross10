@@ -1,6 +1,7 @@
 import { defineToolcraft } from "@/toolcraft/runtime";
 
 import { appIdentity } from "./app-identity";
+import { STUDIO_LOOP_SECONDS } from "./studio-motion";
 import { STUDIO_BACKGROUND_SECTIONS } from "./studio-background-sections";
 import { STUDIO_EXPORT_SECTIONS } from "./studio-export-sections";
 import { STUDIO_GALLERY_SECTIONS } from "./studio-gallery-sections";
@@ -66,6 +67,17 @@ export const appSchema = defineToolcraft({
       title: "Controls",
     },
     layers: true,
+    // Playback, not keyframes. The renderer already reads its values through the
+    // timeline evaluator, which returns raw values while no keyframe groups
+    // exist, so nothing here has to be rewritten to reach keyframes later --
+    // what keyframes would add today is `timelineCoverage: "keyframes"`
+    // acceptance for every slider and colour in the panel, which is a change in
+    // its own right rather than a detail of this one.
+    timeline: {
+      defaultDurationSeconds: STUDIO_LOOP_SECONDS,
+      enabled: true,
+      mode: "playback",
+    },
   },
   persistence: {
     // `stack.layerRecord` is written by product code rather than rendered by a

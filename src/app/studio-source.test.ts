@@ -226,7 +226,11 @@ describe("clipboard delivery leaves artifact intent alone", () => {
       "image",
       "video",
     ]);
-    expect(appProductReadiness.exportIntent.video.mode).toBe("not-requested");
+    // Video is requested now, and copying the source still is not an export.
+    // The claim this test protects is unchanged: shipping the clipboard action
+    // must not add a third artifact kind the product does not encode, download,
+    // or prove.
+    expect(appProductReadiness.exportIntent.video.mode).toBe("user-requested");
   });
 
   it("declares the copy action without an export role", () => {

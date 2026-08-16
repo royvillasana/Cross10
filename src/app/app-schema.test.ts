@@ -8,6 +8,7 @@ import {
 } from "./app-acceptance";
 import { appPerformance } from "./app-performance";
 import { appSchema } from "./app-schema";
+import { STUDIO_LOOP_SECONDS } from "./studio-motion";
 import { STUDIO_BAND_COUNT } from "./studio-layer-sections";
 
 /**
@@ -81,6 +82,10 @@ describe("appSchema", () => {
       "Pointer",
       "Layer Treatment",
       "Image Export",
+      // Directly after Image Export and directly above the sticky actions,
+      // which is where `export-pipeline` requires it once video intent is
+      // declared.
+      "Video Export",
       "Export",
     ]);
   });
@@ -106,13 +111,21 @@ describe("appSchema", () => {
     expect(appSchema.panels.layers).toBe(true);
   });
 
-  it("does not imply timeline behavior before a product needs it", () => {
-    // Animation is a later group. Declaring the panel early would oblige
-    // playback coverage in a batch that has no playback to prove.
-    expect(appSchema.panels.timeline).toBeUndefined();
-    expect(appSchema.assembly.capabilities).not.toContain("timeline.playback");
+  it("declares playback, and no more of the timeline than that", () => {
+    // Video export requires a timeline, so the panel is here. Playback and not
+    // keyframes, because keyframe mode obliges `timelineCoverage: "keyframes"`
+    // for every keyframe-capable control -- which here is every slider and
+    // colour in the panel, and is a change in its own right.
+    expect(appSchema.panels.timeline).toMatchObject({
+      enabled: true,
+      mode: "playback",
+    });
+    // The loop period is a declared number with a reason, and the transport has
+    // to agree with the intent that states it.
+    expect(appSchema.panels.timeline).toMatchObject({
+      defaultDurationSeconds: STUDIO_LOOP_SECONDS,
+    });
     expect(appSchema.assembly.capabilities).not.toContain("timeline.keyframes");
-    expect(appSchema.assembly.commands).not.toContain("timeline.setCurrentTime");
     expect(appSchema.assembly.commands).not.toContain("timeline.moveKeyframe");
   });
 
