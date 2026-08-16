@@ -48,6 +48,7 @@ function renderStudioExportFrame({
   frame,
   pixelRatio,
   state,
+  timelineProgress,
 }: Parameters<
   NonNullable<ToolcraftAppComposition["exportRenderer"]>["renderFrame"]
 >[0]): void {
@@ -78,8 +79,19 @@ function renderStudioExportFrame({
     // carried the live cursor would differ between two exports of one
     // composition, and neither of them would be the composition -- a pointer
     // effect is something the viewer drives, not a property of the still.
+    // The schedule's own moment, not the timeline's current one. A video is a
+    // series of scenes rather than one scene encoded repeatedly, and the runtime
+    // owns the 30 FPS schedule that decides which moments those are -- so the
+    // frame asks for the progress it was handed. A still export passes 0 by the
+    // same route, which is the start of the loop and the composition as built.
     renderer.render(
-      buildStudioSceneParameters(state, false, new Map(), STUDIO_CURSOR_AWAY),
+      buildStudioSceneParameters(
+        state,
+        false,
+        new Map(),
+        STUDIO_CURSOR_AWAY,
+        timelineProgress,
+      ),
       width,
       height,
     );

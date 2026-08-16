@@ -127,7 +127,9 @@ describe("per-layer uniform mangling", () => {
     // stripes body has an engine block of its own and it is emitted first, so a
     // whole-source comparison would be measuring against the wrong one.
     const gradientBody = source.slice(source.indexOf("vec4 studioGradientBody("));
-    const applied = gradientBody.indexOf("position += phase;");
+    // `driftedPhase`, because the offset now arrives with the loop's drift
+    // already added to it. Same value, same place, one addition earlier.
+    const applied = gradientBody.indexOf("position += driftedPhase;");
     expect(applied).toBeGreaterThan(-1);
     expect(applied).toBeLessThan(gradientBody.indexOf("if (engine >= 0.5)"));
   });

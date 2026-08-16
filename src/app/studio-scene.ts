@@ -14,6 +14,11 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   type StudioRuntimeLayer,
 } from "./studio-stack-state";
+import {
+  getToolcraftTimelineLoopProgress,
+  type ToolcraftTimelineLoopOptions,
+} from "@/toolcraft/runtime";
+
 import { studioColorToLinear } from "./studio-color";
 import type { StudioLayerValues, StudioStackSceneParameters } from "./studio-stack-render";
 
@@ -85,6 +90,27 @@ function toLinearLayerValues(layer: StudioLayerValues): StudioLayerValues {
 }
 
 /**
+ * How far through the loop the timeline currently is.
+ *
+ * A fraction rather than a time, because that is what a whole-cycle drift needs
+ * and it keeps the shader ignorant of how long a loop is. Zero whenever there is
+ * no timeline or no duration, which is also what makes a composition with no
+ * drift render exactly as it did before any of this existed.
+ *
+ * The wrapping is `getToolcraftTimelineLoopProgress` rather than a local `%`,
+ * because `component-contracts.runtime.ts:334` says so: a hand-rolled phase is
+ * how mirror, yoyo and reverse playback get invented by accident, and this
+ * product's loop is forward-only. The runtime owns what a loop *is*; this only
+ * asks it where we are in one.
+ */
+export function readStudioLoopProgress(state: StudioSceneStateSlice): number {
+  const timeline = (state as { timeline?: ToolcraftTimelineLoopOptions }).timeline;
+  if (!timeline) return 0;
+
+  return getToolcraftTimelineLoopProgress(timeline);
+}
+
+/**
  * Builds the scene the renderer draws from committed runtime state.
  *
  * Reads rather than writes: this runs on the way to the renderer, so it must not
@@ -110,6 +136,15 @@ export function buildStudioSceneParameters(
    * the position this scene carries never reaches the source.
    */
   cursor?: readonly [number, number],
+  /**
+   * Where the loop has got to, when the caller knows better than the timeline.
+   *
+   * The export path knows: the runtime drives a fixed schedule and hands each
+   * frame its own `timelineProgress`, so a video is a series of scenes rather
+   * than one scene rendered repeatedly. The preview does not pass it and reads
+   * the timeline directly.
+   */
+  loop?: number,
 ): StudioStackSceneParameters {
   const record = readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]);
   const pruned = pruneStudioLayerRecord(
@@ -124,6 +159,7 @@ export function buildStudioSceneParameters(
     // lets the export frame build the same scene as the preview (R68) -- unless
     // the caller names a position, which the export path does.
     cursor: cursor ?? readStudioCursor(state.values[STUDIO_CURSOR_TARGET]),
+    loop: loop ?? readStudioLoopProgress(state),
     // Passed in rather than read from `export.includeBackground`, because the
     // two are different questions. The switch says whether an exported artifact
     // carries the background; whether the *preview* shows it is the runtime's

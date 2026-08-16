@@ -13,6 +13,7 @@ function scene(
     backgroundColor: [0, 0, 0],
     cursor: [-9, -9],
     includeBackground: true,
+    loop: 0,
     layers,
   };
 }
@@ -192,6 +193,7 @@ describe("deliverable shader source", () => {
       backgroundColor: [0.25, 0.5, 0.75],
       cursor: [-9, -9],
       includeBackground: false,
+      loop: 0,
       layers: [stripes],
     });
 

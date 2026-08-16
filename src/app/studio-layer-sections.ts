@@ -658,6 +658,62 @@ widthRatio: {
   },
   {
     controls: {
+      // Whole cycles per loop, which is why this is a discrete count rather than
+      // a speed. A rate that is not a whole number leaves the last frame
+      // somewhere the first is not, and a loop with a visible jump is the one
+      // thing a loop must not have.
+      //
+      // Phase is the viewer moving along the work: which part of each lamella is
+      // presented as you pass it. It is the drift these techniques were built
+      // for, and the one to reach for first.
+      driftPhase: {
+        semanticGroup: "motion",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Travel per loop",
+        max: 4,
+        min: -4,
+        performanceReason:
+          "One multiply and one add on values the body already reads; the loop position is a single uniform shared by the whole stack.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.driftPhase",
+        type: "slider",
+        // Nine whole-number positions, and each is a different loop rather than
+        // more of one: two cycles is not "more travel" than one, it is a
+        // different journey that happens to end in the same place.
+        variant: "discrete",
+      },
+      // Angle is the second-order version of the same movement: not only where
+      // you are along the work but which way you are facing it from.
+      driftAngle: {
+        semanticGroup: "motion",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Turns per loop",
+        max: 2,
+        min: -2,
+        performanceReason:
+          "One multiply and one add before the coordinate is rotated, which the body does anyway.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.driftAngle",
+        type: "slider",
+        // Five positions, for the same reason, plus the one that matters most:
+        // the ticks are exactly the values that return to where they started.
+        variant: "discrete",
+      },
+    },
+    // Its own section because what it edits is not the layer's appearance but
+    // how a viewer passes it. The work holds still; these say how the looking
+    // moves -- which is why no colour, count or separator has a rate beside it.
+    id: "selected-layer-motion",
+    title: "Layer Motion",
+  },
+  {
+    controls: {
       // Its own section because its entity is the pointer, not the selected
       // layer. Every other control in the layer sections edits whichever layer
       // is selected; this one says which layers a gesture reaches, which is a

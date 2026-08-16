@@ -335,7 +335,10 @@ vec4 studioStripesBody(
   vec2 fragmentPosition,
   vec2 resolution,
   vec2 cursor,
+  float loop,
   float angle,
+  float driftAngle,
+  float driftPhase,
   float count,
   float widthRatio,
   float phase,
@@ -374,7 +377,21 @@ vec4 studioStripesBody(
   vec2 fromCursor = centered - cursor;
   float pushReach = 1.0 - smoothstep(0.0, 0.45, length(fromCursor));
   centered += fromCursor * pushReach * pointerPush * 0.9;
-  float radians = angle * 0.017453292519943295;
+  // The loop, applied where the author's own values are read.
+  //
+  // Additive, so at loop 0 the field is exactly what was built and the drift
+  // moves it rather than replacing it. Whole cycles per loop, so at loop 1 the
+  // phase has advanced an integer number of band periods and the angle a whole
+  // number of turns -- both land back where they started, which is why the seam
+  // needs no special case anywhere.
+  //
+  // What drifts is the *viewer*: which part of each lamella is presented, and
+  // from what direction it is read. The inks, the count and the separators do
+  // not move, because a field whose colours change is a different field rather
+  // than the same one seen from somewhere else.
+  float driftedAngle = angle + driftAngle * 360.0 * loop;
+  float driftedPhase = phase + driftPhase * loop;
+  float radians = driftedAngle * 0.017453292519943295;
   float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
   // Folded in the layer's own axes, which is why it is applied to the rotated
   // coordinate rather than to the fragment: turning a layer and then flipping it
@@ -398,7 +415,7 @@ vec4 studioStripesBody(
   //
   // The amount is bounded by the control's own domain rather than clamped here,
   // so a band cannot be displaced past its neighbour and swap identity with it.
-  float scaled = coordinate * max(count, 1.0) + phase;
+  float scaled = coordinate * max(count, 1.0) + driftedPhase;
   float bandIndex = floor(scaled);
   float jitter =
     fract(sin(bandIndex * max(jitterVariation, 1e-4)) * 43758.5453) - 0.5;
@@ -495,7 +512,7 @@ vec4 studioStripesBody(
       // pitch, beating against the first. The moire is nowhere drawn -- it is
       // the product of the two, so it appears at the beat period their ratio
       // implies, which is the whole point of the technique.
-      float secondScaled = coordinate * max(count * enginePitch, 1.0) + phase;
+      float secondScaled = coordinate * max(count * enginePitch, 1.0) + driftedPhase;
       float secondBand = fract(secondScaled);
       float secondEdge = max(fwidth(secondBand) * 1.5, 1e-5);
       float secondMask = smoothstep(0.5 - secondEdge, 0.5 + secondEdge, secondBand);
@@ -517,7 +534,10 @@ vec4 studioGradientBody(
   vec2 fragmentPosition,
   vec2 resolution,
   vec2 cursor,
+  float loop,
   float angle,
+  float driftAngle,
+  float driftPhase,
   float flipX,
   float flipY,
   float pointerPush,
@@ -555,7 +575,21 @@ vec4 studioGradientBody(
   // unchanged because it already has no direction to reverse.
   centered.x = mix(centered.x, -centered.x, step(0.5, flipX));
   centered.y = mix(centered.y, -centered.y, step(0.5, flipY));
-  float radians = angle * 0.017453292519943295;
+  // The loop, applied where the author's own values are read.
+  //
+  // Additive, so at loop 0 the field is exactly what was built and the drift
+  // moves it rather than replacing it. Whole cycles per loop, so at loop 1 the
+  // phase has advanced an integer number of band periods and the angle a whole
+  // number of turns -- both land back where they started, which is why the seam
+  // needs no special case anywhere.
+  //
+  // What drifts is the *viewer*: which part of each lamella is presented, and
+  // from what direction it is read. The inks, the count and the separators do
+  // not move, because a field whose colours change is a different field rather
+  // than the same one seen from somewhere else.
+  float driftedAngle = angle + driftAngle * 360.0 * loop;
+  float driftedPhase = phase + driftPhase * loop;
+  float radians = driftedAngle * 0.017453292519943295;
 
   float position;
   if (rampType < 0.5) {
@@ -569,7 +603,7 @@ vec4 studioGradientBody(
   // Applied here rather than at the palette read, so the engines below read the
   // ramp the author sees. An offset that moved only the fill would leave an
   // induced fringe sitting on a seam that is no longer there.
-  position += phase;
+  position += driftedPhase;
 
   vec3 colour = studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD);
 
@@ -749,6 +783,8 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
       label: "Gradient",
       uniforms: [
         { defaultValue: 0, name: "angle", type: "float" },
+        { defaultValue: 0, name: "driftAngle", type: "float" },
+        { defaultValue: 0, name: "driftPhase", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
         { defaultValue: 0, name: "pointerPush", type: "float" },
@@ -858,6 +894,8 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
       label: "Stripes",
       uniforms: [
         { defaultValue: 0, name: "angle", type: "float" },
+        { defaultValue: 0, name: "driftAngle", type: "float" },
+        { defaultValue: 0, name: "driftPhase", type: "float" },
         { defaultValue: 24, name: "count", type: "float" },
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },
@@ -1160,7 +1198,7 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       composite.a
     );
 
-    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor${
+    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor, uLoop${
       // Only the image type takes the shape's frame. The procedural bodies are
       // fields over the whole canvas that the mask then confines, which is the
       // right model for them -- a stripe field does not "belong to" its shape
@@ -1200,6 +1238,16 @@ uniform float uIncludeBackground;
  * carry the position the author left it at instead of no position at all.
  */
 uniform vec2 uCursor;
+/**
+ * Where the loop has got to, from 0 at its start to 1 at its end.
+ *
+ * A fraction rather than a time, so the shader needs no notion of how long a
+ * loop is and a recipient can drive it with anything that ramps. Drift rates are
+ * whole cycles per loop, so at 1 every drifting value has advanced an exact
+ * number of cycles and lands back where it started -- which is what makes the
+ * seam invisible without the shader knowing anything about seams.
+ */
+uniform float uLoop;
 
 ${declareLayerUniforms(stack)}
 

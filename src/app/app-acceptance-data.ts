@@ -12,6 +12,7 @@ import {
   studioGalleryAcceptanceRows,
   studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
+  studioMotionAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
   studioReferenceAcceptanceRows,
@@ -154,6 +155,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioHistoryAcceptanceRows,
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
+  ...studioMotionAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
   ...studioExportAcceptanceRows,
@@ -304,6 +306,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       ],
       title: "Layer Engine",
       workflowStage: "colour",
+    },
+    {
+      entity: "Layer motion",
+      entityId: "selected-layer-motion",
+      groupingReason:
+        "How a viewer passes this layer over one loop, which is a different question from what the layer looks like. Its own section because the work holds still and only the looking moves -- putting a rate beside a colour would invite drifting the colour, which would make every frame a different work rather than the same one seen from somewhere else.",
+      id: "selected-layer-motion",
+      targets: ["selectedLayer.driftPhase", "selectedLayer.driftAngle"],
+      title: "Layer Motion",
+      workflowStage: "move",
     },
     {
       entity: "Pointer",

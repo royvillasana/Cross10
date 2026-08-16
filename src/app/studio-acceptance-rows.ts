@@ -186,6 +186,50 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
   },
 ];
 
+/**
+ * The drift, which is the one thing in this product that moves by itself.
+ *
+ * Both rows carry the same negative claim as well as their own positive one:
+ * the layer's colours, count and separators are identical at every moment of the
+ * loop. That is what keeps a loop a view of one work rather than a sequence of
+ * different ones, and it is the assertion a "the frame changed" proof would pass
+ * straight over.
+ */
+export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares travel drifts the field and returns it",
+    browser: true,
+    browserTestName: "browser: studio timeline plays, scrubs, and loops the drift",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "With Travel per loop at one, scrubbing the timeline moves the band boundaries along the field and the frame at the end of the loop is the frame at its start. The layer's inks, band count and separators are identical at every moment, and at zero the composition is pixel-identical to the one built before any drift existed.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.driftPhase",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.driftPhase",
+    userAction: "Set Travel per loop and scrub the timeline.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares turns drift the reading angle and return it",
+    browser: true,
+    browserTestName: "browser: studio timeline plays, scrubs, and loops the drift",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "With Turns per loop at one, scrubbing the timeline turns the direction the field is read from and the frame at the end of the loop is the frame at its start, because a whole turn returns. Only the selected layer turns; the others render exactly as they did.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.driftAngle",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.driftAngle",
+    userAction: "Set Turns per loop and scrub the timeline.",
+  },
+];
+
 export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,

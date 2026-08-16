@@ -41,6 +41,8 @@ export type StudioStackSceneParameters = Readonly<{
   backgroundColor: readonly [number, number, number];
   /** Pointer position in field units, from the centre of the frame (R68). */
   cursor: readonly [number, number];
+  /** Where the loop has got to, 0 at its start and 1 at its end. */
+  loop: number;
   includeBackground: boolean;
   layers: readonly StudioLayerValues[];
 }>;
@@ -230,6 +232,8 @@ export function createStudioStackRenderer(
 
       const cursor = location("uCursor");
       if (cursor) gl.uniform2f(cursor, parameters.cursor[0], parameters.cursor[1]);
+      const loop = location("uLoop");
+      if (loop) gl.uniform1f(loop, parameters.loop);
 
       const background = location("uBackgroundColor");
       if (background) gl.uniform3fv(background, [...parameters.backgroundColor]);

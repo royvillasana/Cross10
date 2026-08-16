@@ -35,15 +35,15 @@
  */
 export const STUDIO_LOOP_SECONDS = 6;
 
-/** The uniforms a loop is allowed to move, and the value each one drifts. */
-export const STUDIO_DRIFT_TARGETS = {
-  /** Which way the field is read from, in degrees across the loop. */
-  angle: { degrees: 360, uniform: "angle" },
-  /** How far the band sequence has travelled, in whole field widths. */
-  phase: { degrees: 0, uniform: "phase" },
-} as const;
-
-export type StudioDriftId = keyof typeof STUDIO_DRIFT_TARGETS;
+/**
+ * Degrees in a whole turn of the reading angle.
+ *
+ * Here rather than only in the shader because the seam claim is checked against
+ * both: the GLSL is what renders, and this is what the check knows the GLSL
+ * should say. A drift constant that lived in one place would be a constant no
+ * test could disagree with.
+ */
+export const STUDIO_DRIFT_TURN_DEGREES = 360;
 
 /** Cycles per loop for one layer's phase, as the control holds it. */
 export const STUDIO_DRIFT_PHASE_TARGET = "selectedLayer.driftPhase";
@@ -74,6 +74,13 @@ export const STUDIO_STATIC_PROPERTIES = [
 /**
  * Where a whole-cycle drift has reached at a given moment in the loop.
  *
+ * **The shader is what renders; this is the reference it is checked against.**
+ * The drift happens per fragment, so the arithmetic lives in GLSL and a
+ * JavaScript twin that nothing draws through would be a second implementation
+ * free to disagree with the first while both stayed green. What this function
+ * is for is stating the intended shape once, in a form a test can exercise
+ * directly, next to a test that reads the GLSL and checks it says the same.
+ *
  * Returns a fraction of a full cycle, so the caller decides what a cycle means
  * for the value it is moving — one field width for a phase, a full turn for an
  * angle. Exactly zero at both ends of the loop whatever the rate, which is what
@@ -98,36 +105,9 @@ export function studioDriftAt({
   // loop lands where the same moment of the next one does rather than running
   // away. `((x % n) + n) % n` because a negative time must wrap forwards.
   const withinLoop = ((timeSeconds % loopSeconds) + loopSeconds) % loopSeconds;
-  return (withinLoop / loopSeconds) * Math.round(cycles);
-}
-
-/**
- * The values a layer renders at a moment in the loop.
- *
- * Additive over what the author set, so the composition at time zero is exactly
- * the composition they built. The drift moves it and never replaces it.
- */
-export function studioDriftedValues({
-  timeSeconds,
-  values,
-}: {
-  readonly timeSeconds: number;
-  readonly values: Readonly<Record<string, number | readonly [number, number, number]>>;
-}): Readonly<Record<string, number | readonly [number, number, number]>> {
-  const phaseCycles = typeof values.driftPhase === "number" ? values.driftPhase : 0;
-  const angleCycles = typeof values.driftAngle === "number" ? values.driftAngle : 0;
-  if (phaseCycles === 0 && angleCycles === 0) return values;
-
-  const next = { ...values };
-
-  if (phaseCycles !== 0 && typeof values.phase === "number") {
-    next.phase = values.phase + studioDriftAt({ cycles: phaseCycles, timeSeconds });
-  }
-  if (angleCycles !== 0 && typeof values.angle === "number") {
-    next.angle =
-      values.angle +
-      studioDriftAt({ cycles: angleCycles, timeSeconds }) * STUDIO_DRIFT_TARGETS.angle.degrees;
-  }
-
-  return next;
+  // `+ 0` collapses the -0 a negative rate produces at the ends of the loop.
+  // Nothing renders differently either way, but "the drift at both ends is
+  // exactly zero" is the claim this function exists to make, and a reader who
+  // finds -0 in a test failure spends the next ten minutes on the wrong thing.
+  return (withinLoop / loopSeconds) * Math.round(cycles) + 0;
 }

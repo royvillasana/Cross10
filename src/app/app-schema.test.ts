@@ -79,6 +79,9 @@ describe("appSchema", () => {
       // Its own section because its entity is the pointer rather than the
       // selected layer: it says which layers a gesture reaches, which is a
       // claim about the stack and not a property any one layer can hold.
+      // Its own section because what it edits is how a viewer passes the layer
+      // rather than what the layer looks like.
+      "Layer Motion",
       "Pointer",
       "Layer Treatment",
       "Image Export",
