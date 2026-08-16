@@ -10,7 +10,7 @@ import {
   studioDriftAt,
 } from "./studio-motion";
 import { studioAssembleStackFragmentShader } from "./studio-layers";
-import { readStudioLoopProgress } from "./studio-scene";
+import { buildStudioSceneParameters, readStudioLoopProgress } from "./studio-scene";
 
 describe("studio drift", () => {
   it("returns to exactly where it started at the end of a loop", () => {
@@ -127,5 +127,51 @@ describe("the assembled shader", () => {
     expect(angles).toHaveLength(2);
     expect(phases).toHaveLength(2);
     expect(STUDIO_DRIFT_TURN_DEGREES).toBe(360);
+  });
+});
+
+describe("the cost of a running clock", () => {
+  /**
+   * The regression that eighty-seven browser timeouts were made of.
+   *
+   * The runtime starts its timeline playing. If the loop position reaches the
+   * scene regardless of whether anything responds to it, the scene is a new
+   * value on every animation frame -- the canvas memo compares by serialising
+   * it, so it misses every time, and the whole stack redraws sixty times a
+   * second to produce the identical picture.
+   *
+   * Asserted on the scene rather than on a frame rate, because a frame rate is
+   * not measurable here and is not the claim anyway. The claim is that an
+   * undrifted composition produces the *same scene value* at every moment, which
+   * is what lets everything downstream sleep.
+   */
+  const sceneAt = (currentTimeSeconds: number, drift: number) =>
+    buildStudioSceneParameters(
+      {
+        layers: [{ id: "a", visible: true }],
+        timeline: { currentTimeSeconds, durationSeconds: STUDIO_LOOP_SECONDS },
+        values: {
+          "stack.layerRecord": {
+            a: { typeId: "stripes", values: { driftPhase: drift } },
+          },
+        },
+      } as never,
+      false,
+    );
+
+  it("gives a still composition the same scene at every moment", () => {
+    expect(JSON.stringify(sceneAt(0, 0))).toBe(
+      JSON.stringify(sceneAt(STUDIO_LOOP_SECONDS / 3, 0)),
+    );
+    expect(sceneAt(STUDIO_LOOP_SECONDS / 3, 0).loop).toBe(0);
+  });
+
+  it("lets a drifting composition see the clock", () => {
+    // The other half, and the one that keeps the fix from being "turn it off":
+    // a composition that asked to move must still move.
+    expect(sceneAt(STUDIO_LOOP_SECONDS / 3, 1).loop).toBeCloseTo(1 / 3, 6);
+    expect(JSON.stringify(sceneAt(0, 1))).not.toBe(
+      JSON.stringify(sceneAt(STUDIO_LOOP_SECONDS / 3, 1)),
+    );
   });
 });

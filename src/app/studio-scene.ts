@@ -111,6 +111,34 @@ export function readStudioLoopProgress(state: StudioSceneStateSlice): number {
 }
 
 /**
+ * Whether anything in this composition actually moves.
+ *
+ * Asked before the loop position is read, and the reason is not a
+ * micro-optimisation. The runtime starts its timeline playing, so the clock runs
+ * from the moment the app opens whether or not the work responds to it. If the
+ * loop position reached the scene regardless, every composition would rebuild
+ * its scene sixty times a second, the canvas memo would miss on every frame, and
+ * the whole stack would redraw continuously to produce the identical picture.
+ *
+ * That is not a hypothetical. Enabling the timeline did exactly this, and the
+ * cost was not visible in any single proof -- each one passed on its own. It
+ * showed up as eighty-seven timeouts in a full browser suite that had five,
+ * which is the shape a performance regression takes when the tests that would
+ * have caught it are the ones it slows down.
+ *
+ * So an undrifted composition is pinned to loop zero, which is byte-identical
+ * from frame to frame, which lets the memo hold and the renderer sleep. A
+ * composition that does drift pays for what it asked for.
+ */
+function hasStudioDrift(layers: readonly StudioLayerValues[]): boolean {
+  return layers.some(
+    (layer) =>
+      (typeof layer.values.driftPhase === "number" && layer.values.driftPhase !== 0) ||
+      (typeof layer.values.driftAngle === "number" && layer.values.driftAngle !== 0),
+  );
+}
+
+/**
  * Builds the scene the renderer draws from committed runtime state.
  *
  * Reads rather than writes: this runs on the way to the renderer, so it must not
@@ -151,6 +179,14 @@ export function buildStudioSceneParameters(
     record,
     state.layers.map((layer) => layer.id),
   );
+  const stack = buildStudioStack(
+    pruned,
+    state.layers,
+    readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
+    images,
+    readStudioPointerSubject(state.values[STUDIO_POINTER_SUBJECT_TARGET]),
+    readStudioPointerPush(state.values[STUDIO_POINTER_PUSH_TARGET]),
+  );
 
   return {
     backgroundColor:
@@ -159,7 +195,10 @@ export function buildStudioSceneParameters(
     // lets the export frame build the same scene as the preview (R68) -- unless
     // the caller names a position, which the export path does.
     cursor: cursor ?? readStudioCursor(state.values[STUDIO_CURSOR_TARGET]),
-    loop: loop ?? readStudioLoopProgress(state),
+    // An explicit position always wins -- the export path names the moment it is
+    // drawing, and a still export passes zero. Otherwise the clock only reaches
+    // the scene if something in the stack responds to it.
+    loop: loop ?? (hasStudioDrift(stack) ? readStudioLoopProgress(state) : 0),
     // Passed in rather than read from `export.includeBackground`, because the
     // two are different questions. The switch says whether an exported artifact
     // carries the background; whether the *preview* shows it is the runtime's
@@ -167,14 +206,7 @@ export function buildStudioSceneParameters(
     // Reading the export switch here would tie them together and make one of the
     // two coverage claims false.
     includeBackground,
-    layers: buildStudioStack(
-      pruned,
-      state.layers,
-      readStudioVertexPaths(state.values[STUDIO_VERTEX_PATH_TARGET]),
-      images,
-      readStudioPointerSubject(state.values[STUDIO_POINTER_SUBJECT_TARGET]),
-      readStudioPointerPush(state.values[STUDIO_POINTER_PUSH_TARGET]),
-    ).map(toLinearLayerValues),
+    layers: stack.map(toLinearLayerValues),
   };
 }
 
