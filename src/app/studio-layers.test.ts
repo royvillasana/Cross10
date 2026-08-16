@@ -127,11 +127,19 @@ describe("per-layer uniform mangling", () => {
     // stripes body has an engine block of its own and it is emitted first, so a
     // whole-source comparison would be measuring against the wrong one.
     const gradientBody = source.slice(source.indexOf("vec4 studioGradientBody("));
-    // `driftedPhase`, because the offset now arrives with the loop's drift
-    // already added to it. Same value, same place, one addition earlier.
-    const applied = gradientBody.indexOf("position += driftedPhase;");
-    expect(applied).toBeGreaterThan(-1);
-    expect(applied).toBeLessThan(gradientBody.indexOf("if (engine >= 0.5)"));
+    // The author's offset and the loop's drift are applied separately here, and
+    // the separation is deliberate: an offset is a fixed position and saturates
+    // at the ramp's ends, while a drift is travel and wraps. Both must land
+    // before the engine block, which is what this has always been about -- an
+    // offset that moved only the fill would leave an induced fringe sitting on a
+    // seam that is no longer there.
+    const engineAt = gradientBody.indexOf("if (engine >= 0.5)");
+    const offsetAt = gradientBody.indexOf("position += phase;");
+    const driftAt = gradientBody.indexOf("fract(position + driftPhase * loop)");
+
+    expect(offsetAt).toBeGreaterThan(-1);
+    expect(driftAt).toBeGreaterThan(offsetAt);
+    expect(driftAt).toBeLessThan(engineAt);
   });
 
   it("mangles by index so two layers of one type never share a uniform", () => {
