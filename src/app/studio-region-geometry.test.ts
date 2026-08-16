@@ -375,3 +375,72 @@ describe("the shape outline", () => {
     expect(spanX).toBeCloseTo(spanY * 2, 6);
   });
 });
+
+/**
+ * The three region-handle claims the acceptance rows name.
+ *
+ * Each is the property that distinguishes its gesture from the others. A drag
+ * that moved *and* resized would look plausible on screen and be wrong; these
+ * say which one each node does, in the only place it can be said exactly.
+ */
+describe("region handle gestures keep to their own kind", () => {
+  it("studioMoveRegion keeps the region's size and only moves its centre", () => {
+    const moved = studioMoveRegion({
+      canvas: CANVAS,
+      grabOffset: { x: 0, y: 0 },
+      pointer: { x: CANVAS.left + CANVAS.width * 0.75, y: CANVAS.top + CANVAS.height * 0.25 },
+      values: CENTRED,
+    });
+
+    // The whole of the claim: the shape is the same shape, somewhere else.
+    expect(moved.size).toBe(CENTRED.size);
+    expect(moved.aspect).toBe(CENTRED.aspect);
+    expect([moved.centerX, moved.centerY]).not.toEqual([
+      CENTRED.centerX,
+      CENTRED.centerY,
+    ]);
+  });
+
+  it("studioResizeRegion holds the opposite corner still, so a corner drag resizes rather than moves", () => {
+    // The distinguishing property of a corner drag, and the reason it is not
+    // simply "the size changed": a resize that let the far corner drift would
+    // slide the whole shape while claiming to scale it, and the near corner
+    // would still be under the pointer where it belongs.
+    const before = studioRegionHandlePoint("northWest", CENTRED, CANVAS);
+    const resized = studioResizeRegion({
+      canvas: CANVAS,
+      handle: "southEast",
+      pointer: {
+        x: CANVAS.left + CANVAS.width * 0.95,
+        y: CANVAS.top + CANVAS.height * 0.95,
+      },
+      values: CENTRED,
+    });
+    const after = studioRegionHandlePoint("northWest", resized, CANVAS);
+
+    expect(resized.size).not.toBe(CENTRED.size);
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+  });
+
+  it("studioResizeRegion leaves the height alone when a side node carries only the width", () => {
+    // A side node is one-dimensional, and the representation makes that easy to
+    // assert wrongly: `size` is the half-*height* and `aspect` scales the width
+    // off it. So "the width changed and the height did not" is `aspect` moving
+    // while `size` holds still -- the opposite of the reading the names invite,
+    // and the reason this test is worth more than its length suggests.
+    const heightOf = (values: StudioRegionValues) => values.size;
+    const resized = studioResizeRegion({
+      canvas: CANVAS,
+      handle: "east",
+      pointer: {
+        x: CANVAS.left + CANVAS.width * 0.85,
+        y: CANVAS.top + CANVAS.height * 0.5,
+      },
+      values: CENTRED,
+    });
+
+    expect(resized.aspect).not.toBe(CENTRED.aspect);
+    expect(heightOf(resized)).toBeCloseTo(heightOf(CENTRED), 6);
+  });
+});
