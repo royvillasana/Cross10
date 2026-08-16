@@ -8,6 +8,7 @@ import {
   expectToolcraftLayerVisibility,
 } from "./browser-layer-evidence-helpers";
 import {
+  dismissStudioOnboarding,
   addStudioLayer,
   dragStudioLayerRow,
   openStudioGroupedStack,
@@ -212,11 +213,24 @@ test("browser: studio dropped image becomes a layer that draws it", async ({ pag
   // Cleared through an init script because the app rewrites storage on every
   // change, so a clear that runs before the reload is undone by the page it
   // was clearing for.
-  await page.addInitScript(() => {
+  // Cleared after the first load and then reloaded, rather than through an
+  // init script. An init script runs on *every* navigation in the context, so a
+  // later reload wipes storage again -- including the record that the flow has
+  // been answered, which brings the dialog back over a test that dismissed it
+  // long ago. That is what happened here: "Add layer" was never found because a
+  // study picker had reappeared on top of it.
+  await page.goto("/");
+  await page.evaluate(() => {
     window.localStorage.clear();
   });
-  await page.goto("/");
+  await page.reload();
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is touched. These fixtures clear
+  // storage to start from an empty stack, which is a first visit, so the
+  // dialog opens over the shell and its backdrop intercepts every pointer
+  // event afterwards -- which surfaced as a hover timing out on a layer row
+  // that Playwright had just reported visible and stable.
+  await dismissStudioOnboarding(page);
   const before = await readStudioLayerIds(page);
 
   // Dropped rather than typed into a file input: canvas upload is a drop
@@ -311,11 +325,24 @@ test("browser: studio image import creates a layer that draws it", async ({ page
 
   // From an empty stack: anything already there would composite over the
   // imported picture and be read instead of it.
-  await page.addInitScript(() => {
+  // Cleared after the first load and then reloaded, rather than through an
+  // init script. An init script runs on *every* navigation in the context, so a
+  // later reload wipes storage again -- including the record that the flow has
+  // been answered, which brings the dialog back over a test that dismissed it
+  // long ago. That is what happened here: "Add layer" was never found because a
+  // study picker had reappeared on top of it.
+  await page.goto("/");
+  await page.evaluate(() => {
     window.localStorage.clear();
   });
-  await page.goto("/");
+  await page.reload();
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is touched. These fixtures clear
+  // storage to start from an empty stack, which is a first visit, so the
+  // dialog opens over the shell and its backdrop intercepts every pointer
+  // event afterwards -- which surfaced as a hover timing out on a layer row
+  // that Playwright had just reported visible and stable.
+  await dismissStudioOnboarding(page);
   const before = await readStudioLayerIds(page);
 
   await importStudioImage(page);
@@ -351,11 +378,24 @@ test("browser: studio image transform turns what the layer draws", async ({ page
   test.setTimeout(120_000);
   writeImportFixture();
 
-  await page.addInitScript(() => {
+  // Cleared after the first load and then reloaded, rather than through an
+  // init script. An init script runs on *every* navigation in the context, so a
+  // later reload wipes storage again -- including the record that the flow has
+  // been answered, which brings the dialog back over a test that dismissed it
+  // long ago. That is what happened here: "Add layer" was never found because a
+  // study picker had reappeared on top of it.
+  await page.goto("/");
+  await page.evaluate(() => {
     window.localStorage.clear();
   });
-  await page.goto("/");
+  await page.reload();
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is touched. These fixtures clear
+  // storage to start from an empty stack, which is a first visit, so the
+  // dialog opens over the shell and its backdrop intercepts every pointer
+  // event afterwards -- which surfaced as a hover timing out on a layer row
+  // that Playwright had just reported visible and stable.
+  await dismissStudioOnboarding(page);
   await importStudioImage(page);
 
   await expect
@@ -391,11 +431,24 @@ test("browser: studio image moves and grows with its layer, not under it", async
   test.setTimeout(120_000);
   writeImportFixture();
 
-  await page.addInitScript(() => {
+  // Cleared after the first load and then reloaded, rather than through an
+  // init script. An init script runs on *every* navigation in the context, so a
+  // later reload wipes storage again -- including the record that the flow has
+  // been answered, which brings the dialog back over a test that dismissed it
+  // long ago. That is what happened here: "Add layer" was never found because a
+  // study picker had reappeared on top of it.
+  await page.goto("/");
+  await page.evaluate(() => {
     window.localStorage.clear();
   });
-  await page.goto("/");
+  await page.reload();
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is touched. These fixtures clear
+  // storage to start from an empty stack, which is a first visit, so the
+  // dialog opens over the shell and its backdrop intercepts every pointer
+  // event afterwards -- which surfaced as a hover timing out on a layer row
+  // that Playwright had just reported visible and stable.
+  await dismissStudioOnboarding(page);
   await importStudioImage(page);
 
   await expect
@@ -536,11 +589,24 @@ test("browser: studio image layer composites above, below, and between procedura
   writeImportFixture();
 
   // From an empty stack, so every layer in the frame is one this test put there.
-  await page.addInitScript(() => {
+  // Cleared after the first load and then reloaded, rather than through an
+  // init script. An init script runs on *every* navigation in the context, so a
+  // later reload wipes storage again -- including the record that the flow has
+  // been answered, which brings the dialog back over a test that dismissed it
+  // long ago. That is what happened here: "Add layer" was never found because a
+  // study picker had reappeared on top of it.
+  await page.goto("/");
+  await page.evaluate(() => {
     window.localStorage.clear();
   });
-  await page.goto("/");
+  await page.reload();
   await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  // The flow is answered before anything is touched. These fixtures clear
+  // storage to start from an empty stack, which is a first visit, so the
+  // dialog opens over the shell and its backdrop intercepts every pointer
+  // event afterwards -- which surfaced as a hover timing out on a layer row
+  // that Playwright had just reported visible and stable.
+  await dismissStudioOnboarding(page);
   const session = await createToolcraftBrowserProofSession(page);
 
   await importStudioImage(page);
