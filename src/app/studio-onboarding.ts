@@ -1,3 +1,5 @@
+import { getToolcraftCanvasAspectRatioPresetBySize } from "@/toolcraft/runtime/schema/canvas-aspect-ratio-presets";
+
 import {
   STUDIO_PRESETS,
   findStudioPreset,
@@ -311,6 +313,29 @@ export function planStudioOnboardingConfirmation({
       size: { height: shape.height, width: shape.width },
       type: "canvas.setSize",
     });
+
+    // ...and the aspect select beside it, which `canvas.setSize` does not touch.
+    // Without this the flow lands an author on a 1080x1920 canvas whose Aspect
+    // ratio reads "16:9" -- the runtime's untouched default -- directly above the
+    // two numbers that say otherwise. One of the pair is wrong and the author has
+    // no way to tell which, which is worse than either being blank.
+    //
+    // Matched by exact size through the runtime's own lookup rather than by
+    // computing a ratio here, so the two agree by construction. A shape with no
+    // preset writes nothing and leaves the select to derive what it can: 4:5 is
+    // the case, and it is not in the runtime's list at all.
+    const preset = getToolcraftCanvasAspectRatioPresetBySize({
+      height: shape.height,
+      unit: "px",
+      width: shape.width,
+    });
+    if (preset) {
+      commands.push({
+        target: "canvas.aspectRatio",
+        type: "controls.setValue",
+        value: preset.value,
+      });
+    }
   }
 
   if (background) {

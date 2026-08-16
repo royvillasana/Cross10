@@ -58,7 +58,7 @@
 
 ## 9. Verify and close
 
-- [ ] 9.1 Run `npm test` and confirm both halves, since the `&&` chain hides vitest when `node --test` fails.
-- [ ] 9.2 Run the browser suite and compare against the recorded baseline — five stable failures plus a rotating set of load-flaky framework self-tests. Add nothing to it.
-- [ ] 9.3 Confirm the integrity gate passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
-- [ ] 9.4 Open the built site and walk the flow by hand: open, choose, set up, land, build, restyle a layer, restore. The last two changes each shipped a defect that every proof passed over and one look found.
+- [x] 9.1 Run `npm test` and confirm both halves, since the `&&` chain hides vitest when `node --test` fails.
+- [x] 9.2 Run the browser suite and compare against the recorded baseline — five stable failures plus a rotating set of load-flaky framework self-tests. Add nothing to it. **Run in batches; this environment kills a run at about ninety minutes.** Product specs 0 failed against 4 at `d82fc74`, framework self-tests 11 against 11, perf and kernel 7 against 7.
+- [x] 9.3 Confirm the integrity gate passes and that `index.html`, `src/app/app-identity.ts`, and `src/toolcraft/**` are untouched.
+- [x] 9.4 Open the built site and walk the flow by hand: open, choose, set up, land, build, restyle a layer, restore. The last two changes each shipped a defect that every proof passed over and one look found. **It happened again, exactly as predicted.** Choosing Vertical landed a 1080x1920 canvas whose Aspect ratio select read "16:9" — the runtime's untouched default — directly above the two numbers saying otherwise. `canvas.setSize` does not touch the aspect select. Every proof passed because every proof asked about the canvas, and the canvas was right; the label was the part nobody had thought to read.

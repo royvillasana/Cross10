@@ -187,3 +187,65 @@ describe("what each step writes", () => {
     }
   });
 });
+
+describe("the size the flow sets and the aspect beside it", () => {
+  /**
+   * Found by opening the built site and looking at it, not by any proof here.
+   *
+   * `canvas.setSize` does not touch the aspect select, so choosing Vertical
+   * landed an author on a 1080x1920 canvas whose Aspect ratio read "16:9" — the
+   * runtime's untouched default — directly above the two numbers saying
+   * otherwise. One of the pair is wrong and nothing on screen says which, which
+   * is worse than either of them being blank.
+   *
+   * Every proof passed over it because every proof asked about the canvas, and
+   * the canvas was right. The label was the part nobody had thought to read.
+   */
+  const aspectOf = (shapeValue: string) => {
+    const commands = planStudioOnboardingConfirmation({
+      background: "",
+      choice: STUDIO_ONBOARDING_BLANK,
+      layers: [],
+      record: {},
+      selectedLayerId: null,
+      shape: findStudioOutputShape(shapeValue),
+    });
+    const write = commands.find(
+      (command) => command.target === "canvas.aspectRatio",
+    );
+    return write?.value ?? null;
+  };
+
+  it("names the aspect whenever the runtime has a name for it", () => {
+    expect(aspectOf("square")).toBe("1:1");
+    expect(aspectOf("vertical")).toBe("9:16");
+    expect(aspectOf("landscape")).toBe("16:9");
+  });
+
+  it("writes nothing for a shape the runtime cannot name", () => {
+    // 4:5 is not among the runtime's presets, which is why these shapes are set
+    // as real dimensions rather than as a ratio in the first place. Writing an
+    // approximate preset would be worse than writing none: the select would then
+    // confidently name a ratio the canvas does not have.
+    expect(aspectOf("portrait")).toBeNull();
+  });
+
+  it("sets the size before naming its aspect", () => {
+    // Order matters if the runtime ever derives one from the other: the size is
+    // the fact and the label describes it, so the fact lands first.
+    const commands = planStudioOnboardingConfirmation({
+      background: "",
+      choice: STUDIO_ONBOARDING_BLANK,
+      layers: [],
+      record: {},
+      selectedLayerId: null,
+      shape: findStudioOutputShape("vertical"),
+    });
+    const sizeAt = commands.findIndex((command) => command.type === "canvas.setSize");
+    const aspectAt = commands.findIndex(
+      (command) => command.target === "canvas.aspectRatio",
+    );
+    expect(sizeAt).toBeGreaterThanOrEqual(0);
+    expect(aspectAt).toBeGreaterThan(sizeAt);
+  });
+});
