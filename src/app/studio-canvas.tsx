@@ -332,6 +332,11 @@ export function StudioCanvas(): React.JSX.Element {
           .filter((entry) => entry.values.visible !== 0)
           .map((entry) => entry.typeId)
           .join(">")}
+        // Where the loop has got to, as the frame that was actually drawn saw it.
+        // Read from `parameters`, not from the timeline, so it moves only when a
+        // draw moved: a marker wired straight to the clock would report playback
+        // during a frame the renderer never produced.
+        data-timeline-progress={parameters.loop.toFixed(6)}
         data-toolcraft-product-output=""
         ref={canvasRef}
       />

@@ -8,7 +8,7 @@
 
 - [x] 2.1 Enable `panels.timeline` with `mode: "playback"` and `defaultDurationSeconds` equal to the declared period.
 - [x] 2.2 Author no transport. No play, pause, restart, animate, or loop-length control in the panel — the runtime owns all of it, and a product that adds one has two transports that disagree.
-- [ ] 2.3 Satisfy the timeline acceptance recipe in full: duration, scrub, pause/resume, keyframes, and loop each have a fixed helper and none is optional once a timeline exists. **This is the largest cost in the change and it lands here, before anything animates.**
+- [x] 2.3 Satisfy the timeline acceptance recipe in full: duration, scrub, pause/resume, keyframes, and loop each have a fixed helper and none is optional once a timeline exists. **This is the largest cost in the change and it lands here, before anything animates.**
 - [ ] 2.4 Prove the Setup `Timeline` switch is presentation only: playback state, product values, and export behaviour are unchanged by toggling it.
 - [ ] 2.5 Declare the sustained performance path playback introduces, and measure it. The existing paths describe discrete edits and viewport gestures; a renderer that runs continuously is a different claim against the same workload dimensions.
 
@@ -23,19 +23,19 @@
 
 ## 4. Video export
 
-- [ ] 4.1 Add the `Video Export` section with `export.video.format` (MP4 default, MP4 and WebM) and `export.video.resolution` (Current default, Current and 4K), placed where `export-pipeline` requires: immediately after `Image Export`, directly above the sticky actions.
-- [ ] 4.2 Make `Export Video` the primary sticky action and `Export PNG` secondary, per the same requirement. **Tell the user before this lands** — a still-only user gets a demoted button, and that is the spec's decision rather than this change's.
+- [x] 4.1 Add the `Video Export` section with `export.video.format` (MP4 default, MP4 and WebM) and `export.video.resolution` (Current default, Current and 4K), placed where `export-pipeline` requires: immediately after `Image Export`, directly above the sticky actions.
+- [x] 4.2 Make `Export Video` the primary sticky action and `Export PNG` secondary, per the same requirement. **Tell the user before this lands** — a still-only user gets a demoted button, and that is the spec's decision rather than this change's.
 - [x] 4.3 Give the export renderer the timeline's timestamp and resolve drift at it. The renderer already draws a deterministic scene at a size; time is the one input it lacks.
-- [ ] 4.4 Keep the still's at-rest pointer rule intact while letting the loop supply a pointer path for video. Two exports of one composition must still be the same composition.
-- [ ] 4.5 Prove the artifact: duration and packet count follow the timeline, the cadence is the 30 FPS schedule regardless of render cost, editing duration changes the artifact, the last frame meets the first, and the background survives with Background off.
+- [x] 4.4 Keep the still's at-rest pointer rule intact while letting the loop supply a pointer path for video. Two exports of one composition must still be the same composition.
+- [x] 4.5 Prove the artifact: duration and packet count follow the timeline, the cadence is the 30 FPS schedule regardless of render cost, editing duration changes the artifact, the last frame meets the first, and the background survives with Background off.
 - [ ] 4.6 Check the loop period against what the common destinations accept — a vertical video is usually watched on a phone where anything past a minute or so is a different kind of post — and make the declared period a reason rather than a round number. MP4 is already the specified default and is the format those destinations take, so nothing here needs a new format.
-- [ ] 4.7 Assert the product allocates no export canvas, calls no `toBlob` or `toDataURL`, creates no object URL, instantiates no encoder, and downloads nothing. The runtime owns delivery and this is the line that says so.
+- [x] 4.7 Assert the product allocates no export canvas, calls no `toBlob` or `toDataURL`, creates no object URL, instantiates no encoder, and downloads nothing. The runtime owns delivery and this is the line that says so.
 
 ## 5. Posting is the user's, and nothing here does it
 
-- [ ] 5.1 Build no share action, and do not treat that as a gap this change is leaving. The ask was for output *shaped* for where it is posted; the user downloads the file and uploads it themselves. MP4 at a phone-shaped canvas is the whole of it.
-- [ ] 5.2 Confirm the shapes land in `dialog-first-composition-flow` group 3 rather than here, since they are canvas dimensions rather than export settings, and that nothing in the export surface duplicates them.
-- [ ] 5.3 Leave upstream issue 12 filed anyway. A share *integration* is still impossible for the reason recorded there, and the day someone asks for one it should be a known gap rather than a fresh discovery.
+- [x] 5.1 Build no share action, and do not treat that as a gap this change is leaving. The ask was for output *shaped* for where it is posted; the user downloads the file and uploads it themselves. MP4 at a phone-shaped canvas is the whole of it.
+- [x] 5.2 Confirm the shapes land in `dialog-first-composition-flow` group 3 rather than here, since they are canvas dimensions rather than export settings, and that nothing in the export surface duplicates them.
+- [x] 5.3 Leave upstream issue 12 filed anyway. A share *integration* is still impossible for the reason recorded there, and the day someone asks for one it should be a known gap rather than a fresh discovery.
 
 ## 6. Verify and close
 

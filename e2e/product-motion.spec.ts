@@ -6,7 +6,7 @@ import type { Download, Locator, Page } from "@playwright/test";
 import {
   readToolcraftBrowserObservation,
 } from "./browser-proof-session";
-import { attachToolcraftBrowserRuntimeEvidence } from "./browser-runtime-evidence";
+import { expectToolcraftStandardTimelinePlayback } from "./browser-standard-timeline-evidence";
 import {
   openStudioSingleLayer,
   readStudioOutputSignature,
@@ -261,16 +261,12 @@ test("browser: studio timeline plays, scrubs, and loops the drift", async ({
     "an export at timeline zero must be the artifact the composition always was",
   ).toBe(stillDigest);
 
-  for (const evidenceType of [
-    "timeline-scrub",
-    "timeline-rendered-frame",
-    "timeline-loop",
-    "product-observable-change",
-  ] as const) {
-    await attachToolcraftBrowserRuntimeEvidence({
-      evidenceType,
-      requirementId: "motion.drift",
-      target: "timeline.playback",
-    });
-  }
+  // The runtime's own transport, proved through the protected helper rather than
+  // by hand: scrub, seam, and duration change are the recipe a timeline owes
+  // once it exists, and the marker it reads is the loop position of the frame
+  // that was actually drawn rather than the clock's idea of it.
+  await expectToolcraftStandardTimelinePlayback(session, {
+    markerSelector: "[data-toolcraft-product-output]",
+    requirementId: "timeline.playback",
+  });
 });
