@@ -3,15 +3,21 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status is stated per requirement.** Audited against the app on
+2026-08-17 (`outstanding` 1.1).
 ## Requirements
 ### Requirement: Scene serialization is runtime Settings Transfer
 Scene export and import SHALL be the runtime's `Export Settings` and `Import Settings` in Setup. Product code MUST NOT implement settings import/export through `panelActions`, route-local file inputs, or app-authored controls, and MUST NOT gate it by app complexity. Product-owned non-control state that belongs in a scene SHALL be opted in through `settingsTransfer.additionalValueTargets`.
+
+**Status: satisfied.** Transfer is the runtime's, in Setup; the product authors
+no save, load or import control anywhere. Five product-owned targets are opted
+in through `settingsTransfer.additionalValueTargets` — the per-layer record, the
+cursor, the vertex paths, the pen, and the stack snapshot — which is what makes
+the round trip lossless rather than restoring a layer list of blanks.
+
+The *Custom shader source transfers* scenario has no subject here and will not
+acquire one: this product has no editable shader hook. Source leaves through a
+clipboard action and never returns, which `shader-delivery` records as R55.
 
 #### Scenario: Round trip is lossless
 - **WHEN** the user exports settings and then imports the same file
@@ -40,6 +46,13 @@ The library SHALL be presented as pictures wherever it is offered. Its surface i
 not fixed to a schema control: the starting choice belongs in the onboarding dialog
 and the per-layer choice belongs with the layer it applies to, and neither is a
 setting that shapes existing work.
+
+**Status: satisfied.** Nineteen entries covering all eight series, offered at
+both moments the requirement names — the onboarding dialog when a session
+begins, and `Composition Source` while editing — from one library, presented as
+pictures in both. Applying is revertible through the stack snapshot. The
+palettes themselves are recorded as plausible rather than verified; checking
+them against primary sources is `outstanding` 2.3.
 
 The eight series SHALL be Couleur Additive, Physichromie, Induction Chromatique,
 Chromointerférence, Transchromie, Chromosaturation, Chromoscope, and Couleur dans
@@ -118,6 +131,11 @@ Selection and loading are two steps. A select that rewrote twenty other targets 
 ### Requirement: Workspace persistence by reload
 The app SHALL rely on default runtime workspace persistence, declaring `persistenceCoverage: "reload"`, `evidence: "persistence-state"`, and `persistenceSlices` exactly equal to the resolved `schema.persistence.include`. Product code MUST NOT read or write localStorage or IndexedDB directly.
 
+**Status: satisfied.** Declared as required, with `persistenceSlices` derived
+from the resolved schema rather than restated. No product module touches
+`localStorage` or `indexedDB`; the only mentions are the schema declaring the
+storage and the acceptance data reading that declaration.
+
 #### Scenario: Workspace survives reload
 - **WHEN** the user edits parameters and reloads the browser
 - **THEN** the visible workspace, canvas state, and panel state are restored from the resolved persistence slices
@@ -128,6 +146,12 @@ The app SHALL rely on default runtime workspace persistence, declaring `persiste
 
 ### Requirement: Randomize with locks
 Randomize SHALL assign new values within declared schema ranges, and every randomizable group SHALL have a lock `switch` that excludes its targets.
+
+**Status: pending — not built.** There is no randomize command and no lock
+switch in the product. All three scenarios below are unmet. The design reasoning
+recorded here is still sound and worth keeping, because it is the part that
+would otherwise be re-derived; what is missing is the building. Carried as
+`outstanding` 1a.2.
 
 The command and its locks live together in one Randomize section, as an `actions` control rather than a sticky `panelActions` one, because two framework rules make the original per-section sticky design unbuildable. A section holding a large compound control cannot also hold a lock: runtime splits the compound control into its own section, which duplicates section titles. And every acceptance row on a sticky `panelActions` control must cover every footer action, so adding Randomize to the footer would oblige the export proof and the randomize proof to each exercise both commands.
 
