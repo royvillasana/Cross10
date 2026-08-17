@@ -29,8 +29,17 @@ Scene export and import SHALL be the runtime's `Export Settings` and `Import Set
 
 ### Requirement: Built-in preset library
 The product SHALL ship a preset library that covers the artist's eight
-investigations, selectable through a schema control. Applying a preset SHALL be
-revertible.
+investigations. Applying a preset SHALL be revertible.
+
+The library SHALL be offered at two moments rather than one: when a session begins,
+as the starting point for the whole canvas, and while editing, as something applied
+to one layer or group. Both SHALL offer the same library, because a user who has
+learned what an entry looks like at the start must find the same entry later.
+
+The library SHALL be presented as pictures wherever it is offered. Its surface is
+not fixed to a schema control: the starting choice belongs in the onboarding dialog
+and the per-layer choice belongs with the layer it applies to, and neither is a
+setting that shapes existing work.
 
 The eight series SHALL be Couleur Additive, Physichromie, Induction Chromatique,
 Chromointerférence, Transchromie, Chromosaturation, Chromoscope, and Couleur dans
@@ -59,6 +68,11 @@ The total number of presets is not fixed. The previous requirement of a total
 between 8 and 12 is withdrawn: it described a demonstration that the stack could
 hold a composition, and the library's purpose is now to show a user what the
 vocabulary can do.
+
+#### Scenario: The library is offered at both moments
+- **WHEN** a session is started, and again while editing a layer
+- **THEN** the same library is offered in both places
+- **AND** each entry is shown as a picture of what it will make
 
 #### Scenario: Every series represented
 - **WHEN** the preset list is opened

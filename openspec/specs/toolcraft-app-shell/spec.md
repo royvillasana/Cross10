@@ -42,10 +42,32 @@ NOT be split across sections; a layer's kind and the media that kind requires
 SHALL be reachable without crossing an unrelated section; and a layer's geometry,
 including its flip, SHALL be one section.
 
+**A product surface outside the control surface SHALL declare what it owns.** A
+dialog that sets schema targets is not a section and has no place in the section
+inventory, but the targets it writes are still product targets and MUST NOT
+disappear from the product's own account of itself. Every such target SHALL be
+declared with the surface that owns it, and a target SHALL be owned by exactly one
+surface — a value set from both a dialog and a panel section is a value with two
+owners and no single answer to what changed it.
+
+The control surface SHALL hold only controls that shape work that exists. A section
+whose only purpose is deciding what to make before making it SHALL NOT be authored,
+because at equal weight beside the controls that shape the work it reads as one more
+setting rather than as the decision it is.
+
 #### Scenario: Inventory covers every control
 - **WHEN** the schema is validated
 - **THEN** every product control target appears exactly once in the inventory
 - **AND** only `panelActions`, `settingsTransfer`, and the seven reserved Setup targets are exempt
+
+#### Scenario: A dialog's targets are declared with it
+- **WHEN** a product dialog writes schema targets
+- **THEN** those targets are declared against that surface
+- **AND** no target is claimed by both a dialog and a panel section
+
+#### Scenario: The panel holds no entry point
+- **WHEN** the control surface is read
+- **THEN** no section exists whose only purpose is starting a session or choosing what to make
 
 #### Scenario: Export and Background settings consume budget
 - **WHEN** `Image Export`, `Video Export`, and `Background` are authored
