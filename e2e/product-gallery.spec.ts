@@ -524,8 +524,8 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
       untouched: pictureLayerId,
     },
     {
-      // A picture row selected: it is restyled and stays a picture. Reached the
-      // same way as any other layer, because it is one.
+      // A picture row selected: it is restyled and stays a picture. Reached
+      // like every other layer, because it is one.
       changes: pictureLayerId,
       kind: STUDIO_APPLY_AIMS[0],
       select: pictureLayerId,
