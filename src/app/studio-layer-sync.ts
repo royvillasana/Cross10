@@ -38,6 +38,24 @@ export function useStudioLayerSync(): void {
   const dispatch = useToolcraftDispatch();
   const state = useToolcraftSelector((current) => current);
   const lastSyncedLayerId = React.useRef<string | null>(null);
+  /**
+   * How deep history was last time this ran.
+   *
+   * The signal that separates "the author moved a control" from "the runtime
+   * moved history underneath them". Both look identical to the fold below --
+   * the control values differ from the record -- and telling them apart is the
+   * whole of the fix for the layer an undo used to corrupt.
+   */
+  const lastHistoryDepth = React.useRef<{ redo: number; undo: number } | null>(null);
+  /**
+   * The layer the last folded edit belonged to.
+   *
+   * Half the answer history depth cannot give. Knowing that history moved says
+   * the values did not come from the author; knowing *whose* edit is on top of
+   * the stack says whether the reverted values describe the layer now selected.
+   * Undoing your own last edit is the common case and has to keep working.
+   */
+  const lastEditedLayerId = React.useRef<string | null>(null);
 
   const layers = state.layers ?? [];
   const selectedLayerId = state.selectedLayerId ?? null;
@@ -104,7 +122,63 @@ export function useStudioLayerSync(): void {
       return;
     }
 
-    // Flow two: same layer, so any difference is an edit the user made.
+    // Flow two: same layer. Any difference is *either* an edit the author made
+    // or an undo of an edit made somewhere else, and the two are indistinguishable
+    // from the values alone.
+    //
+    // **The failure this guards.** The controls are one editing surface pointed
+    // at whichever layer is selected (R56), so an undo restores control values,
+    // not a layer's values. Edit A, select B, undo: the reverted values arrive
+    // while B is selected, and folding them writes A's old settings into B. The
+    // author undid something on A and B changed, silently, while they were
+    // looking at neither.
+    //
+    // History depth is the signal the values do not carry. An author's edit
+    // pushes onto the undo stack; an undo pops from it and pushes onto redo. So
+    // a values change that arrives with a *shrinking* undo stack, or a growing
+    // redo stack, did not come from the author's hands.
+    //
+    // What happens then is deliberately modest: the fold is skipped and the
+    // selected layer's stored values are pushed back into the controls, so the
+    // surface returns to describing the layer it is pointed at. The undone edit
+    // is not visibly undone -- the runtime reverted controls that no longer
+    // describe the layer the patch belonged to, and this product cannot tell it
+    // which layer that was. Inert is not correct, but it is not destructive,
+    // and the difference matters: one is an undo that appears not to work, the
+    // other is a layer the author never touched quietly taking another's
+    // settings.
+    //
+    // The full fix is the record becoming the single store rather than a
+    // follower of the controls, which is an amendment to R56 rather than a
+    // patch to this sync. It is recorded as outstanding task 1.2.
+    const depth = {
+      redo: state.history?.redo?.length ?? 0,
+      undo: state.history?.undo?.length ?? 0,
+    };
+    const previousDepth = lastHistoryDepth.current;
+    lastHistoryDepth.current = depth;
+    const historyMoved =
+      previousDepth !== null &&
+      (depth.undo < previousDepth.undo || depth.redo > previousDepth.redo);
+
+    // Only when the reverted values describe some *other* layer. An author
+    // undoing the edit they just made, on the layer they are still looking at,
+    // is the ordinary case -- the controls revert, this folds them back, and one
+    // undo means one undo. Guarding that too made Undo inert across the app,
+    // which is how this fix first went wrong.
+    if (historyMoved && lastEditedLayerId.current !== selectedLayerId) {
+      const entry = readStudioLayerEntry(record, selectedLayerId);
+      for (const assignment of projectStudioLayerEntry(entry)) {
+        dispatch({
+          history: "skip",
+          target: assignment.target,
+          type: "controls.setValue",
+          value: assignment.value,
+        });
+      }
+      return;
+    }
+
     const stored = readStudioLayerEntry(record, selectedLayerId);
     const declaredType = values[STUDIO_LAYER_TYPE_TARGET];
     const retyped =
@@ -118,13 +192,14 @@ export function useStudioLayerSync(): void {
       retyped === stored ? collectStudioSelectedLayerEdit(stored, values) : retyped;
 
     if (JSON.stringify(next) !== JSON.stringify(stored)) {
+      lastEditedLayerId.current = selectedLayerId;
       writeRecord(
         writeStudioLayerEntry(record, selectedLayerId, next),
         "Edit layer",
         `studio-layer-edit:${selectedLayerId}`,
       );
     }
-  }, [dispatch, record, selectedLayerId, values, writeRecord]);
+  }, [dispatch, record, selectedLayerId, state.history, values, writeRecord]);
 
   // A deleted layer's entry is deliberately *not* removed here.
   //

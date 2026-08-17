@@ -1,3 +1,4 @@
+import { appSchema } from "../src/app/app-schema";
 import { expect, type Page } from "@playwright/test";
 
 import {
@@ -8,6 +9,9 @@ import {
   addStudioLayer,
   openStudioSingleLayer,
   readStudioLayerIds,
+  openStudioTwoLayerStack,
+  toggleStudioLayerVisibility,
+  readStudioOutputSignature,
   selectStudioLayer,
   setStudioSlider,
 } from "./studio-product-helpers";
@@ -63,6 +67,27 @@ async function settleStudioOutput(page: Page): Promise<void> {
       { intervals: [300], timeout: 30_000 },
     )
     .toBe(true);
+}
+
+/**
+ * The composite with every other layer hidden, so the reading is one layer.
+ *
+ * Rendered rather than stored, and that was the second attempt. Reading the
+ * persisted record looked cleaner and was useless here: persistence trails the
+ * edit far enough that the values slice was still empty, so both readings came
+ * back null and compared equal -- a proof of "nothing was corrupted" that could
+ * not have noticed corruption. Pixels are what an author would see anyway.
+ */
+async function readStudioLayerAlone(
+  page: Page,
+  layerId: string,
+  otherLayerId: string,
+): Promise<string> {
+  await toggleStudioLayerVisibility(page, otherLayerId);
+  const signature = await readStudioOutputSignature(page);
+  await toggleStudioLayerVisibility(page, otherLayerId);
+  void layerId;
+  return signature;
 }
 
 function studioUndo(page: Page) {
@@ -138,4 +163,56 @@ test("browser: studio undo reverts an edit, a layer, and a layer's values", asyn
   await expect
     .poll(async () => readStudioSliderValue(page, "Angle"), { timeout: 10_000 })
     .toBe(75);
+});
+
+/**
+ * Undo must not write into a layer the edit never belonged to.
+ *
+ * The controls are one editing surface pointed at whichever layer is selected
+ * (R56), so an undo restores *control values* rather than a layer's values. If
+ * the author has selected a different layer since making the edit, the reverted
+ * values arrive while the wrong layer is selected — and the sync, which cannot
+ * tell an undo from an edit, folds them straight into it.
+ *
+ * The damage is silent and to a layer the author was not touching: they undo
+ * something on A and B changes. This asserts the layer that was not named keeps
+ * its own values, which is the same claim the aimed-application proofs make and
+ * for the same reason.
+ */
+test("browser: studio undo leaves a layer it was never aimed at alone", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { fixture } = await openStudioTwoLayerStack(page);
+
+  // Two layers that differ, so folding one into the other is observable.
+  await selectStudioLayer(page, fixture.gradientLayerId);
+  await setStudioSlider(page, "Angle", 70);
+  const gradientBefore = await readStudioLayerAlone(
+    page,
+    fixture.gradientLayerId,
+    fixture.stripesLayerId,
+  );
+  // Vacuity guard: a reading that came back blank for both would compare equal
+  // and prove nothing, which is exactly how a proof of "nothing was corrupted"
+  // fails to notice corruption.
+  expect(gradientBefore).not.toBe("");
+  expect(gradientBefore).not.toContain("nogl");
+
+  // The edit, on the other layer.
+  await selectStudioLayer(page, fixture.stripesLayerId);
+  await setStudioSlider(page, "Angle", 20);
+
+  // ...and the author moves on before undoing it.
+  await selectStudioLayer(page, fixture.gradientLayerId);
+  await studioUndo(page).click();
+
+  await expect
+    .poll(
+      async () =>
+        readStudioLayerAlone(page, fixture.gradientLayerId, fixture.stripesLayerId),
+      { timeout: 15_000 },
+    )
+    .toBe(gradientBefore);
 });
