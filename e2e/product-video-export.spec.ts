@@ -320,42 +320,6 @@ test("browser: studio video export format changes the encoded artifact type", as
 });
 
 /**
- * An infinite canvas exports one envelope for the whole loop.
- *
- * The frame size is decided once, from the union of every moment's bounds, and
- * not per frame. A composition that drifts outward would otherwise be clipped
- * part-way through — or, worse, resize between packets, which most players
- * handle by stretching and some by stopping.
- */
-test("browser: studio infinite video export holds one frame size across the loop", async ({
-  page,
-}) => {
-  test.setTimeout(300_000);
-
-  await openStudioSingleLayer(page);
-  const scrubber = await timelineScrubber(page);
-  await toggleStudioSwitch(page, "canvas.infinity");
-  // Drift declared, so the work reaches further at some moments than others --
-  // which is the case a per-frame envelope would get wrong.
-  await setStudioSlider(page, "Travel per loop", 1);
-
-  const schedule = createToolcraftVideoFrameSchedule(
-    await readTimelineDuration(scrubber),
-  );
-  const { inspection } = await inspectToolcraftVideoDownload({
-    backgroundRgba: OPAQUE_PROBE,
-    download: await exportVideo(page),
-    page,
-    schedule,
-  });
-
-  // One size for the track, and every scheduled frame present in it. A track
-  // carries a single coded size, so the claim is that the export chose one that
-  // fits the whole loop rather than dropping or clipping the frames it did not.
-  expect(inspection.width).toBeGreaterThan(0);
-  expect(inspection.height).toBeGreaterThan(0);
-  expect(inspection.frameCount).toBe(schedule.length);
-});
 
 /**
  * The resolution select reaches the encoder too.

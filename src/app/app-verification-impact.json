@@ -1,5 +1,4 @@
 {
-  "version": 3,
   "owners": [
     {
       "acceptanceIds": [
@@ -7,57 +6,13 @@
         "background.include",
         "canvas.infinity-export",
         "canvas.infinity-mode",
+        "canvas.infinity-video-export",
         "canvas.render-scale",
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
-        "layers.selection",
-        "persistence.reload",
-        "selectedLayer.type"
-      ],
-      "kind": "functional",
-      "path": "src/app/app-acceptance-data.ts"
-    },
-    {
-      "acceptanceIds": [
-        "background.color",
-        "background.include",
-        "canvas.infinity-export",
-        "canvas.infinity-mode",
-        "canvas.render-scale",
-        "export.image-action",
-        "export.image-format",
-        "export.image-resolution",
-        "layers.grouping",
-        "layers.imageComposite",
-        "layers.reorder",
-        "layers.selection",
-        "layers.visibility",
-        "persistence.reload",
-        "selectedLayer.angle",
-        "selectedLayer.colorA",
-        "selectedLayer.colorB",
-        "selectedLayer.count",
-        "selectedLayer.opacity",
-        "selectedLayer.phase",
-        "selectedLayer.rampType",
-        "selectedLayer.type",
-        "selectedLayer.widthRatio"
-      ],
-      "kind": "functional",
-      "path": "src/app/app-acceptance.ts"
-    },
-    {
-      "acceptanceIds": [
-        "background.color",
-        "background.include",
-        "canvas.infinity-export",
-        "canvas.infinity-mode",
-        "canvas.render-scale",
-        "export.image-action",
-        "export.image-format",
-        "export.image-resolution",
-        "gallery.apply",
+        "export.video-resolution",
+        "gallery.engineActions",
         "gallery.entry",
         "persistence.reload"
       ],
@@ -66,27 +21,6 @@
     },
     {
       "acceptanceIds": [
-        "persistence.reload"
-      ],
-      "kind": "functional",
-      "path": "src/app/app-identity.ts"
-    },
-    {
-      "acceptanceIds": [
-        "canvas.render-scale",
-        "layers.imageComposite",
-        "layers.reorder",
-        "layers.visibility",
-        "selectedLayer.count"
-      ],
-      "kind": "performance",
-      "path": "src/app/app-performance.ts",
-      "passIds": [
-        "layer-stack"
-      ]
-    },
-    {
-      "acceptanceIds": [
         "background.color",
         "background.include",
         "canvas.infinity-export",
@@ -95,7 +29,7 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
-        "gallery.apply",
+        "gallery.engineActions",
         "gallery.entry",
         "layers.grouping",
         "layers.imageComposite",
@@ -115,26 +49,6 @@
       ],
       "kind": "functional",
       "path": "src/app/app-schema.ts"
-    },
-    {
-      "acceptanceIds": [
-        "layers.grouping",
-        "layers.imageComposite",
-        "layers.reorder",
-        "layers.selection",
-        "layers.visibility",
-        "selectedLayer.angle",
-        "selectedLayer.colorA",
-        "selectedLayer.colorB",
-        "selectedLayer.count",
-        "selectedLayer.opacity",
-        "selectedLayer.phase",
-        "selectedLayer.rampType",
-        "selectedLayer.type",
-        "selectedLayer.widthRatio"
-      ],
-      "kind": "functional",
-      "path": "src/app/studio-acceptance-rows.ts"
     },
     {
       "acceptanceIds": [
@@ -165,10 +79,10 @@
         "layers.visibility"
       ],
       "kind": "performance",
-      "path": "src/app/studio-canvas.tsx",
       "passIds": [
         "layer-stack"
-      ]
+      ],
+      "path": "src/app/studio-canvas.tsx"
     },
     {
       "acceptanceIds": [
@@ -184,15 +98,18 @@
         "canvas.infinity-export",
         "export.image-action",
         "export.image-format",
-        "export.image-resolution"
+        "export.image-resolution",
+        "export.video-resolution"
       ],
       "kind": "functional",
       "path": "src/app/studio-export-sections.ts"
     },
     {
       "acceptanceIds": [
-        "gallery.apply",
-        "gallery.entry"
+        "gallery.actions",
+        "gallery.engineActions",
+        "gallery.entry",
+        "gallery.restore"
       ],
       "kind": "functional",
       "path": "src/app/studio-gallery-sections.ts"
@@ -200,13 +117,36 @@
     {
       "acceptanceIds": [
         "selectedLayer.angle",
+        "selectedLayer.blendMode",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
+        "selectedLayer.colorC",
+        "selectedLayer.colorD",
+        "selectedLayer.contrast",
         "selectedLayer.count",
+        "selectedLayer.driftAngle",
+        "selectedLayer.driftPhase",
+        "selectedLayer.duplicate",
+        "selectedLayer.engine",
+        "selectedLayer.engineAmount",
+        "selectedLayer.engineCursor",
+        "selectedLayer.enginePitch",
+        "selectedLayer.flipX",
+        "selectedLayer.flipY",
+        "selectedLayer.hue",
+        "selectedLayer.jitterAmount",
         "selectedLayer.jitterVariation",
+        "selectedLayer.maskInvert",
+        "selectedLayer.maskShape",
+        "selectedLayer.maskSides",
+        "selectedLayer.mirror",
         "selectedLayer.opacity",
+        "selectedLayer.paletteSlots",
         "selectedLayer.phase",
         "selectedLayer.rampType",
+        "selectedLayer.saturation",
+        "selectedLayer.separator",
+        "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio"
       ],
@@ -234,22 +174,46 @@
     {
       "acceptanceIds": [
         "layers.imageComposite",
+        "media.image",
+        "media.transform",
         "selectedLayer.angle",
+        "selectedLayer.blendMode",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
+        "selectedLayer.colorC",
+        "selectedLayer.colorD",
+        "selectedLayer.contrast",
         "selectedLayer.count",
+        "selectedLayer.driftAngle",
+        "selectedLayer.driftPhase",
+        "selectedLayer.engine",
+        "selectedLayer.engineAmount",
+        "selectedLayer.engineCursor",
+        "selectedLayer.enginePitch",
+        "selectedLayer.flipX",
+        "selectedLayer.flipY",
+        "selectedLayer.hue",
+        "selectedLayer.jitterAmount",
         "selectedLayer.jitterVariation",
+        "selectedLayer.maskInvert",
+        "selectedLayer.maskShape",
+        "selectedLayer.maskSides",
+        "selectedLayer.mirror",
         "selectedLayer.opacity",
+        "selectedLayer.paletteSlots",
         "selectedLayer.phase",
         "selectedLayer.rampType",
+        "selectedLayer.saturation",
+        "selectedLayer.separator",
+        "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio"
       ],
       "kind": "performance",
-      "path": "src/app/studio-layers.ts",
       "passIds": [
         "layer-stack"
-      ]
+      ],
+      "path": "src/app/studio-layers.ts"
     },
     {
       "acceptanceIds": [
@@ -257,7 +221,7 @@
         "export.video-action",
         "export.video-format"
       ],
-      "kind": "performance",
+      "kind": "functional",
       "path": "src/app/studio-motion.ts"
     },
     {
@@ -271,7 +235,7 @@
       "acceptanceIds": [
         "background.color",
         "canvas.render-scale",
-        "gallery.apply",
+        "gallery.engineActions",
         "gallery.entry"
       ],
       "kind": "functional",
@@ -281,7 +245,7 @@
       "acceptanceIds": [
         "background.color",
         "canvas.render-scale",
-        "gallery.apply",
+        "gallery.engineActions",
         "gallery.entry"
       ],
       "kind": "functional",
@@ -306,14 +270,14 @@
         "selectedLayer.widthRatio"
       ],
       "kind": "performance",
-      "path": "src/app/studio-pipeline.ts",
       "passIds": [
         "layer-stack"
-      ]
+      ],
+      "path": "src/app/studio-pipeline.ts"
     },
     {
       "acceptanceIds": [
-        "gallery.apply",
+        "gallery.engineActions",
         "gallery.entry"
       ],
       "kind": "functional",
@@ -330,7 +294,6 @@
     {
       "acceptanceIds": [
         "reference.compare",
-        "reference.entry",
         "reference.opacity"
       ],
       "kind": "functional",
@@ -339,7 +302,6 @@
     {
       "acceptanceIds": [
         "reference.compare",
-        "reference.entry",
         "reference.opacity"
       ],
       "kind": "functional",
@@ -348,7 +310,6 @@
     {
       "acceptanceIds": [
         "reference.compare",
-        "reference.entry",
         "reference.opacity"
       ],
       "kind": "functional",
@@ -391,10 +352,13 @@
       "acceptanceIds": [
         "background.color",
         "background.include",
+        "canvas.infinity-video-export",
         "canvas.render-scale",
         "layers.imageComposite",
         "layers.reorder",
         "layers.visibility",
+        "media.image",
+        "media.transform",
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
@@ -407,10 +371,10 @@
         "selectedLayer.widthRatio"
       ],
       "kind": "performance",
-      "path": "src/app/studio-scene.ts",
       "passIds": [
         "layer-stack"
-      ]
+      ],
+      "path": "src/app/studio-scene.ts"
     },
     {
       "acceptanceIds": [
@@ -456,13 +420,14 @@
         "selectedLayer.widthRatio"
       ],
       "kind": "performance",
-      "path": "src/app/studio-stack-render.ts",
       "passIds": [
         "layer-stack"
-      ]
+      ],
+      "path": "src/app/studio-stack-render.ts"
     },
     {
       "acceptanceIds": [
+        "gallery.restore",
         "layers.grouping",
         "layers.imageComposite",
         "layers.reorder",
@@ -473,11 +438,14 @@
         "selectedLayer.colorA",
         "selectedLayer.colorB",
         "selectedLayer.count",
+        "selectedLayer.duplicate",
         "selectedLayer.opacity",
         "selectedLayer.phase",
         "selectedLayer.rampType",
         "selectedLayer.type",
-        "selectedLayer.widthRatio"
+        "selectedLayer.widthRatio",
+        "stack.pointerPush",
+        "stack.pointerSubject"
       ],
       "kind": "functional",
       "path": "src/app/studio-stack-state.ts"
@@ -485,10 +453,12 @@
     {
       "acceptanceIds": [
         "gallery.entry",
-        "reference.entry"
+        "reference.compare",
+        "reference.opacity"
       ],
       "kind": "presentation",
       "path": "src/app/studio-technique-thumbnails.ts"
     }
-  ]
+  ],
+  "version": 3
 }

@@ -1,3 +1,7 @@
+import type { Locator } from "@playwright/test";
+
+import { createToolcraftVideoFrameSchedule } from "../src/toolcraft/runtime/export/video-frame-schedule";
+import { inspectToolcraftVideoDownload } from "./video-artifact-inspection";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
@@ -212,4 +216,73 @@ test("browser: studio infinite export crops to the union of visible scene bounds
     await exportPng(),
     "an infinite export must be the work, not the view of it",
   ).toBe(before);
+});
+
+
+const OPAQUE_PROBE = [0, 0, 0, 255] as const;
+
+async function timelineScrubber(page: Page): Promise<Locator> {
+  const scrubber = page.getByRole("slider", { name: "Playback position" });
+  if (!(await scrubber.isVisible())) {
+    await page
+      .locator('[data-toolcraft-control-target="panels.timeline.extended"]')
+      .getByRole("switch")
+      .click();
+    await expect(scrubber).toBeVisible();
+  }
+  const pause = page.getByRole("button", { name: "Pause playback" });
+  if (await pause.isVisible()) await pause.click();
+  return scrubber;
+}
+
+async function exportVideo(page: Page) {
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export Video" }).click();
+  // Encoding a six-second loop frame by frame is slower than a still by two
+  // orders of magnitude, and the default download timeout does not cover it.
+  return download;
+}
+
+async function readTimelineDuration(scrubber: Locator): Promise<number> {
+  const duration = Number(await scrubber.getAttribute("aria-valuemax"));
+  expect(Number.isFinite(duration) && duration > 0).toBe(true);
+  return duration;
+}
+
+/**
+ * An infinite canvas exports one envelope for the whole loop.
+ *
+ * The frame size is decided once, from the union of every moment's bounds, and
+ * not per frame. A composition that drifts outward would otherwise be clipped
+ * part-way through — or, worse, resize between packets, which most players
+ * handle by stretching and some by stopping.
+ */
+test("browser: studio infinite video export holds one frame size across the loop", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  await toggleStudioSwitch(page, "canvas.infinity");
+  // Drift declared, so the work reaches further at some moments than others --
+  // which is the case a per-frame envelope would get wrong.
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  const schedule = createToolcraftVideoFrameSchedule(
+    await readTimelineDuration(scrubber),
+  );
+  const { inspection } = await inspectToolcraftVideoDownload({
+    backgroundRgba: OPAQUE_PROBE,
+    download: await exportVideo(page),
+    page,
+    schedule,
+  });
+
+  // One size for the track, and every scheduled frame present in it. A track
+  // carries a single coded size, so the claim is that the export chose one that
+  // fits the whole loop rather than dropping or clipping the frames it did not.
+  expect(inspection.width).toBeGreaterThan(0);
+  expect(inspection.height).toBeGreaterThan(0);
+  expect(inspection.frameCount).toBe(schedule.length);
 });
