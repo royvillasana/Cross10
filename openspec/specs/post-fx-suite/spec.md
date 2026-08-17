@@ -3,12 +3,24 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status: none of this is built.** Audited against the app on 2026-08-17
+(`outstanding` 1.1). Every requirement in this file is pending — there is no
+ASCII renderer, no pixelation, no halftone, no glitch, and no post-FX chain of
+any kind. The only search hit was the word "transition".
+
+**And there is a scope question here that the audit cannot settle.** These five
+read as a general creative-coding toolkit — character output, datamosh smear,
+scanline tearing — rather than as anything the rest of this product is for. The
+studio is a chromatic instrument: its treatments are hue, saturation and
+contrast applied per layer to what sits beneath, because those are operations on
+*colour*, which is the subject. A datamosh smear is not.
+
+Nothing is being removed on that argument, because deciding what this product is
+for is the owner's call and not the auditor's. What the audit can say is that
+this file is the largest block of unbuilt intent in the specs, that none of it
+is depended on by anything else, and that it should be either scheduled or
+dropped rather than left to read as work in progress. Carried as `outstanding`
+1a.3.
 ## Requirements
 ### Requirement: ASCII and ANSI rendering mode
 The ASCII tool SHALL render images, video, or the live generative canvas as character output, with controls for character set, cell size, and color mode (mono, active palette, or source colors).

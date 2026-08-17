@@ -3,12 +3,23 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status: none of this is built, and the product went the other way.**
+Audited against the app on 2026-08-17 (`outstanding` 1.1). There is no `code`
+control, no hook, no hot reload, no compile-error surface and no annotated
+uniforms.
+
+**What exists instead is one-way.** `shader-delivery` R55 records it: the studio
+assembles the composed GLSL for the stack an author built and hands it out
+through `Copy shader source`. Source leaves and never returns. That is a
+different product decision from the one this file describes — editing a hook
+*inside* the studio and compiling it back onto the canvas — and the two are not
+complementary, they are alternatives. A studio whose shader can be hand-edited
+is a shader editor; this one is an instrument whose output happens to be
+readable.
+
+So every requirement below is pending, and pending on a direction the product
+has already declined to take. Deciding whether to take it after all is the
+owner's call. Carried as `outstanding` 1a.4.
 ## Requirements
 ### Requirement: Shader hook editing through the built-in code control
 The shader tool SHALL use the built-in `code` control with `textValueKind: "structured"`. It MUST NOT introduce a third-party code editor or a custom editor UI. Because the control caps at 12 visible lines with internal scrolling, the editable value SHALL be a self-contained user-hook chunk of the active engine's shader rather than the whole program.

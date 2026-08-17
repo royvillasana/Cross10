@@ -3,12 +3,27 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status: none of this is built, and the product declares the opposite.**
+Audited against the app on 2026-08-17 (`outstanding` 1.1). There is no Three.js
+scene, no gizmo, no instanced geometry and no curved-surface mode. The only
+search hits were the word "three" and the preset named *Lamella Sweep*, which is
+a flat band field.
+
+**This file is not merely pending — it conflicts with a live declaration.** The
+app declares `productReadiness.viewInteraction` as `mode: "non-spatial"`, and
+its recorded reason is the direct negation of what the second requirement here
+asks for: *"Output is a two-dimensional shader field with no scene geometry,
+model, or camera to orbit. Layer order is a compositing sequence rather than
+depth in a space, so there is nothing an orbit gesture would move around."*
+
+One of the two has to give. Building lamellae means flipping that declaration to
+`orbit`, adding a gizmo, and taking on the model-presentation obligations that
+come with a spatial product — which is a different product from the one the rest
+of these specs describe, not an addition to it. Leaving it as pending intent
+means the specs contain a requirement the app is actively declared against, and
+someone will eventually try to satisfy it.
+
+The audit does not resolve that; it names it. Carried as `outstanding` 1a.5.
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface
 The 3D tool SHALL render a Three.js scene into a product canvas marked `data-toolcraft-product-output` inside `canvasContent`, sized and translated by `useToolcraftProductSceneFrame()`. Because the lamellae are procedural geometry rather than an uploaded model, `modelPresentation` SHALL remain `{ mode: "runtime" }` and no model loader, presentation lease, or second Three cache SHALL be created. A canvas outside the runtime scene surface MUST NOT be mounted.
