@@ -18,7 +18,7 @@ behind it can be read rather than re-derived. `SS` is
 Each is a requirement the specs state and the app does not meet. They are listed
 here as they are found, so 1.1 produces work rather than only verdicts.
 
-- [ ] 1a.1 **Difference and additive blend modes are missing** (`interference-layer`). The spec requires normal, multiply, screen, difference and additive; the app ships normal, multiply, screen and overlay. Two scenarios cannot pass: the absolute per-channel difference reading, and red-over-green rendering yellow. Additive in particular is not decoration — *Couleur Additive* is one of the techniques this product is named for, and the gallery has entries claiming it
+- [ ] 1a.1 **Difference and additive blend modes are missing** (`interference-layer`). The spec requires normal, multiply, screen, difference and additive; the app ships normal, multiply, screen and overlay. Two scenarios cannot pass: the absolute per-channel difference reading, and red-over-green rendering yellow. Additive in particular is not decoration — *Couleur Additive* is one of the techniques this product is named for, the gallery has entries claiming it, and the `stripe-engines` audit found that **Transchromie cannot be rendered as specified without it**: overlapping translucent planes with selectable subtractive *and additive* blending is what that technique is
 
 - [ ] 1a.2 **Randomize with locks is not built** (`scene-presets`). No randomize command, no lock switches. The spec's design reasoning is sound and worth keeping — why the command and its locks live in one section rather than the sticky footer — so what is missing is the building, not the deciding
 
