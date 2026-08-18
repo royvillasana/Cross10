@@ -666,10 +666,22 @@ than the gap:
 So the existing duplicate action stays where it is, working, until the row can
 hold it.
 
+**Worked around, in the product, on instruction.** The row's action cluster
+carries `data-layer-actions`, so the product waits for rows to render and adds
+two buttons cloned from the runtime's own — inheriting its classes, its icon slot
+and its hover behaviour. Duplicate runs the same plan the panel press runs; the
+gear selects that row and opens the apply flow aimed at it. Nothing signed is
+edited and the panel's own Duplicate stays where it is, so the operation survives
+if a future runtime drops the cluster this attaches to.
+
+It is still a workaround. It depends on an attribute nobody promised, and if the
+cluster is renamed the buttons stop appearing — visibly, which is the failure
+mode to prefer.
+
 **What would fix it.** A `layerRowActions` composition point taking the same
 shape a panel section's `actions` already takes — label, icon, value, dispatched
 back through `onPanelAction` with the row's layer id. The product side of that is
-already written.
+already written twice over.
 
 ## 17. Setup is unconditional, so a product-owned setup step is a duplicate
 

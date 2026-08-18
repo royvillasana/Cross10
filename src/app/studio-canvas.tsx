@@ -12,6 +12,7 @@ import {
 } from "@/toolcraft/runtime/react";
 
 import { StudioAddMediaMenuItem } from "./studio-add-media-menu";
+import { StudioLayerRowActions } from "./studio-layer-row-actions";
 import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
@@ -342,6 +343,7 @@ export function StudioCanvas(): React.JSX.Element {
         ref={canvasRef}
       />
       <StudioAddMediaMenuItem />
+      <StudioLayerRowActions />
       <StudioOnboardingDialog />
       <StudioReferenceOverlay canvasRef={canvasRef} />
       <StudioRegionHandles canvasRef={canvasRef} />

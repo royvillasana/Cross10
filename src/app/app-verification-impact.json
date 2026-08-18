@@ -117,6 +117,14 @@
     },
     {
       "acceptanceIds": [
+        "selectedLayer.duplicate",
+        "gallery.actions"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-layer-row-actions.tsx"
+    },
+    {
+      "acceptanceIds": [
         "selectedLayer.angle",
         "selectedLayer.blendMode",
         "selectedLayer.colorA",
