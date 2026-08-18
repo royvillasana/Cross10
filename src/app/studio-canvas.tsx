@@ -11,8 +11,6 @@ import {
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
 
-import "./studio-hidden-controls.css";
-
 import { StudioAddMediaMenuItem } from "./studio-add-media-menu";
 import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";

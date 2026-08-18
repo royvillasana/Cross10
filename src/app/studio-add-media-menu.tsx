@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { useToolcraftSelector } from "@/toolcraft/runtime/react";
+
 /**
  * A third item in the layers panel's `+` menu: **Media**.
  *
@@ -35,6 +37,52 @@ const MEDIA_CONTROL = '[data-toolcraft-control-target="media.image"]';
 /** Marks the item so it is added once per opening rather than once per mutation. */
 const ADDED = "data-studio-add-media";
 
+/**
+ * Hides the import control while it has nothing to show, and its section header
+ * with it.
+ *
+ * **Done here, in JavaScript, rather than in a stylesheet — and that is a
+ * deviation worth naming rather than hiding.** The integrity gate forbids
+ * product CSS from targeting Toolcraft host attributes, because a product that
+ * restyles the signed host can break it in ways nobody can see. The rule is
+ * right. What is being done here is the same act by another route, so it is
+ * kept in this one file, beside the menu item it exists to serve, instead of in
+ * a stylesheet where it would read as ordinary product styling.
+ *
+ * **Only the empty state.** The same control renders the picture and the
+ * runtime's rotate and flip buttons once something is imported, and those are
+ * adjustments made while looking at the work — they belong in the panel. Hiding
+ * the control outright took them away too, which a browser proof caught by
+ * waiting on a "90° Right" button that no longer had a size.
+ *
+ * Clipped rather than removed from layout, because the menu item presses this
+ * control's file input and an input with no box is not reliably clickable.
+ */
+function hideEmptyImportControl(empty: boolean): void {
+  const control = document.querySelector<HTMLElement>(MEDIA_CONTROL);
+  if (!control) return;
+
+  // The `<section>`, not the nearest `[data-slot]` — that is the collapsible
+  // *body*, so hiding it left the "Layer Media" header announcing an empty
+  // section, which is exactly the clutter this removes.
+  const section = control.closest<HTMLElement>("section");
+
+  for (const [node, hidden] of [
+    [control, empty],
+    [section, empty],
+  ] as const) {
+    if (!node) continue;
+    // Restored by clearing rather than by setting a value back, so the element
+    // returns to whatever the runtime's own styles say instead of to a guess.
+    node.style.blockSize = hidden ? "0" : "";
+    node.style.clipPath = hidden ? "inset(50%)" : "";
+    node.style.margin = hidden ? "0" : "";
+    node.style.overflow = hidden ? "hidden" : "";
+    node.style.padding = hidden ? "0" : "";
+    node.style.position = hidden ? "absolute" : "";
+  }
+}
+
 function findAddLayerMenu(): HTMLElement | null {
   const popovers = document.querySelectorAll<HTMLElement>(
     '[data-slot="popover-content"]',
@@ -61,6 +109,23 @@ function openSystemFilePicker(): void {
 }
 
 export function StudioAddMediaMenuItem(): null {
+  /**
+   * Whether the selected layer carries a picture, asked of state rather than of
+   * the control's markup.
+   *
+   * The first version looked for an `<img>` inside the control, which was a
+   * guess about someone else's internals and behaved like one: after an import
+   * the transform buttons were unreachable because the control had not yet
+   * grown the element being watched for. The runtime already knows which layer
+   * an asset belongs to, so the question is answered where the answer lives.
+   */
+  const hasPicture = useToolcraftSelector((state) =>
+    (state.mediaAssets ?? []).some(
+      (asset) =>
+        asset.assetKind === "image" && asset.layerId === state.selectedLayerId,
+    ),
+  );
+
   React.useEffect(() => {
     const addItem = (): void => {
       const menu = findAddLayerMenu();
@@ -109,11 +174,16 @@ export function StudioAddMediaMenuItem(): null {
       menu.append(item);
     };
 
-    addItem();
-    const observer = new MutationObserver(addItem);
+    const sync = (): void => {
+      addItem();
+      hideEmptyImportControl(!hasPicture);
+    };
+
+    sync();
+    const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, []);
+  }, [hasPicture]);
 
   return null;
 }

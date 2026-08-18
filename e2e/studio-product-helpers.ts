@@ -701,19 +701,37 @@ export async function setStudioReferenceStrength(
   page: Page,
   value: number,
 ): Promise<void> {
+  // Named stops rather than a slider: the dialog offers Hidden, Faint, Half and
+  // Full, because a continuous scale set over a covered canvas is a scale
+  // nobody can judge -- and because product source may not recreate a built-in
+  // control, which an `input type="range"` is.
+  const label =
+    value <= 0 ? "Hidden" : value < 0.4 ? "Faint" : value < 0.75 ? "Half" : "Full";
+
   await openStudioCompositionDoor(page, "Work against a study");
-  const slider = page.getByRole("slider", { exact: true, name: "Reference opacity" });
-  await slider.evaluate((element, next) => {
-    const input = element as HTMLInputElement;
-    const setter = Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      "value",
-    )?.set;
-    setter?.call(input, String(next));
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  }, value);
+  await page.getByRole("button", { exact: true, name: label }).first().click();
   await dismissStudioOnboarding(page);
+
+  // Waits for the overlay to actually be in the mode that was asked for. The
+  // change lands after the dialog closes, so a caller that sampled the frame
+  // the moment this returned read the *previous* mode and reported that nothing
+  // had happened -- which is what a modal costs a surface that used to be a
+  // panel control adjusted in place.
+  //
+  // "Absent" is a valid answer, not a failure: at zero strength there is no
+  // overlay to be in any mode, and a study nobody has turned up is a study
+  // nobody is comparing against.
+  const expected = label === "Their difference" ? "difference" : "overlay";
+  await expect
+    .poll(
+      async () => {
+        const overlay = page.locator("[data-studio-reference]");
+        if ((await overlay.count()) === 0) return "absent";
+        return overlay.getAttribute("data-studio-reference");
+      },
+      { timeout: 10_000 },
+    )
+    .toMatch(new RegExp(`^(absent|${expected})$`, "u"));
 }
 
 /** Chooses how the study is read against the work, through the same dialog. */
@@ -724,6 +742,27 @@ export async function setStudioReferenceCompare(
   await openStudioCompositionDoor(page, "Work against a study");
   await page.getByRole("button", { exact: true, name: label }).first().click();
   await dismissStudioOnboarding(page);
+
+  // Waits for the overlay to actually be in the mode that was asked for. The
+  // change lands after the dialog closes, so a caller that sampled the frame
+  // the moment this returned read the *previous* mode and reported that nothing
+  // had happened -- which is what a modal costs a surface that used to be a
+  // panel control adjusted in place.
+  //
+  // "Absent" is a valid answer, not a failure: at zero strength there is no
+  // overlay to be in any mode, and a study nobody has turned up is a study
+  // nobody is comparing against.
+  const expected = label === "Their difference" ? "difference" : "overlay";
+  await expect
+    .poll(
+      async () => {
+        const overlay = page.locator("[data-studio-reference]");
+        if ((await overlay.count()) === 0) return "absent";
+        return overlay.getAttribute("data-studio-reference");
+      },
+      { timeout: 10_000 },
+    )
+    .toMatch(new RegExp(`^(absent|${expected})$`, "u"));
 }
 
 /** Lays a composition onto the current selection, through the apply dialog. */

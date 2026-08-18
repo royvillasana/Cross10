@@ -51,6 +51,7 @@ import {
 import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
 import {
   STUDIO_REFERENCE_COMPARE_MODES,
+  STUDIO_REFERENCE_STRENGTHS,
   STUDIO_REFERENCE_COMPARE_TARGET,
   STUDIO_REFERENCE_ENTRY_TARGET,
   STUDIO_REFERENCE_ITEMS,
@@ -418,24 +419,41 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
               */}
               <div className={styles.field}>
                 <span className={styles.fieldLabel}>How strongly it shows</span>
-                <input
-                  aria-label="Reference opacity"
-                  className={styles.range}
-                  max={1}
-                  min={0}
-                  onChange={(event) =>
-                    run([
-                      {
-                        target: STUDIO_REFERENCE_OPACITY_TARGET,
-                        type: "controls.setValue",
-                        value: Number(event.target.value),
-                      },
-                    ])
-                  }
-                  step={0.01}
-                  type="range"
-                  value={Number(values[STUDIO_REFERENCE_OPACITY_TARGET] ?? 0)}
-                />
+                {/*
+                  Named strengths rather than a slider, for two reasons. The
+                  integrity gate forbids product source recreating a built-in
+                  control, and an `input type="range"` is exactly that. And a
+                  slider would be the wrong control here anyway: this surface is
+                  modal, so the work it is compared against is covered while the
+                  value is being set, and a continuous scale you cannot see the
+                  effect of is a scale nobody can use. Four stops you can pick
+                  blind are honest about that.
+                */}
+                <div className={styles.shapes}>
+                  {STUDIO_REFERENCE_STRENGTHS.map((strength) => (
+                    <button
+                      aria-label={strength.label}
+                      aria-pressed={
+                        Number(values[STUDIO_REFERENCE_OPACITY_TARGET] ?? 0) ===
+                        strength.value
+                      }
+                      className={styles.shape}
+                      key={strength.label}
+                      onClick={() =>
+                        run([
+                          {
+                            target: STUDIO_REFERENCE_OPACITY_TARGET,
+                            type: "controls.setValue",
+                            value: strength.value,
+                          },
+                        ])
+                      }
+                      type="button"
+                    >
+                      {strength.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className={styles.field}>

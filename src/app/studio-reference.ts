@@ -139,3 +139,18 @@ export const STUDIO_REFERENCE_COMPARE_MODES = [
     value: "difference",
   },
 ] as const;
+
+/**
+ * How strongly a study shows, as named stops rather than a continuous scale.
+ *
+ * Four, and the ends matter most: `Hidden` is how a study is dismissed without
+ * anything else moving, and `Full` is the reading where a difference comparison
+ * is at its most legible. The two between are for looking through the study at
+ * the work and for looking at both at once.
+ */
+export const STUDIO_REFERENCE_STRENGTHS = [
+  { label: "Hidden", value: 0 },
+  { label: "Faint", value: 0.25 },
+  { label: "Half", value: 0.5 },
+  { label: "Full", value: 1 },
+] as const;
