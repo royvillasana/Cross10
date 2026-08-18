@@ -187,6 +187,13 @@ An image layer SHALL expose horizontal and vertical flip, driving the `flipX` an
 `flipY` uniforms that the media path already applies in the picture's own axes
 after rotation.
 
+**Status: satisfied.** Both flips are per-layer controls carried by every layer
+kind including images, and the image body applies them in the picture's own axes
+after rotation, as described. Proved by `browser: studio layer flip folds only
+the selected layer` and `browser: studio vertical flip folds only the selected
+layer`, the second of which exists because one proof covering both axes could
+pass while only one of them worked.
+
 Flip SHALL be a transform of the layer rather than a re-import of the asset, so
 flipping does not decode the source again and does not change the layer's size,
 position, or the canvas dimensions.
