@@ -702,6 +702,37 @@ section, or — better, because it states the reason rather than the mechanism �
 schema declaration that setup is product-owned, which the runtime honours by
 withholding the controls whose answers the product has taken responsibility for.
 
+## 18. The layers panel's add menu takes exactly two items
+
+`layers-panel.tsx` renders the `+` popover as two hardcoded buttons — `Layer`
+and `Group` — switched by a `groupCreation` boolean between "one button" and
+"this pair". There is no slot, no props, and no schema hook, exactly as with the
+row actions in issue 16. The layers panel has now refused a product affordance
+twice.
+
+**What was asked for.** A third item, `Media`, opening the system file picker so
+an author adds a picture the same way they add a layer — from the control that
+creates layers. The picker itself is not the problem: the runtime's `fileDrop`
+control already renders a hidden `<input type="file">` and opens the native
+dialog on click. The behaviour exists. What cannot be done is putting it where
+it belongs.
+
+**Why the workaround is worse than the gap.** A product can dispatch
+`media.import`, so in principle the flow could render its own button, open its
+own file input, and import the result. But `ToolcraftMediaImportAsset` wants a
+built asset — file name, mime type, position, and the binary resource state — so
+the product would be reading files, holding bytes, and owning the resource
+lifecycle that the runtime currently owns end to end. That is a large boundary
+crossing bought to move one button, and it fails in ways that surface late:
+leaked object URLs, binary resources missing after a reload.
+
+So the control stays in the panel, in a product whose owner has twice said that
+panel is where things go to be forgotten.
+
+**What would fix it.** The same shape issue 16 asks for: a composition point on
+the add menu taking label, icon and value, dispatched back through
+`onPanelAction`. The product side is one action handler.
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
