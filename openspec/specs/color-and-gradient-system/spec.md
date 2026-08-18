@@ -3,15 +3,23 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status is stated per requirement.** Audited against the app on
+2026-08-18 (`outstanding` 1.1). The palette survived in a simpler form than this
+describes and most of the gradient *tooling* was never built — the studio has a
+gradient layer, not a gradient tool.
 ## Requirements
 ### Requirement: Palette slots as a user-owned collection
 The palette SHALL be a `collectionActions` control with a `color` `itemControl`, holding between 2 and 8 slots, since the user owns cardinality. Per-item labels SHALL be omitted because the colors form one shared palette bank. Engines SHALL adapt their band sequences to the current slot count.
+
+**Status: satisfied differently, and narrower than asked.** The palette is four
+`color` controls plus a `Colour slots` count, not a `collectionActions`
+collection, and the range is **2 to 4 rather than 2 to 8**. Engines do adapt
+their sequence to the slot count, which is the part that mattered.
+
+The narrowing is not principled, it is unbuilt: nothing needed five inks yet.
+A collection would express cardinality better than four fixed slots and a
+counter, and would remove the oddity that colours C and D exist as controls even
+when the count says two.
 
 #### Scenario: Adding a slot extends the sequence
 - **WHEN** the user presses the collection `+` and sets the new color
@@ -28,6 +36,17 @@ The palette SHALL be a `collectionActions` control with a `color` `itemControl`,
 ### Requirement: Cruz-Diez palette presets
 Named palette presets SHALL be shipped, one per engine series, each verified against primary sources before delivery with the specific colour values recorded in the worklog. The working candidates — cadmium red / green / blue / black, orange / pink / crimson, blue / black horizontal bars, yellow / blue / ochre fine stripes — are drawn from description and are not yet confirmed. Applying a preset SHALL replace the palette collection contents and slot count only.
 
+**Status: partly satisfied, and the unverified half is the important half.**
+Palettes ship inside the nineteen gallery entries rather than as separate
+palette-only presets, and applying an entry replaces more than the palette — it
+replaces the stack, which is what an entry *is* here.
+
+The colours are still **drawn from description rather than verified against
+primary sources**, exactly as this requirement warns. That is recorded as
+`outstanding` 2.3 and it is the one item in this file with a copyright edge:
+the product owner's instruction is that these are our own constructions in our
+own colours, not reproductions.
+
 #### Scenario: Applying a palette preset
 - **WHEN** the user selects a palette preset
 - **THEN** the collection items are replaced by that palette's colors and count
@@ -35,6 +54,9 @@ Named palette presets SHALL be shipped, one per engine series, each verified aga
 
 ### Requirement: Harmony generator as a section action
 Palette generation from a seed color SHALL be exposed through an `actions` control in the palette section, supporting at minimum complementary and triadic rules, writing results into the palette collection.
+
+**Status: pending — not built.** No harmony generator, no seed, no
+complementary or triadic rule anywhere in the product.
 
 #### Scenario: Triadic generation
 - **WHEN** the user picks a seed color and triggers the triadic action
@@ -47,6 +69,12 @@ Palette generation from a seed color SHALL be exposed through an `actions` contr
 ### Requirement: Per-band color cycling offset
 A color cycling offset SHALL rotate which palette color each band uses, and it SHALL be animatable.
 
+**Status: superseded by something more general.** There is no palette-rotation
+offset. `Offset` moves the whole field along its own axis, which changes which
+band sits where — the visible result the rotation was for — and it is animatable
+through `Travel per loop`. A separate rotation of *which ink* each band takes
+would be a second way to shuffle the same appearance.
+
 #### Scenario: Cycling offset rotates colors
 - **WHEN** the offset advances by one whole step
 - **THEN** each band takes the color previously used by its neighbor, wrapping at the end
@@ -58,6 +86,17 @@ A color cycling offset SHALL rotate which palette color each band uses, and it S
 ### Requirement: Gradient editing through the atomic gradient control
 Gradients SHALL use the built-in `gradient` control, which owns gradient type, angle, the draggable stop track, and the stop list. Those owned fields MUST NOT be duplicated as sibling controls.
 
+**Status: superseded, deliberately, and the trade is worth naming.** A gradient
+here is a *layer*, not a control value: it carries the same angle, offset,
+region, engine, treatment and drift as every other layer, and composites in the
+same stack. The built-in `gradient` control owns a self-contained gradient with
+its own stop track, which cannot be one member of a stack.
+
+What is lost is the draggable stop track — the palette is four slots rather than
+arbitrary stops at arbitrary positions. What is gained is that a gradient is a
+first-class layer. For a product whose subject is fields interfering with one
+another, the second is worth more.
+
 #### Scenario: Gradient fields are not split
 - **WHEN** the gradient section is inspected
 - **THEN** no sibling control edits gradient angle, type, or individual stops
@@ -68,6 +107,10 @@ Gradients SHALL use the built-in `gradient` control, which owns gradient type, a
 
 ### Requirement: Gradient mapping modes
 The gradient SHALL be mappable along stripes, across stripes, or radially with a movable center, selected by a schema `select`.
+
+**Status: satisfied.** `Transition shape` offers Linear, Radial and Angular.
+The centre moves with the layer's own region rather than through a separate
+control, because a gradient is a layer and a layer already has a position.
 
 #### Scenario: Mapping across stripes
 - **WHEN** mapping is set to across-stripes
@@ -84,6 +127,11 @@ The gradient SHALL be mappable along stripes, across stripes, or radially with a
 ### Requirement: Quantize gradients to bands
 Any gradient SHALL be convertible to a discrete band sequence through a band-count control, and a quantized gradient SHALL be usable as the active palette source.
 
+**Status: pending — not built.** There is no quantize step. The nearest thing
+is that a stripes layer *is* a discrete band sequence over the same palette, so
+an author reaches the same look by choosing the other layer kind rather than by
+converting one into the other.
+
 #### Scenario: Quantizing a smooth gradient
 - **WHEN** a smooth linear gradient is quantized to 7 bands
 - **THEN** the output shows 7 flat colors sampled from the gradient with hard boundaries and no intermediate blending
@@ -95,12 +143,24 @@ Any gradient SHALL be convertible to a discrete band sequence through a band-cou
 ### Requirement: Interpolation space is explicit
 Because mixing happens in linear light, gradient stop interpolation space SHALL be an explicit product control rather than a hidden choice. It SHALL be a separate schema control, since `gradient` does not own that field.
 
+**Status: pending, and the hidden choice this warns about is exactly what
+exists.** Compositing happens in linear light — `studioColorToLinear` converts at
+the scene boundary — and nothing exposes that or offers an alternative. The
+requirement's reasoning holds: an author mixing two inks gets a result that
+depends on a decision they cannot see.
+
 #### Scenario: Switching interpolation space
 - **WHEN** the user switches gradient interpolation between linear-light and perceptual
 - **THEN** mid-gradient colors change accordingly and the choice is serialized with the scene
 
 ### Requirement: Standalone gradient tool output
 The gradient tool SHALL produce linear, radial, conic, and banded gradients, and SHALL expose CSS and SVG output by clipboard copy. PNG delivery SHALL use the runtime image export path.
+
+**Status: pending — and it describes a different product.** There is no
+standalone gradient tool. Conic is not offered, and there is no CSS or SVG
+output: what this product copies to the clipboard is assembled GLSL, because
+what it makes is a shader rather than a web gradient. PNG delivery does use the
+runtime export path, which is the one clause that holds.
 
 #### Scenario: Copying CSS
 - **WHEN** the user copies the gradient as CSS
