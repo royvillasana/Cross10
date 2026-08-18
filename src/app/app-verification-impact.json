@@ -117,13 +117,6 @@
     },
     {
       "acceptanceIds": [
-        "media.image"
-      ],
-      "kind": "presentation",
-      "path": "src/app/studio-hidden-controls.css"
-    },
-    {
-      "acceptanceIds": [
         "selectedLayer.angle",
         "selectedLayer.blendMode",
         "selectedLayer.colorA",

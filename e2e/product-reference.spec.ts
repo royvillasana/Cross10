@@ -298,21 +298,31 @@ test("browser: studio reference compares by difference and exports neither", asy
 
   // Difference rather than a second opacity, because at fifty percent every
   // mismatch looks like a mismatch -- including one that is only a difference
-  // in brightness. Read as the mode the overlay is actually in, since the
-  // blending is done by the browser and never reaches the product's own pixels.
+  // in brightness.
+  //
+  // Read as the mode the overlay is in, and *not* as a change to the product's
+  // output, which is a distinction this proof used to blur. The blending is the
+  // browser's: `mix-blend-mode` on an element sitting over the canvas. The
+  // product's own pixels are identical either way, and they have to be —
+  // a study that changed them would be a study reaching the artifact, which is
+  // exactly what the rest of this file exists to forbid.
+  //
+  // While the mode was a panel select there was a control value to watch change.
+  // There is no control any more, so what is asserted is the thing that does
+  // change: the overlay's mode, before and after.
   await settleStudioObservable(page);
-  await expectToolcraftProductObservableToChange(
-    session,
-    session.targetAction("reference.compare", async () => {
-      await setStudioReferenceCompare(page, "Their difference");
-    }),
-    { requirementId: "reference.compare" },
-  );
+  const beforeCompare = await readStudioOutputSignature(page);
+
+  await setStudioReferenceCompare(page, "Their difference");
 
   await expect(studioReference(page)).toHaveAttribute(
     "data-studio-reference",
     "difference",
   );
+  expect(
+    await readStudioOutputSignature(page),
+    "the study's comparison mode must not reach the product's own pixels",
+  ).toBe(beforeCompare);
 
   // Comparing writes nothing. The layer list, and the composition's own pixels,
   // are what they were before the mode was entered.

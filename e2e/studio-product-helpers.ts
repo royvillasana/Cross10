@@ -683,11 +683,17 @@ export async function openStudioCompositionDoor(
   page: Page,
   label: "Change the technique" | "Apply to the selection" | "Work against a study",
 ): Promise<void> {
+  // Closed first if something is already open. The doors live in the panel, so
+  // a dialog left open from a previous step covers them -- and the click then
+  // lands on the backdrop, which reads as "the button did nothing" rather than
+  // as "the button was not reachable".
+  await dismissStudioOnboarding(page);
   await page
     .locator('[data-toolcraft-control-target="gallery.actions"]')
     .getByRole("button", { name: label })
     .first()
     .click();
+  await expect(page.locator("[data-studio-onboarding]")).toHaveCount(1);
 }
 
 /**
@@ -709,29 +715,26 @@ export async function setStudioReferenceStrength(
     value <= 0 ? "Hidden" : value < 0.4 ? "Faint" : value < 0.75 ? "Half" : "Full";
 
   await openStudioCompositionDoor(page, "Work against a study");
-  await page.getByRole("button", { exact: true, name: label }).first().click();
+  await page
+    .locator("[data-studio-onboarding]")
+    .getByRole("button", { exact: true, name: label })
+    .first()
+    .click();
   await dismissStudioOnboarding(page);
 
-  // Waits for the overlay to actually be in the mode that was asked for. The
-  // change lands after the dialog closes, so a caller that sampled the frame
-  // the moment this returned read the *previous* mode and reported that nothing
-  // had happened -- which is what a modal costs a surface that used to be a
-  // panel control adjusted in place.
+  // Waits for the strength to reach the frame, because the change lands after
+  // the dialog closes and a caller that sampled the moment this returned read
+  // the previous one.
   //
-  // "Absent" is a valid answer, not a failure: at zero strength there is no
-  // overlay to be in any mode, and a study nobody has turned up is a study
-  // nobody is comparing against.
-  const expected = label === "Their difference" ? "difference" : "overlay";
-  await expect
-    .poll(
-      async () => {
-        const overlay = page.locator("[data-studio-reference]");
-        if ((await overlay.count()) === 0) return "absent";
-        return overlay.getAttribute("data-studio-reference");
-      },
-      { timeout: 10_000 },
-    )
-    .toMatch(new RegExp(`^(absent|${expected})$`, "u"));
+  // Presence is the observable, which is the same claim the product makes: a
+  // study nobody has turned up is absent from the tree rather than present at
+  // nothing. This helper carried the *compare mode's* poll for a while — one
+  // edit matched a block both helpers share — and the symptom was a strength
+  // change failing because the overlay was in the wrong mode, which is a
+  // sentence that should have been suspicious immediately.
+  await expect(page.locator("[data-studio-reference]")).toHaveCount(
+    value <= 0 ? 0 : 1,
+  );
 }
 
 /** Chooses how the study is read against the work, through the same dialog. */
@@ -740,7 +743,11 @@ export async function setStudioReferenceCompare(
   label: "Laying it over" | "Their difference",
 ): Promise<void> {
   await openStudioCompositionDoor(page, "Work against a study");
-  await page.getByRole("button", { exact: true, name: label }).first().click();
+  await page
+    .locator("[data-studio-onboarding]")
+    .getByRole("button", { exact: true, name: label })
+    .first()
+    .click();
   await dismissStudioOnboarding(page);
 
   // Waits for the overlay to actually be in the mode that was asked for. The
