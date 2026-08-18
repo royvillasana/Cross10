@@ -729,9 +729,30 @@ leaked object URLs, binary resources missing after a reload.
 So the control stays in the panel, in a product whose owner has twice said that
 panel is where things go to be forgotten.
 
-**What would fix it.** The same shape issue 16 asks for: a composition point on
-the add menu taking label, icon and value, dispatched back through
-`onPanelAction`. The product side is one action handler.
+**The workaround was built, and it does not work.** On instruction, the panel
+control was removed and replaced with a press that opens the system dialog and
+dispatches `media.import` with a legacy draft carrying a `dataUrl`. The picker
+opened, the file was read, the asset arrived — and the layer drew nothing.
+
+The reason is the part no type signature shows. A legacy `dataUrl` draft resolves
+to `lifecycle: "restoring"`, which is the shape for *rehydrating an asset that
+was persisted*, not for one arriving now. A fresh import has to mint a resource
+ref from the decoded bytes and then **stage those bytes** —
+`context.stageResource(ref, bytes, { durable: true })` in
+`image-source-asset-handler.ts` — and `stageResource` exists only inside the
+runtime's own source-asset handler context. Nothing equivalent is exported. So a
+product can *describe* an import it cannot *perform*: the command is reachable,
+the resource store behind it is not.
+
+The attempt was reverted rather than shipped. A menu item in the right place
+that produces a layer drawing nothing is worse than a control in the wrong
+place.
+
+**What would fix it.** Either the composition point issue 16 asks for — label,
+icon and value on the add menu, dispatched through `onPanelAction` — or an
+exported way to stage a binary resource, which would let a product perform the
+import it is already allowed to command. The first is smaller and is what this
+product needs.
 
 ## Current effect on these apps
 
