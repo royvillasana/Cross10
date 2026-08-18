@@ -11,6 +11,9 @@ import {
   useToolcraftSelector,
 } from "@/toolcraft/runtime/react";
 
+import "./studio-hidden-controls.css";
+
+import { StudioAddMediaMenuItem } from "./studio-add-media-menu";
 import styles from "./studio-canvas.module.css";
 import { useStudioLayerSync } from "./studio-layer-sync";
 import { studioLayerStackPass } from "./studio-pipeline";
@@ -340,6 +343,7 @@ export function StudioCanvas(): React.JSX.Element {
         data-toolcraft-product-output=""
         ref={canvasRef}
       />
+      <StudioAddMediaMenuItem />
       <StudioOnboardingDialog />
       <StudioReferenceOverlay canvasRef={canvasRef} />
       <StudioRegionHandles canvasRef={canvasRef} />

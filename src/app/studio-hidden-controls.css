@@ -1,0 +1,56 @@
+/*
+ * The import control, hidden only while it has nothing to show.
+ *
+ * The affordance an author wants lives in the layers panel's `+` menu, beside
+ * "add a layer", where `studio-add-media-menu.tsx` puts it. What was left in the
+ * controls panel was a large "Click to upload" drop zone — a thing you use once,
+ * sitting permanently among the things you adjust while looking at your work.
+ *
+ * **But the same control holds the media transforms.** Once a picture is
+ * imported it renders the image with the runtime's own rotate and flip buttons,
+ * and those *are* adjustments made while looking at the work. Hiding the whole
+ * control took them away too, which a browser proof caught by waiting for a
+ * "90° Right" button that no longer had a size.
+ *
+ * So the rule is the empty state, and only the empty state: a control with no
+ * `img` in it is a prompt, and a control with one is a picture and its handles.
+ *
+ * Hidden by clipping rather than `display: none`, so the control keeps a box and
+ * its file input stays reliably clickable — the menu item presses that input, so
+ * it has to remain a real element rather than an unrendered one.
+ */
+[data-toolcraft-control-target="media.image"]:not(:has(img)) {
+  block-size: 0;
+  clip-path: inset(50%);
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+}
+
+/*
+ * ...and the section header above it, which would otherwise announce an empty
+ * "Layer Media" over nothing.
+ *
+ * Written as hide-then-unhide rather than as one conditional rule, because
+ * `:has()` cannot be nested inside `:has()` — "a section whose control has no
+ * image" is exactly that shape, and a browser drops the whole rule as invalid
+ * without saying so. The first attempt here did nothing at all and looked like
+ * it was working, because the control rule above had already emptied the
+ * section.
+ *
+ * So: hide the section that holds this control, then give it back the moment
+ * the control has a picture in it.
+ */
+[data-slot]:has(
+    > [data-toolcraft-controls-mounting] [data-toolcraft-control-target="media.image"]
+  ) {
+  display: none;
+}
+
+[data-slot]:has(
+    > [data-toolcraft-controls-mounting]
+      [data-toolcraft-control-target="media.image"] img
+  ) {
+  display: revert;
+}

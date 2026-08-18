@@ -82,11 +82,31 @@ describe("studio delivery boundary", () => {
     // A download is the last step of delivery and the easiest to add by
     // accident, because an anchor with a `download` attribute looks like markup
     // rather than like a second export pipeline.
+    //
+    // `.click()` alone stopped being the signal when the product started
+    // pressing the runtime's own file input to open the system *open* dialog.
+    // That is bytes coming in; this boundary is about bytes going out. So the
+    // check names what leaving actually looks like — an anchor, or a download
+    // attribute — and the clicking is constrained by the test below instead.
     const offenders = readProductSources()
-      .filter(({ source }) => /download\s*[:=]|\.click\(\)/.test(source))
+      .filter(({ source }) =>
+        /download\s*[:=]|createElement\(\s*"a"\s*\)|\.download\b/.test(source),
+      )
       .map(({ path }) => path);
 
     expect(offenders).toEqual([]);
+  });
+
+  it("clicks nothing but the runtime's own import control", () => {
+    // The other half. Exactly one product module presses anything, it presses a
+    // file input belonging to the runtime, and it does so to open a dialog that
+    // brings media in. A second module reaching for `.click()` is a second
+    // place to smuggle out a file.
+    const clickers = readProductSources()
+      .filter(({ source }) => /\.click\(\)/.test(source))
+      .map(({ path }) => path);
+
+    expect(clickers).toEqual(["studio-add-media-menu.tsx"]);
   });
 
   it("allocates exactly one canvas, and only to obtain a GL context", () => {

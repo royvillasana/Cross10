@@ -48,6 +48,13 @@
     },
     {
       "acceptanceIds": [
+        "media.image"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-add-media-menu.tsx"
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include"
       ],
@@ -107,6 +114,13 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-gallery-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "media.image"
+      ],
+      "kind": "presentation",
+      "path": "src/app/studio-hidden-controls.css"
     },
     {
       "acceptanceIds": [
