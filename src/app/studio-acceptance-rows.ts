@@ -78,61 +78,6 @@ export const studioGalleryAcceptanceRows: readonly ToolcraftComponentAcceptance[
     target: "gallery.actions",
     userAction: "Press Change the technique, then Work against a study.",
   },
-  {
-    automated: true,
-    automatedTestName: "names every entry in the library exactly once",
-    browser: true,
-    browserTestName: "browser: studio gallery applies a composition and leaves every control live",
-    componentType: "imagePicker",
-    // Naming an entry is a choice, not a render: what it changes is what the
-    // press beside it will push. The rendered claim belongs to that press.
-    evidence: "command-side-effect",
-    expectedObservable:
-      "Choosing a different composition changes which entry Apply to the selection will push onto the layers the aim names, and changes nothing on the canvas until it is pressed.",
-    fixture: "Croix10 with the default stack",
-    id: "gallery.entry",
-    kind: "control",
-    // Every entry, and it is not ceremony: a preset that failed to render would
-    // look exactly like one nobody had proved, and the library is the one place
-    // in this product where nineteen separate compositions are asserted to be
-    // compositions at all.
-    optionCoverage: "each-visible-item",
-    target: "gallery.entry",
-    userAction: "Choose a different composition.",
-  },
-  {
-    actionCoverage: ["apply-engine"],
-    automated: true,
-    automatedTestName: "writes the entry onto the target's layers and no others",
-    browser: true,
-    browserTestName: "browser: studio gallery aims an entry at one layer",
-    componentType: "actions",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "Pressing it repaints only the layers the target names -- the selected layer, every layer in the selected group, or every layer carrying a picture -- while every other layer draws exactly as it did, the layer list is unchanged, and nothing asks for confirmation.",
-    fixture: "Croix10 with a two-layer stack",
-    id: "gallery.engineActions",
-    kind: "control",
-    target: "gallery.engineActions",
-    userAction:
-      "Aim a composition at the selected layer and press Apply to the selection.",
-  },
-  {
-    actionCoverage: ["restore-stack"],
-    automated: true,
-    automatedTestName: "restores the previous stack layer for layer with its own values",
-    browser: true,
-    browserTestName: "browser: studio gallery restores the stack an application replaced",
-    componentType: "actions",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "After a technique change, pressing it brings back the previous layer list layer for layer with the values and the selection those layers had, and the canvas draws that stack again. With nothing held it does nothing.",
-    fixture: "Croix10 with the default stack",
-    id: "gallery.restore",
-    kind: "control",
-    target: "gallery.restore",
-    userAction: "Replace the work with a composition, then press Restore previous.",
-  },
 ];
 
 /**
@@ -179,6 +124,25 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * different ones, and it is the assertion a "the frame changed" proof would pass
  * straight over.
  */
+/** Taking back a replacement, which is the one panel press that still exists. */
+export const studioRestoreAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "restores the previous stack layer for layer with its own values",
+    browser: true,
+    browserTestName: "browser: studio gallery restores the stack an application replaced",
+    componentType: "actions",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Pressing Restore previous brings back the layers, names and values the last application replaced, and does nothing when no application is held.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "gallery.restore",
+    kind: "control",
+    target: "gallery.restore",
+    userAction: "Apply a composition over existing work, then press Restore previous.",
+  },
+];
+
 export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
@@ -265,40 +229,6 @@ export const studioPointerAcceptanceRows: readonly ToolcraftComponentAcceptance[
  * looks right".
  */
 export const studioReferenceAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
-  {
-    automated: true,
-    automatedTestName: "shows nothing at zero and the chosen study above it",
-    browser: true,
-    browserTestName: "browser: studio reference shows behind the work and reaches no artifact",
-    componentType: "slider",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "At zero no reference is present at all -- not a transparent one -- and raising it shows the chosen study behind the composition at that strength, in either comparison mode. Returning it to zero dismisses the reference and leaves every layer and every layer value exactly as it was. The canvas dimensions never change.",
-    fixture: "Croix10 with the default stack",
-    id: "reference.opacity",
-    kind: "control",
-    target: "reference.opacity",
-    userAction: "Raise Reference opacity, then return it to zero.",
-  },
-  {
-    automated: true,
-    automatedTestName: "declares a comparison beyond a plain overlay",
-    browser: true,
-    browserTestName: "browser: studio reference compares by difference and exports neither",
-    componentType: "select",
-    evidence: "rendered-pixels",
-    expectedObservable:
-      "Switching from laying the study over the work to their difference changes what is shown -- where the two agree the frame goes dark -- and writes no layer value; leaving comparison leaves the composition exactly as it was, and an image exported while comparison is active carries the composition alone.",
-    fixture: "Croix10 with the default stack and a reference showing",
-    id: "reference.compare",
-    kind: "control",
-    // Both readings, because the control is the difference between them: a
-    // proof that only entered the difference view would pass while returning to
-    // the overlay did nothing.
-    optionCoverage: ["overlay", "difference"],
-    target: "reference.compare",
-    userAction: "Switch Compare by from laying it over to their difference.",
-  },
 ];
 
 export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [

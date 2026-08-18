@@ -21,6 +21,7 @@ import {
   writeStudioLayerEntry,
 } from "./studio-stack-state";
 import {
+  STUDIO_ONBOARDING_APPLY,
   STUDIO_ONBOARDING_CHOOSING,
   STUDIO_ONBOARDING_REFERENCE,
   STUDIO_ONBOARDING_TARGET,
@@ -134,7 +135,11 @@ function handleStudioPanelAction({
     return;
   }
 
-  if (action.value === "open-onboarding" || action.value === "open-reference") {
+  if (
+    action.value === "open-onboarding" ||
+    action.value === "open-reference" ||
+    action.value === "open-apply"
+  ) {
     // The panel's door into the flow. It changes nothing but which step is
     // showing; every decision, and every question about losing work, belongs to
     // the surface it opens.
@@ -145,7 +150,9 @@ function handleStudioPanelAction({
       value:
         action.value === "open-reference"
           ? STUDIO_ONBOARDING_REFERENCE
-          : STUDIO_ONBOARDING_CHOOSING,
+          : action.value === "open-apply"
+            ? STUDIO_ONBOARDING_APPLY
+            : STUDIO_ONBOARDING_CHOOSING,
     } as Parameters<typeof dispatch>[0]);
     return;
   }

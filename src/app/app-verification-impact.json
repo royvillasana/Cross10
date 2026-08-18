@@ -12,8 +12,6 @@
         "export.image-format",
         "export.image-resolution",
         "export.video-resolution",
-        "gallery.engineActions",
-        "gallery.entry",
         "persistence.reload"
       ],
       "kind": "functional",
@@ -29,8 +27,6 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
-        "gallery.engineActions",
-        "gallery.entry",
         "layers.grouping",
         "layers.imageComposite",
         "layers.reorder",
@@ -107,8 +103,6 @@
     {
       "acceptanceIds": [
         "gallery.actions",
-        "gallery.engineActions",
-        "gallery.entry",
         "gallery.restore"
       ],
       "kind": "functional",
@@ -217,16 +211,16 @@
     },
     {
       "acceptanceIds": [
-        "timeline.playback",
         "export.video-action",
-        "export.video-format"
+        "export.video-format",
+        "timeline.playback"
       ],
       "kind": "functional",
       "path": "src/app/studio-motion.ts"
     },
     {
       "acceptanceIds": [
-        "gallery.entry"
+        "gallery.actions"
       ],
       "kind": "presentation",
       "path": "src/app/studio-onboarding-dialog.module.css"
@@ -234,9 +228,7 @@
     {
       "acceptanceIds": [
         "background.color",
-        "canvas.render-scale",
-        "gallery.engineActions",
-        "gallery.entry"
+        "canvas.render-scale"
       ],
       "kind": "functional",
       "path": "src/app/studio-onboarding-dialog.tsx"
@@ -244,9 +236,7 @@
     {
       "acceptanceIds": [
         "background.color",
-        "canvas.render-scale",
-        "gallery.engineActions",
-        "gallery.entry"
+        "canvas.render-scale"
       ],
       "kind": "functional",
       "path": "src/app/studio-onboarding.ts"
@@ -277,40 +267,35 @@
     },
     {
       "acceptanceIds": [
-        "gallery.engineActions",
-        "gallery.entry"
+        "gallery.restore"
       ],
       "kind": "functional",
       "path": "src/app/studio-presets.ts"
     },
     {
       "acceptanceIds": [
-        "reference.compare",
-        "reference.opacity"
+        "gallery.actions"
       ],
       "kind": "presentation",
       "path": "src/app/studio-reference-overlay.module.css"
     },
     {
       "acceptanceIds": [
-        "reference.compare",
-        "reference.opacity"
+        "gallery.actions"
       ],
       "kind": "functional",
       "path": "src/app/studio-reference-overlay.tsx"
     },
     {
       "acceptanceIds": [
-        "reference.compare",
-        "reference.opacity"
+        "gallery.actions"
       ],
       "kind": "functional",
       "path": "src/app/studio-reference-sections.ts"
     },
     {
       "acceptanceIds": [
-        "reference.compare",
-        "reference.opacity"
+        "gallery.actions"
       ],
       "kind": "functional",
       "path": "src/app/studio-reference.ts"
@@ -452,9 +437,7 @@
     },
     {
       "acceptanceIds": [
-        "gallery.entry",
-        "reference.compare",
-        "reference.opacity"
+        "gallery.actions"
       ],
       "kind": "presentation",
       "path": "src/app/studio-technique-thumbnails.ts"

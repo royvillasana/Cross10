@@ -117,3 +117,25 @@ export function readStudioReferenceView(
     src: opacity > 0 ? src : "",
   };
 }
+
+/**
+ * The two ways a study can be read against the work.
+ *
+ * Held here rather than in the dialog that renders them, because the reader
+ * below already decides what a valid compare value is and two lists would
+ * eventually disagree about it.
+ */
+export const STUDIO_REFERENCE_COMPARE_MODES = [
+  {
+    hint: "the study behind the work",
+    label: "Laying it over",
+    value: "overlay",
+  },
+  {
+    // Difference collapses "identical" to black, which answers *how far off am
+    // I* rather than *are both pictures present*.
+    hint: "black where they agree",
+    label: "Their difference",
+    value: "difference",
+  },
+] as const;

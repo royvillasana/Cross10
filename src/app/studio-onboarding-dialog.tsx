@@ -22,6 +22,7 @@ import {
   readStudioOnboardingChoice,
   readStudioOnboardingStep,
   shouldStudioOnboardingOpen,
+  STUDIO_ONBOARDING_APPLY,
   STUDIO_ONBOARDING_BLANK,
   STUDIO_ONBOARDING_CARDS,
   STUDIO_ONBOARDING_CHOICE_TARGET,
@@ -37,9 +38,20 @@ import {
 } from "./studio-onboarding";
 import {
   readStudioLayerRecord,
+  studioApplicationLayerIds,
+  studioApplyTargetFromSelection,
   STUDIO_LAYER_RECORD_TARGET,
 } from "./studio-stack-state";
 import {
+  findStudioPreset,
+  planStudioPresetApplication,
+  studioPresetPickerLabel,
+  STUDIO_PRESETS,
+} from "./studio-presets";
+import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
+import {
+  STUDIO_REFERENCE_COMPARE_MODES,
+  STUDIO_REFERENCE_COMPARE_TARGET,
   STUDIO_REFERENCE_ENTRY_TARGET,
   STUDIO_REFERENCE_ITEMS,
   STUDIO_REFERENCE_OPACITY_TARGET,
@@ -72,6 +84,7 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
   const step = readStudioOnboardingStep(values["stack.onboardingStep"]);
   const choice = readStudioOnboardingChoice(values[STUDIO_ONBOARDING_CHOICE_TARGET]);
   const layers = state.layers ?? [];
+  const selectedLayerId = state.selectedLayerId ?? null;
 
   const [shapeValue, setShapeValue] = React.useState("square");
   const [background, setBackground] = React.useState("#000000");
@@ -134,6 +147,40 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
       value: STUDIO_ONBOARDING_CHOOSING,
     } as Parameters<typeof dispatch>[0]);
   }, [dispatch, layers.length, step, values]);
+
+  /** Leaves the flow without deciding anything. */
+  const close = (): void => {
+    run(planStudioOnboardingDismissal());
+  };
+
+  /**
+   * Lays the chosen entry onto the selection.
+   *
+   * The plan is the same one the panel press used, so moving the surface did
+   * not move the meaning: one code path decides what applying a composition to
+   * a selection does, and the dialog is a caller rather than a second
+   * implementation of it.
+   */
+  const onApply = (): void => {
+    const target = studioApplyTargetFromSelection({ layers, selectedLayerId });
+    const preset = findStudioPreset(values["gallery.entry"]);
+    if (!target || !preset) return;
+
+    run(
+      planStudioPresetApplication({
+        layers,
+        preset,
+        record: readStudioLayerRecord(values[STUDIO_LAYER_RECORD_TARGET]),
+        selectedLayerId,
+        target,
+        targetLayerIds: studioApplicationLayerIds({
+          layers,
+          selectedLayerId,
+          target,
+        }),
+      }),
+    );
+  };
 
   if (step === STUDIO_ONBOARDING_CLOSED) return null;
 
@@ -202,6 +249,7 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                   </button>
                 ))}
               </div>
+            
             </DialogBody>
           </>
         ) : step === STUDIO_ONBOARDING_REPLACING ? (
@@ -242,14 +290,83 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
               </button>
             </DialogFooter>
           </>
+        ) : step === STUDIO_ONBOARDING_APPLY ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Apply a composition to the selection</DialogTitle>
+              <DialogDescription>
+                This lays a construction onto the layers you have selected. It
+                adds to the work rather than replacing it — nothing is created,
+                removed or reordered, and the rest of the stack is left alone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody>
+              <div className={styles.grid}>
+                {STUDIO_PRESETS.map((preset) => (
+                  <button
+                    aria-label={studioPresetPickerLabel(preset)}
+                    aria-pressed={preset.id === values["gallery.entry"]}
+                    className={styles.card}
+                    data-studio-onboarding-apply={preset.id}
+                    key={preset.id}
+                    onClick={() =>
+                      run([
+                        {
+                          history: "skip",
+                          target: "gallery.entry",
+                          type: "controls.setValue",
+                          value: preset.id,
+                        },
+                      ])
+                    }
+                    type="button"
+                  >
+                    <img
+                      alt=""
+                      className={styles.thumb}
+                      src={STUDIO_TECHNIQUE_THUMBNAILS[preset.id] ?? ""}
+                    />
+                    <span className={styles.cardLabel}>
+                      {studioPresetPickerLabel(preset)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className={styles.hint}>
+                It lands on whatever the layers panel has highlighted — a layer,
+                or a group and everything under it.
+              </p>
+            </DialogBody>
+            <DialogFooter>
+              <button
+                className={styles.shape}
+                data-studio-onboarding-apply-cancel=""
+                onClick={close}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.shape}
+                data-studio-onboarding-apply-confirm=""
+                disabled={!values["gallery.entry"]}
+                onClick={() => {
+                  onApply();
+                  close();
+                }}
+                type="button"
+              >
+                Apply it
+              </button>
+            </DialogFooter>
+          </>
         ) : step === STUDIO_ONBOARDING_REFERENCE ? (
           <>
             <DialogHeader>
               <DialogTitle>What are you working against?</DialogTitle>
               <DialogDescription>
-                A study sits behind the canvas so you can see how far off you are.
-                It is never part of the work and never reaches an export. Set how
-                strongly it shows in the panel.
+                A study sits behind the canvas so you can see how far off you
+                are. It is never part of the work and never reaches an export.
               </DialogDescription>
             </DialogHeader>
             <DialogBody>
@@ -270,8 +387,7 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                           value: item.value,
                         },
                         // Shown at once, because a study nobody can see is a
-                        // study nobody chose. The strength stays adjustable in
-                        // the panel, where it is looked at against the work.
+                        // study nobody chose.
                         ...(Number(values[STUDIO_REFERENCE_OPACITY_TARGET] ?? 0) > 0
                           ? []
                           : [
@@ -290,6 +406,65 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                     <span className={styles.cardLabel}>{item.alt}</span>
                   </button>
                 ))}
+              </div>
+
+              {/*
+                How the study is read, next to the choice of study.
+                These were two sidebar controls until the product owner pointed
+                out that a study is not something you keep adjusting beside the
+                work -- you set it when you pick one and then get on with
+                building. So they moved here, where the picture they describe is
+                on screen to compare against.
+              */}
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>How strongly it shows</span>
+                <input
+                  aria-label="Reference opacity"
+                  className={styles.range}
+                  max={1}
+                  min={0}
+                  onChange={(event) =>
+                    run([
+                      {
+                        target: STUDIO_REFERENCE_OPACITY_TARGET,
+                        type: "controls.setValue",
+                        value: Number(event.target.value),
+                      },
+                    ])
+                  }
+                  step={0.01}
+                  type="range"
+                  value={Number(values[STUDIO_REFERENCE_OPACITY_TARGET] ?? 0)}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>How it is compared</span>
+                <div className={styles.shapes}>
+                  {STUDIO_REFERENCE_COMPARE_MODES.map((mode) => (
+                    <button
+                      aria-label={mode.label}
+                      aria-pressed={
+                        mode.value === values[STUDIO_REFERENCE_COMPARE_TARGET]
+                      }
+                      className={styles.shape}
+                      key={mode.value}
+                      onClick={() =>
+                        run([
+                          {
+                            target: STUDIO_REFERENCE_COMPARE_TARGET,
+                            type: "controls.setValue",
+                            value: mode.value,
+                          },
+                        ])
+                      }
+                      type="button"
+                    >
+                      {mode.label}
+                      <span className={styles.shapeSize}>{mode.hint}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </DialogBody>
           </>

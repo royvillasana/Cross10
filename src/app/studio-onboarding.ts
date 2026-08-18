@@ -64,8 +64,19 @@ export const STUDIO_ONBOARDING_SIZING = "sizing";
 export const STUDIO_ONBOARDING_REPLACING = "replacing";
 /** Choosing what to work against, rather than what to make. */
 export const STUDIO_ONBOARDING_REFERENCE = "reference";
+/**
+ * Pushing a composition onto what is already selected.
+ *
+ * A separate step from `choosing`, because the two answer different questions.
+ * `choosing` decides what the canvas *is* and replaces the stack; this decides
+ * what gets laid onto layers that already exist and creates nothing. They were
+ * one panel section each until the product owner observed that an action which
+ * replaces work has no business sitting permanently in a sidebar.
+ */
+export const STUDIO_ONBOARDING_APPLY = "apply";
 
 export type StudioOnboardingStep =
+  | typeof STUDIO_ONBOARDING_APPLY
   | typeof STUDIO_ONBOARDING_CHOOSING
   | typeof STUDIO_ONBOARDING_CLOSED
   | typeof STUDIO_ONBOARDING_REFERENCE
@@ -73,6 +84,7 @@ export type StudioOnboardingStep =
   | typeof STUDIO_ONBOARDING_SIZING;
 
 const STUDIO_ONBOARDING_STEPS = new Set<string>([
+  STUDIO_ONBOARDING_APPLY,
   STUDIO_ONBOARDING_CHOOSING,
   STUDIO_ONBOARDING_REFERENCE,
   STUDIO_ONBOARDING_REPLACING,

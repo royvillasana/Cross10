@@ -1,19 +1,22 @@
-import { STUDIO_TECHNIQUE_THUMBNAILS } from "./studio-technique-thumbnails";
-import { STUDIO_PRESETS, studioPresetPickerLabel } from "./studio-presets";
-
 /**
- * What is left in the panel now that choosing happens in a dialog.
+ * One door, and nothing else.
  *
- * The thumbnails, the technique change and its confirmation all moved to the
- * onboarding flow, where they belong: they decide what the canvas *is*, and a
- * decision taken before there is work does not belong beside the controls that
- * shape the work afterwards. What stays here is the door back to that flow, the
- * way back from a replacement, and the narrow application -- the one that adds
- * to the work rather than replacing it.
+ * Everything that *decides* something moved into the flow: the thumbnails, the
+ * technique change and its confirmation went first, and the narrow application
+ * -- picking a composition and pushing it onto the selection -- followed when
+ * the product owner pointed out that an action which replaces work is a thing
+ * you should be asked about, not a button that is always sitting there.
  *
- * `gallery.entry` is still a value and is still what a narrow application
- * applies; it simply has no control any more. The dialog writes it, the panel
- * reads it, and one target keeps one meaning across both.
+ * What is left is the way in. A door decides nothing: it opens the surface that
+ * asks the question, and the question is asked in one place.
+ *
+ * `gallery.entry` is still a value and is still what an application applies; it
+ * simply has no control any more. The dialog writes it, the apply reads it, and
+ * one target keeps one meaning across both.
+ *
+ * Restore went with them for the same reason. Taking back a replacement belongs
+ * beside the replacing, and a panel row offering to undo something the author
+ * may never have done is a row that is wrong most of the time.
  */
 export const STUDIO_GALLERY_SECTIONS = [
   {
@@ -26,6 +29,7 @@ export const STUDIO_GALLERY_SECTIONS = [
         applicability: { mode: "always" },
         actions: [
           { label: "Change the technique", value: "open-onboarding" },
+          { label: "Apply to the selection", value: "open-apply" },
           { label: "Work against a study", value: "open-reference" },
         ],
         label: "What the canvas is working in",
@@ -41,84 +45,25 @@ export const STUDIO_GALLERY_SECTIONS = [
   },
   {
     controls: {
-      // Which composition the narrow application pushes.
-      //
-      // This is *not* the technique picker that moved into the flow, and the
-      // difference is the whole reason it is here. The flow decides what the
-      // canvas *is* -- a replacement, asked about, taken before there is work.
-      // This decides what gets pushed onto a layer that already exists, which is
-      // an edit to work in progress and belongs beside the press that makes it.
-      //
-      // Without it there was no user path to a narrow application at all: the
-      // press read an entry only the flow could set, and setting it there
-      // replaced the canvas. The proofs caught that by losing their fixture.
-      entry: {
-        semanticGroup: "apply",
-        applicability: { mode: "always" },
-        defaultValue: STUDIO_PRESETS[0]?.id ?? "",
-        items: STUDIO_PRESETS.map((preset) => ({
-          alt: studioPresetPickerLabel(preset),
-          src: STUDIO_TECHNIQUE_THUMBNAILS[preset.id] ?? "",
-          value: preset.id,
-        })),
-        label: "Composition",
-        performanceReason:
-          "Names an entry in a library held in memory; nothing is rendered until the entry is applied.",
-        performanceRole: "responsiveness",
-        target: "gallery.entry",
-        type: "imagePicker",
-      },
-    },
-    id: "composition-source",
-    title: "Composition Source",
-  },
-  {
-    controls: {
-      // What a composition is aimed at, for the half that stays in the panel.
-      //
-      // The canvas aim went with the technique change, so what is left is the
-      // additive half: applying a chosen construction to a layer, a group, or
-      // the pictures. That is an edit to work that exists, which is what the
-      // panel is for.
-      engine: {
-        semanticGroup: "apply",
-        applicability: { mode: "always" },
-        actions: [{ label: "Apply to the selection", value: "apply-engine" }],
-        // Says what is aimed at, because the aim is no longer a control: it is
-        // whatever the layers panel has highlighted. An author who wants it
-        // somewhere else selects somewhere else, which is one gesture rather
-        // than two and cannot disagree with what they are looking at.
-        label: "Applies to the selection; the rest of the stack is left alone",
-        performanceReason:
-          "Writes one record of per-layer values; the frame is redrawn by the same pass any edit uses.",
-        performanceRole: "responsiveness",
-        target: "gallery.engineActions",
-        type: "actions",
-      },
-    },
-    id: "composition-apply",
-    title: "Apply A Composition",
-  },
-  {
-    controls: {
-      // Restore wants to appear only once there is a stack to come back to, and
-      // that is still not expressible: an applicability predicate may only name
-      // a rendered control's target, and the snapshot is product-owned state
-      // with no control of its own. So it is always offered and does nothing
-      // when nothing is held.
-      //
-      // It stays in the panel rather than moving to the dialog because it is
-      // read at a different moment from everything else here -- after a change,
-      // looking at the result, deciding against it. A dialog you would have to
-      // reopen in order to undo something is a worse home than a button beside
-      // the work.
+      /*
+       * Still here, and not because it was overlooked.
+       *
+       * Restore was meant to move into the flow with everything else that
+       * decides something. It could not: the dialog reads runtime state through
+       * a selector and the snapshot does not reach it, while `onPanelAction`
+       * sees the same value perfectly well. Until that is understood, a restore
+       * rendered in the dialog would be a button that is invisible exactly when
+       * an author needs it, which is worse than a row in the wrong place.
+       *
+       * Recorded as `outstanding` 1a.6.
+       */
       restore: {
-        semanticGroup: "previous-stack",
+        semanticGroup: "composition",
         applicability: { mode: "always" },
         actions: [{ label: "Restore previous", value: "restore-stack" }],
         label: "Undoing the last replacement",
         performanceReason:
-          "Rebuilds the recorded stack once through runtime layer commands; the frame is redrawn by the same pass any edit uses.",
+          "Rewrites the layer list and one record from a held snapshot; the frame is redrawn by the pass any edit uses.",
         performanceRole: "responsiveness",
         target: "gallery.restore",
         type: "actions",

@@ -3,6 +3,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import {
   addStudioGroup,
   addStudioLayer,
+  applyStudioCompositionToSelection,
+  openStudioCompositionDoor,
   chooseStudioComposition,
   dismissStudioOnboarding,
   openStudioSingleLayer,
@@ -146,11 +148,21 @@ function studioTechniqueButton(page: Page, name: string): Locator {
     .first();
 }
 
-function studioRestoreButton(page: Page): Locator {
-  return page
+/**
+ * Restore, still a panel press.
+ *
+ * It was meant to move into the flow with everything else that decides
+ * something, and could not: the dialog reads state through a selector and the
+ * snapshot does not reach it, while `onPanelAction` sees the same value without
+ * trouble. A restore rendered in the dialog would be invisible exactly when an
+ * author needs it. Recorded as `outstanding` 1a.6.
+ */
+async function studioRestore(page: Page): Promise<void> {
+  await page
     .locator('[data-toolcraft-control-target="gallery.restore"]')
     .getByRole("button", { name: "Restore previous" })
-    .first();
+    .first()
+    .click();
 }
 
 /**
@@ -296,7 +308,7 @@ test("browser: studio gallery restores the stack an application replaced", async
   // One press, not one per layer. The defect being fixed is that undo needed
   // N+M presses and still did not arrive, so a restore that scaled with the
   // stack would not have been a fix.
-  await studioRestoreButton(page).click();
+  await studioRestore(page);
 
   await expect
     .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
@@ -316,7 +328,7 @@ test("browser: studio gallery restores the stack an application replaced", async
   // No intermediate resting state: restoring again does nothing, because the
   // snapshot was cleared by the restore that used it. Offering it twice would
   // let a second press rebuild a stack the author had already come back from.
-  await studioRestoreButton(page).click();
+  await studioRestore(page);
 
   expect(
     await readStudioLayerIds(page),
@@ -421,7 +433,7 @@ test("browser: studio asks before a technique replaces the work", async ({ page 
     .toEqual(wide.layers.map((layer) => layer.name));
 
   // And agreeing is not agreeing to lose the work.
-  await studioRestoreButton(page).click();
+  await studioRestore(page);
   await expect
     .poll(async () => readStudioLayerIds(page), { timeout: 15_000 })
     .toEqual(authorIds);
@@ -493,16 +505,11 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
     preset.layers.some((layer) => typeof layer.values.engine === "string"),
   );
   if (!engineEntry) throw new Error("the library needs an entry carrying an engine");
-  // The panel's picker, not the flow: this names what the narrow press pushes
-  // and applies nothing, which is what leaves the fixture standing.
-  await chooseStudioComposition(page, engineEntry.label);
-
+  // Choosing and pressing are one gesture now: the dialog picks the entry and
+  // applies it in the same surface, because an action that changes work should
+  // be asked for rather than sit permanently in a panel.
   const pressEngine = async (): Promise<void> => {
-    await page
-      .locator('[data-toolcraft-control-target="gallery.engineActions"]')
-      .getByRole("button", { name: "Apply to the selection" })
-      .first()
-      .click();
+    await applyStudioCompositionToSelection(page, engineEntry.id);
   };
 
   for (const aim of [
@@ -544,8 +551,8 @@ test("browser: studio gallery aims an entry at one layer", async ({ page }) => {
     await settleStudioOutput(page);
     await expectToolcraftProductObservableToChange(
       session,
-      session.controlAction("gallery.engineActions", pressEngine),
-      { requirementId: "gallery.engineActions" },
+      session.targetAction("gallery.engineActions", pressEngine),
+      { requirementId: "gallery.actions" },
     );
 
     // Nothing was created, removed, or reordered: a narrow aim restyles layers
@@ -614,11 +621,7 @@ test("browser: studio offers no application when nothing is selected", async ({
 
   const before = await readStudioOutputSignature(page);
 
-  await page
-    .locator('[data-toolcraft-control-target="gallery.engineActions"]')
-    .getByRole("button", { name: "Apply to the selection" })
-    .first()
-    .click();
+  await applyStudioCompositionToSelection(page, STUDIO_PRESETS[0]!.id);
 
   // Nothing appeared, and nothing was drawn. An application that fell back to
   // "the whole canvas" when it could not find a subject would create layers here

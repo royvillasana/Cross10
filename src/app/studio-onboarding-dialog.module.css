@@ -114,3 +114,9 @@
   line-height: 1.5;
   opacity: 0.6;
 }
+
+/* A plain range input, themed to sit with the cards above it. */
+.range {
+  accent-color: var(--foreground);
+  inline-size: 100%;
+}

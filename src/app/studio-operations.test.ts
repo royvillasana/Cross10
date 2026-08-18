@@ -5,6 +5,10 @@ import { appSchema } from "./app-schema";
 import { STUDIO_LOOP_SECONDS } from "./studio-motion";
 import { findStudioPreset, planStudioPresetApplication } from "./studio-presets";
 import {
+  readStudioReferenceOpacity,
+  STUDIO_REFERENCE_COMPARE_MODES,
+} from "./studio-reference";
+import {
   planStudioLayerDuplication,
   planStudioPenDrawing,
   planStudioStackRestoration,
@@ -227,13 +231,23 @@ describe("the composition surfaces", () => {
 
 describe("the study, the ground, and the pointer", () => {
   it("shows nothing at zero and the chosen study above it", () => {
-    expect(controlTargets.has("reference.opacity")).toBe(true);
+    // No control any more: the study, how strongly it shows and how it is read
+    // all live in the dialog that chooses it. What survives at unit level is
+    // that the reader still defaults to invisible, which is what makes "no
+    // study" the resting state rather than a half-shown one.
+    expect(readStudioReferenceOpacity(undefined)).toBe(0);
+    expect(readStudioReferenceOpacity("nonsense")).toBe(0);
   });
 
   it("declares a comparison beyond a plain overlay", () => {
-    // Two readings, and the second is the one that earns the control: laying a
-    // study over the work, and showing where the two differ.
-    expect(optionsOf("reference.compare").length).toBeGreaterThanOrEqual(2);
+    // Two readings, and the second is the one that earns the surface: laying a
+    // study over the work, and showing where the two differ. Read from the
+    // shared list the dialog renders, so the modes and the reader cannot
+    // disagree about what a valid comparison is.
+    expect(STUDIO_REFERENCE_COMPARE_MODES.map((mode) => mode.value)).toEqual([
+      "overlay",
+      "difference",
+    ]);
   });
 
   it("declares the background switch reveals and grounds the composite", () => {

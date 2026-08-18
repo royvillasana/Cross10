@@ -8,7 +8,8 @@ import {
   openStudioSingleLayer,
   readStudioLayerIds,
   readStudioOutputSignature,
-  setStudioSelectValue,
+  setStudioReferenceStrength,
+  setStudioReferenceCompare,
   setStudioSlider,
   STUDIO_PRODUCT_OUTPUT,
 } from "./studio-product-helpers";
@@ -166,50 +167,27 @@ test("browser: studio reference shows behind the work and reaches no artifact", 
   // measured against.
   const exportedWithout = await exportedPixels(page);
 
-  // The strength proved in both readings, because they are peers in one section
-  // and a gated surface owes its evidence per branch. It is a real claim rather
-  // than bookkeeping: the slider has to keep working *inside* the difference
-  // view, where what it scales is the strength of the comparison rather than
-  // the visibility of a picture.
+  // Both readings, because a study is read two ways and each has to work. No
+  // longer an applicability pair: these were peer controls in one panel section
+  // and are now two affordances in the dialog that chooses the study, so what
+  // is proved is the rendered result rather than one control gating another.
   for (const mode of [
     { label: "Laying it over", value: "overlay" },
     { label: "Their difference", value: "difference" },
   ] as const) {
-    const applicability = {
-      expectation: "visible" as const,
-      selectorControlType: "select" as const,
-      selectorLabel: "Compare by",
-      selectorOptionLabel: mode.label,
-      selectorTarget: "reference.compare",
-      selectorValue: mode.value,
-      target: "reference.opacity",
-    };
-
     // Back to nothing shown first, so the change below is a change.
-    await setStudioSlider(page, "Reference opacity", 0);
+    await setStudioReferenceStrength(page, 0);
     await expect(studioReference(page)).toHaveCount(0);
 
-    await expectToolcraftControlApplicabilityState(
-      session,
-      session.controlAction("reference.compare", async () => {
-        await setStudioSelectValue(page, "reference.compare", mode.label);
-      }),
-      applicability,
-      { baseRequirementId: "reference.opacity" },
-    );
+    await setStudioReferenceCompare(page, mode.label);
 
     await settleStudioObservable(page);
     await expectToolcraftProductObservableToChange(
       session,
-      session.controlAction("reference.opacity", async () => {
-        await setStudioSlider(page, "Reference opacity", 0.8);
+      session.targetAction("reference.opacity", async () => {
+        await setStudioReferenceStrength(page, 0.8);
       }),
-      {
-        requirementId: getToolcraftApplicabilityRequirementId(
-          "reference.opacity",
-          applicability,
-        ),
-      },
+      { requirementId: "reference.opacity" },
     );
 
     await expect(studioReference(page)).toHaveCount(1);
@@ -296,7 +274,7 @@ test("browser: studio reference shows behind the work and reaches no artifact", 
 
   // Dismissed by returning the strength to zero, which leaves the composition
   // exactly as it was.
-  await setStudioSlider(page, "Reference opacity", 0);
+  await setStudioReferenceStrength(page, 0);
   await expect(studioReference(page)).toHaveCount(0);
   expect(await readStudioLayerIds(page)).toEqual(layersBefore);
   await expect
@@ -315,7 +293,7 @@ test("browser: studio reference compares by difference and exports neither", asy
   const compositionBefore = await settleStudioFrame(page);
   const exportedWithout = await exportedPixels(page);
 
-  await setStudioSlider(page, "Reference opacity", 1);
+  await setStudioReferenceStrength(page, 1);
   await expect(studioReference(page)).toHaveAttribute("data-studio-reference", "overlay");
 
   // Difference rather than a second opacity, because at fifty percent every
@@ -325,8 +303,8 @@ test("browser: studio reference compares by difference and exports neither", asy
   await settleStudioObservable(page);
   await expectToolcraftProductObservableToChange(
     session,
-    session.controlAction("reference.compare", async () => {
-      await setStudioSelectValue(page, "reference.compare", "Their difference");
+    session.targetAction("reference.compare", async () => {
+      await setStudioReferenceCompare(page, "Their difference");
     }),
     { requirementId: "reference.compare" },
   );
@@ -352,7 +330,7 @@ test("browser: studio reference compares by difference and exports neither", asy
 
   // Leaving it changes nothing either, which is the other half of the claim: a
   // display mode that had written a value would show it on the way out.
-  await setStudioSelectValue(page, "reference.compare", "Laying it over");
+  await setStudioReferenceCompare(page, "Laying it over");
   await expect(studioReference(page)).toHaveAttribute("data-studio-reference", "overlay");
   expect(await readStudioLayerIds(page)).toEqual(layersBefore);
   await expect

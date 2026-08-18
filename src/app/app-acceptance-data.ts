@@ -13,6 +13,7 @@ import {
   studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
   studioMotionAcceptanceRows,
+  studioRestoreAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
   studioReferenceAcceptanceRows,
@@ -156,6 +157,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
   ...studioMotionAcceptanceRows,
+  ...studioRestoreAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
   ...studioExportAcceptanceRows,
@@ -179,46 +181,6 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["gallery.actions"],
       title: "Composition",
       workflowStage: "start",
-    },
-    {
-      entity: "Composition source",
-      entityId: "composition-source",
-      groupingReason:
-        "Which composition a narrow application pushes onto layers that already exist. Its own section because imagePicker is standalone and the runtime splits it out whatever the product declares -- and its own entity because it answers a different question from the technique the canvas is working in, which the flow owns.",
-      id: "composition-source",
-      targets: ["gallery.entry"],
-      title: "Composition Source",
-      workflowStage: "compose",
-    },
-    {
-      entity: "Applied composition",
-      entityId: "composition-apply",
-      groupingReason:
-        "Pushing a construction onto layers that already exist: what it lands on, and the press that lands it. Their own section because they are the additive half -- an edit to work in progress -- and because keeping them away from the door above stops a select that names layers from becoming the semantic peer of a button that opens a surface.",
-      id: "composition-apply",
-      targets: ["gallery.engineActions"],
-      title: "Apply A Composition",
-      workflowStage: "compose",
-    },
-    {
-      entity: "Previous stack",
-      entityId: "composition-restore",
-      groupingReason:
-        "Coming back from the last replacement. Its own entity because what it acts on is the stack that preceded the change rather than anything chosen since, and it is read at a different moment from everything else -- after a change, looking at the result, deciding against it.",
-      id: "composition-restore",
-      targets: ["gallery.restore"],
-      title: "Previous Stack",
-      workflowStage: "recover",
-    },
-    {
-      entity: "Reference view",
-      entityId: "reference-view",
-      groupingReason:
-        "How hard to look at the reference, and how to read it against the work. Its own entity rather than part of the picker because these two answer a question the picker does not: the picker names what to aim at, and these decide whether it is showing at all and whether the author is looking at both pictures or at the distance between them.",
-      id: "reference-view",
-      targets: ["reference.opacity", "reference.compare"],
-      title: "Reference View",
-      workflowStage: "aim",
     },
     {
       entity: "Background",
@@ -306,6 +268,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       ],
       title: "Layer Engine",
       workflowStage: "colour",
+    },
+    {
+      entity: "Previous stack",
+      entityId: "composition-restore",
+      groupingReason:
+        "Taking back a replacement is its own decision, and the only one in the panel that acts on state no control holds. It stayed in the panel because the flow cannot read the snapshot it would act on (1a.6).",
+      id: "composition-restore",
+      targets: ["gallery.restore"],
+      title: "Previous Stack",
+      workflowStage: "revise",
     },
     {
       entity: "Layer motion",

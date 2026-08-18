@@ -671,3 +671,67 @@ export async function readStudioCentreSignature(
     return steps.join("|");
   }, axis);
 }
+
+/**
+ * Opens one of the composition doors and leaves the dialog on that step.
+ *
+ * The panel keeps exactly one section now — three presses that open a surface
+ * and decide nothing. Everything that decides happens in the dialog those
+ * presses open.
+ */
+export async function openStudioCompositionDoor(
+  page: Page,
+  label: "Change the technique" | "Apply to the selection" | "Work against a study",
+): Promise<void> {
+  await page
+    .locator('[data-toolcraft-control-target="gallery.actions"]')
+    .getByRole("button", { name: label })
+    .first()
+    .click();
+}
+
+/**
+ * Sets how strongly the study shows, through the dialog that now owns it.
+ *
+ * Opens, sets, closes — because the surface is modal, the value cannot be
+ * adjusted against the work the way a panel slider could. That is a real cost
+ * of moving it and is recorded here rather than smoothed over.
+ */
+export async function setStudioReferenceStrength(
+  page: Page,
+  value: number,
+): Promise<void> {
+  await openStudioCompositionDoor(page, "Work against a study");
+  const slider = page.getByRole("slider", { exact: true, name: "Reference opacity" });
+  await slider.evaluate((element, next) => {
+    const input = element as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, String(next));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+  await dismissStudioOnboarding(page);
+}
+
+/** Chooses how the study is read against the work, through the same dialog. */
+export async function setStudioReferenceCompare(
+  page: Page,
+  label: "Laying it over" | "Their difference",
+): Promise<void> {
+  await openStudioCompositionDoor(page, "Work against a study");
+  await page.getByRole("button", { exact: true, name: label }).first().click();
+  await dismissStudioOnboarding(page);
+}
+
+/** Lays a composition onto the current selection, through the apply dialog. */
+export async function applyStudioCompositionToSelection(
+  page: Page,
+  presetId: string,
+): Promise<void> {
+  await openStudioCompositionDoor(page, "Apply to the selection");
+  await page.locator(`[data-studio-onboarding-apply="${presetId}"]`).click();
+  await page.locator("[data-studio-onboarding-apply-confirm]").click();
+}

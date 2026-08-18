@@ -46,12 +46,9 @@ describe("appSchema", () => {
       // door back to that flow, the way back from a replacement, and the narrow
       // application that edits layers already on the canvas.
       "Composition",
-      "Composition Source",
-      "Apply A Composition",
       "Previous Stack",
       // Stays in the panel: how hard to look at a study, and how to read it
       // against the work, are both adjusted while looking at the canvas.
-      "Reference View",
       "Selected Layer",
       // Split from Selected Layer: one entity above ten controls must divide
       // into explicit workflow stages, and the kind gate moves with the
