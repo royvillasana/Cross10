@@ -2854,19 +2854,21 @@ test("browser: studio additive blending mixes the layers beneath it", async ({
  * present" into "how far apart are they", which is why a study is read this way
  * rather than faded over the work.
  *
- * **Asserted comparatively rather than as an exact black, and the reason is a
- * loose end I could not close.** Two layers set to the same colour, both at full
- * opacity and two palette slots, do not reach zero: the centre reads about a
- * quarter of the original in linear light, which is the signature of the top
- * layer compositing at roughly three-quarters weight rather than one. I could
- * not account for that alpha, and asserting `≈ 0` would have meant tuning the
- * threshold until the number I did not understand fell inside it.
+ * Asserted as near-black, which took two attempts and is worth recording. A
+ * single sample at the exact centre of the canvas read about a quarter of the
+ * original colour rather than zero, and that looked like a compositing bug — a
+ * layer at full opacity arriving at roughly three-quarters weight.
  *
- * So the claim is the one the mode is actually for and that the reading
- * supports: agreement is dark, and making the layers disagree returns a great
- * deal of light. A difference implementation that had drifted — subtracting in
- * the wrong space, or not taking an absolute — would fail this, because it would
- * not separate the two cases.
+ * It was the sampling. At a band boundary a layer's own coverage is one half,
+ * because that is what `smoothstep` evaluates to at the seam it antialiases, so
+ * the layer beneath arrives partially and the two fields genuinely differ there.
+ * A perfect difference correctly returns light at a seam. The centre of the
+ * canvas happened to be exactly one.
+ *
+ * So the reading takes the darkest pixel in a patch, which is what the
+ * requirement actually says: the regions where the layers *agree* render as
+ * black. The disagreement case is kept as the second half, because a mode that
+ * merely dimmed everything would satisfy the first alone.
  */
 test("browser: studio difference blending darkens agreement toward black", async ({
   page,
@@ -2886,28 +2888,50 @@ test("browser: studio difference blending darkens agreement toward black", async
     await setStudioSlider(page, "Colour slots", 2);
   }
 
+  /**
+   * The darkest pixel in a patch, not the pixel at the exact centre.
+   *
+   * A single centre sample is what made this look like a compositing bug. At a
+   * band boundary the layer's own coverage is one half — that is the
+   * antialiasing, `smoothstep` evaluated at the seam — so the layer beneath
+   * arrives partially, the two fields genuinely differ there, and a perfect
+   * difference correctly returns light rather than black. The centre of the
+   * canvas happened to be exactly such a seam.
+   *
+   * "Regions where the layers agree render as black" is a claim about the
+   * regions that agree, so the reading looks for one.
+   */
   const readCentre = async () =>
     page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((element) => {
       const canvas = element as HTMLCanvasElement;
       const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
       if (!gl) return 999;
-      const pixel = new Uint8Array(4);
+      const width = Math.min(64, canvas.width);
+      const height = Math.min(64, canvas.height);
+      const patch = new Uint8Array(width * height * 4);
       gl.readPixels(
-        Math.floor(canvas.width / 2),
-        Math.floor(canvas.height / 2),
-        1,
-        1,
+        Math.floor((canvas.width - width) / 2),
+        Math.floor((canvas.height - height) / 2),
+        width,
+        height,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
-        pixel,
+        patch,
       );
-      // One number, because the claim is about how much light is left rather
-      // than about a particular hue.
-      return pixel[0] + pixel[1] + pixel[2];
+      let darkest = 765;
+      for (let index = 0; index < patch.length; index += 4) {
+        darkest = Math.min(darkest, patch[index] + patch[index + 1] + patch[index + 2]);
+      }
+      return darkest;
     });
 
+
   await setStudioSelectValue(page, "selectedLayer.blendMode", "Difference");
-  await expect.poll(async () => readCentre(), { timeout: 15_000 }).toBeLessThan(600);
+
+  // Near-black rather than "darker than before": where the two fields agree and
+  // both cover fully, an absolute difference is zero. A few units of slack for
+  // the sRGB round trip, not enough to hide a mode that only dimmed.
+  await expect.poll(async () => readCentre(), { timeout: 15_000 }).toBeLessThan(24);
   const agreeing = await readCentre();
 
   // Now make the layers disagree. Difference should give back a great deal more
