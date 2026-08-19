@@ -74,12 +74,22 @@ other side: a layer is a shape, so a picture is bounded by the shape it is in.
 ### Requirement: Image re-rendered through the stripe engines
 An imported image SHALL be re-rendered through the active engine, with source luminance driving stripe width or stripe phase according to a mapping mode, and source color optionally quantized to the active palette.
 
-**Status: pending — and this is the heart of the file, unbuilt.** An imported
-picture is *treated* — the engines recolour it, and hue, saturation and contrast
-apply — but nothing reads its luminance to drive stripe width or phase, and there
-is no mapping mode and no quantization to the palette. A picture is a layer that
-gets coloured, not a source that becomes a field. Carried as `outstanding`
-1a.11.
+**Status: satisfied.** `Read the picture as` offers two mappings beside drawing
+it: *Band width* moves the split inside each band with the source's light, so the
+picture appears as one steady rhythm thickening and thinning; *Band phase*
+displaces the sequence, so the picture appears as the rhythm bending. Luminance
+is the driver, at Rec. 709 weights because the value read is linear light.
+
+Colour is quantized to the layer's palette rather than optional: what is drawn is
+the layer's inks arranged by the picture, not the picture's own colours. That is
+the stronger reading of "re-rendered through the engines" — the source decides
+structure and the palette decides colour.
+
+Finding this took an unrelated bug with it. The controls moved and nothing
+rendered, because an imported layer's record still says whatever kind it was
+created as — the asset is what makes it a picture — so the sync collected against
+the wrong uniform set and dropped every image-only edit. Both directions of the
+sync now ask the runtime which layers carry pictures.
 
 #### Scenario: Luminance drives stripe width
 - **WHEN** a named two-tone fixture is imported and the mapping mode is set to width
@@ -96,8 +106,13 @@ gets coloured, not a source that becomes a field. Carried as `outstanding`
 ### Requirement: Sampling resolution control
 A sampling resolution parameter SHALL control the granularity at which the source is sampled, independent of output resolution, and SHALL be declared as a workload dimension.
 
-**Status: pending.** No sampling parameter, because nothing samples a source
-into a field yet. It belongs with the requirement above rather than on its own.
+**Status: partly satisfied.** `Bands across the picture` controls the granularity
+at which the source is read, independently of output resolution, and is declared
+with the same Nyquist reasoning as the procedural band count.
+
+What is not declared is a *workload dimension* for it, and that is deliberate
+rather than missed: like band count, per-pixel cost does not vary with it — the
+body samples the texture once whatever the band count is.
 
 #### Scenario: Coarse sampling
 - **WHEN** sampling resolution is lowered

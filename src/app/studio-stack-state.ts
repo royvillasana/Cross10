@@ -428,6 +428,8 @@ export function studioSelectedLayerTarget(uniformName: string): string {
  */
 export function projectStudioLayerEntry(
   entry: StudioLayerRecordEntry,
+  /** As in `collectStudioSelectedLayerEdit`: the kind it is drawn as. */
+  drawnAs: StudioLayerTypeId = entry.typeId,
 ): ReadonlyArray<
   Readonly<{
     target: string;
@@ -441,7 +443,7 @@ export function projectStudioLayerEntry(
     value: boolean | number | readonly [number, number, number] | string;
   }> = [{ target: STUDIO_LAYER_TYPE_TARGET, value: entry.typeId }];
 
-  for (const uniform of studioLayerUniforms(entry.typeId)) {
+  for (const uniform of studioLayerUniforms(drawnAs)) {
     const stored = entry.values[uniform.name] ?? uniform.defaultValue;
     assignments.push({
       target: studioSelectedLayerTarget(uniform.name),
@@ -466,12 +468,24 @@ export function projectStudioLayerEntry(
 export function collectStudioSelectedLayerEdit(
   entry: StudioLayerRecordEntry,
   values: Readonly<Record<string, unknown>>,
+  /**
+   * The kind this layer is *drawn* as, when that differs from the kind its
+   * entry records.
+   *
+   * An imported layer keeps whatever `typeId` it was created with — the asset is
+   * what makes it a picture, not the record — so collecting against the entry's
+   * own type silently drops every control the image body reads. The symptom is
+   * exact and misleading: the control moves, the record does not change, and the
+   * render stays where it was, which looks like a shader that ignores a uniform
+   * rather than an edit that was never stored.
+   */
+  drawnAs: StudioLayerTypeId = entry.typeId,
 ): StudioLayerRecordEntry {
   const next: Record<string, number | readonly [number, number, number]> = {
     ...entry.values,
   };
 
-  for (const uniform of studioLayerUniforms(entry.typeId)) {
+  for (const uniform of studioLayerUniforms(drawnAs)) {
     const raw = values[studioSelectedLayerTarget(uniform.name)];
     if (uniform.type === "float" && typeof raw === "number") {
       next[uniform.name] = raw;

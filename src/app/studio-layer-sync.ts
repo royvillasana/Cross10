@@ -58,6 +58,20 @@ export function useStudioLayerSync(): void {
   const lastEditedLayerId = React.useRef<string | null>(null);
 
   const layers = state.layers ?? [];
+  /**
+   * Which layers are drawn as pictures, which the record does not know.
+   *
+   * A layer created as stripes and then given an imported asset still records
+   * `typeId: "stripes"`; the asset is what makes it a picture. Both directions
+   * of this sync have to ask the runtime rather than the record, or the controls
+   * the image body reads are projected from nothing and collected into nothing.
+   */
+  const pictureLayerIds = new Set(
+    (state.mediaAssets ?? [])
+      .filter((asset) => asset.assetKind === "image")
+      .map((asset) => asset.layerId)
+      .filter((id): id is string => typeof id === "string"),
+  );
   const selectedLayerId = state.selectedLayerId ?? null;
   const values = state.values as Readonly<Record<string, unknown>>;
   const record = readStudioLayerRecord(values[STUDIO_LAYER_RECORD_TARGET]);
@@ -105,7 +119,10 @@ export function useStudioLayerSync(): void {
     // the record into them and record which layer they now describe.
     if (lastSyncedLayerId.current !== selectedLayerId) {
       const entry = readStudioLayerEntry(record, selectedLayerId);
-      for (const assignment of projectStudioLayerEntry(entry)) {
+      for (const assignment of projectStudioLayerEntry(
+        entry,
+        pictureLayerIds.has(selectedLayerId) ? "image" : entry.typeId,
+      )) {
         // Skipped for the same reason the record write is: loading a layer's
         // values into the controls is what selecting it *means*, not a second
         // edit beside it. Recorded, an undo would revert the controls to the
@@ -168,7 +185,10 @@ export function useStudioLayerSync(): void {
     // which is how this fix first went wrong.
     if (historyMoved && lastEditedLayerId.current !== selectedLayerId) {
       const entry = readStudioLayerEntry(record, selectedLayerId);
-      for (const assignment of projectStudioLayerEntry(entry)) {
+      for (const assignment of projectStudioLayerEntry(
+        entry,
+        pictureLayerIds.has(selectedLayerId) ? "image" : entry.typeId,
+      )) {
         dispatch({
           history: "skip",
           target: assignment.target,
@@ -189,7 +209,13 @@ export function useStudioLayerSync(): void {
     // A type change replaces the values wholesale, so an edit collected in the
     // same pass would be an edit to the type the user just left.
     const next =
-      retyped === stored ? collectStudioSelectedLayerEdit(stored, values) : retyped;
+      retyped === stored
+        ? collectStudioSelectedLayerEdit(
+            stored,
+            values,
+            pictureLayerIds.has(selectedLayerId) ? "image" : stored.typeId,
+          )
+        : retyped;
 
     if (JSON.stringify(next) !== JSON.stringify(stored)) {
       lastEditedLayerId.current = selectedLayerId;

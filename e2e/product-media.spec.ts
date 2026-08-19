@@ -9,6 +9,7 @@ import {
 } from "./studio-import-fixture";
 import {
   dismissStudioOnboarding,
+  setStudioSelectValue,
   readStudioLayerIds,
   readStudioStackSignature,
   STUDIO_PRODUCT_OUTPUT,

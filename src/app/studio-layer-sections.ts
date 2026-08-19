@@ -411,6 +411,83 @@ widthRatio: {
   },
   {
     controls: {
+      // How an imported picture is read: as itself, or as the thing that
+      // decides where a band field's boundaries fall.
+      //
+      // Its own section rather than beside the file drop, because these are
+      // adjusted while looking at the work and the drop zone is used once. The
+      // drop zone also hides itself when empty, and these should not vanish
+      // with it once a picture exists.
+      mapping: {
+        semanticGroup: "source",
+        applicability: { mode: "always" },
+        defaultValue: "picture",
+        label: "Read the picture as",
+        options: [
+          { label: "The picture", value: "picture" },
+          { label: "Band width", value: "width" },
+          { label: "Band phase", value: "phase" },
+        ],
+        performanceReason:
+          "Selects a branch in a body that already samples the texture; no extra fetch and no new pass.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.sourceMapping",
+        type: "select",
+      },
+      count: {
+        semanticGroup: "source",
+        applicability: { mode: "always" },
+        defaultValue: 48,
+        label: "Bands across the picture",
+        max: 200,
+        min: 2,
+        performanceReason:
+          "Scales a coordinate the body already computes; per-pixel cost is constant in it, and the ceiling is the Nyquist limit against pixel pitch.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.sourceCount",
+        type: "slider",
+      },
+      widthRatio: {
+        semanticGroup: "source",
+        applicability: { mode: "always" },
+        defaultValue: 0.5,
+        label: "Balance",
+        max: 0.95,
+        min: 0.05,
+        performanceReason:
+          "One comparison against a value already in hand.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.01,
+        target: "selectedLayer.sourceWidthRatio",
+        type: "slider",
+      },
+      strength: {
+        // How far the picture is allowed to move the field. At zero the field
+        // is regular and the picture has vanished from it entirely, which is
+        // the honest bottom of this scale rather than a disabled state.
+        semanticGroup: "source",
+        applicability: { mode: "always" },
+        defaultValue: 1,
+        label: "How much the picture drives it",
+        max: 2,
+        min: 0,
+        performanceReason:
+          "A multiply on a luminance the body already reads from the sample it already took.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "continuous",
+        step: 0.05,
+        target: "selectedLayer.sourceStrength",
+        type: "slider",
+      },
+    },
+    id: "selected-layer-source",
+    title: "Layer Source",
+  },
+  {
+    controls: {
       maskShape: {
         semanticGroup: "region",
         applicability: { mode: "always" },

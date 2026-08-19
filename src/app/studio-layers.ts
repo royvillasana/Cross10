@@ -721,6 +721,15 @@ vec4 studioImageBody(
   float engineAmount,
   float engineCursor,
   float enginePitch,
+  float sourceMapping,
+  float sourceCount,
+  float sourceWidthRatio,
+  float sourceStrength,
+  float paletteSlots,
+  vec3 colorA,
+  vec3 colorB,
+  vec3 colorC,
+  vec3 colorD,
   sampler2D image
 ) {
   // The picture lives in the *layer's* frame, not the canvas's.
@@ -777,6 +786,66 @@ vec4 studioImageBody(
   }
 
   vec4 sampled = texture(image, uv);
+  // **Re-rendering the source as a field.** Until this existed a picture was a
+  // layer that got *coloured* -- the engines and treatments reached it, but it
+  // was never turned into the bands this product is made of. That is what
+  // media-stylization is named for, and it was the largest thing it did not do.
+  //
+  // Luminance is the driver because it is what a band field already encodes: a
+  // stripe sequence is light against dark, so a source's own light can decide
+  // where the boundary between them falls. Rec. 709 weights, because the value
+  // being read is linear light rather than a perceptual lightness.
+  //
+  // Two mappings, and they are genuinely different readings rather than two
+  // dials on one. *Width* keeps every boundary where it was and moves the split
+  // inside each band, so the picture appears as thickening and thinning of one
+  // steady rhythm. *Phase* keeps every band the same width and displaces the
+  // sequence, so the picture appears as the rhythm bending. The first reads as
+  // tone, the second as relief.
+  if (sourceMapping >= 0.5) {
+    float sourceLight = dot(sampled.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float bands = max(sourceCount, 1.0);
+    float sourceScaled = uv.x * bands;
+
+    if (sourceMapping < 1.5) {
+      // Width: the split within each band moves with the source.
+      float split = clamp(
+        sourceWidthRatio + (sourceLight - 0.5) * sourceStrength,
+        0.02,
+        0.98
+      );
+      float within = fract(sourceScaled);
+      float edge = max(fwidth(within) * 1.5, 1e-5);
+      float ink = smoothstep(split - edge, split + edge, within);
+      float slotPosition = (floor(sourceScaled) + ink) / bands;
+      vec3 banded = studioPaletteRamp(
+        fract(slotPosition * max(paletteSlots, 2.0)),
+        paletteSlots,
+        colorA,
+        colorB,
+        colorC,
+        colorD
+      );
+      return vec4(banded, sampled.a);
+    }
+
+    // Phase: the sequence is displaced by the source, so boundaries bend.
+    float displaced = sourceScaled + sourceLight * sourceStrength * bands;
+    float within = fract(displaced);
+    float edge = max(fwidth(within) * 1.5, 1e-5);
+    float ink = smoothstep(sourceWidthRatio - edge, sourceWidthRatio + edge, within);
+    float slotPosition = (floor(displaced) + ink) / bands;
+    vec3 banded = studioPaletteRamp(
+      fract(slotPosition * max(paletteSlots, 2.0)),
+      paletteSlots,
+      colorA,
+      colorB,
+      colorC,
+      colorD
+    );
+    return vec4(banded, sampled.a);
+  }
+
   if (engine < 0.5) {
     return sampled;
   }
@@ -942,6 +1011,23 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 1.2, name: "enginePitch", type: "float" },
         // Last, and valueless: the texture is bound from decoded media rather
         // than read out of the record.
+        {
+          // How the source is read. Picture draws it; the other two turn it into
+          // a band field, which is what makes an import a *source* rather than a
+          // decoration. Order is the contract with the body's branches.
+          defaultValue: 0,
+          name: "sourceMapping",
+          optionValues: ["picture", "width", "phase"],
+          type: "float",
+        },
+        { defaultValue: 48, name: "sourceCount", type: "float" },
+        { defaultValue: 0.5, name: "sourceWidthRatio", type: "float" },
+        { defaultValue: 1, name: "sourceStrength", type: "float" },
+        { defaultValue: 2, name: "paletteSlots", type: "float" },
+        { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorC", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorD", type: "vec3" },
         { defaultValue: 0, name: "image", type: "sampler2D" },
       ],
     },

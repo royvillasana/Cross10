@@ -143,6 +143,84 @@ export const studioRestoreAcceptanceRows: readonly ToolcraftComponentAcceptance[
   },
 ];
 
+/**
+ * Reading an imported picture as a field rather than as a picture.
+ *
+ * Each row carries the same negative claim as well as its own: what changes is
+ * where the boundaries of the band field fall, not what the picture is. The
+ * source is never altered -- it is read.
+ */
+export const studioSourceAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares the source mapping turns a picture into a field",
+    browser: true,
+    browserTestName: "browser: studio reads an imported picture as a band field",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Switching Read the picture as from The picture to Band width replaces the photograph with a band field whose boundaries follow the picture's light, drawn in the layer's own palette rather than the picture's colours.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    layerCoverage: "selected-layer-controls",
+    // Every reading owes evidence, including the one that draws the picture
+    // unchanged -- that is the branch an author returns to, and a mapping that
+    // could not get back to it would be a trap.
+    optionCoverage: ["picture", "width", "phase"],
+    id: "selectedLayer.sourceMapping",
+    kind: "control",
+    target: "selectedLayer.sourceMapping",
+    userAction: "Import a picture and set Read the picture as to Band width.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares the band count across a read picture",
+    browser: true,
+    browserTestName: "browser: studio band count across a picture changes its frequency",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Raising Bands across the picture puts more, narrower bands over the same source, and the picture's light still decides where each boundary falls.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    layerCoverage: "selected-layer-controls",
+    id: "selectedLayer.sourceCount",
+    kind: "control",
+    target: "selectedLayer.sourceCount",
+    userAction: "Read a picture as bands and raise Bands across the picture.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares the balance of a read picture's bands",
+    browser: true,
+    browserTestName: "browser: studio balance shifts the ink in a read picture",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Moving Balance shifts how much of each band is the first ink rather than the second, over an unchanged rhythm and an unchanged source.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    layerCoverage: "selected-layer-controls",
+    id: "selectedLayer.sourceWidthRatio",
+    kind: "control",
+    target: "selectedLayer.sourceWidthRatio",
+    userAction: "Read a picture as bands and move Balance.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares how far the picture drives the field",
+    browser: true,
+    browserTestName: "browser: studio source strength decides how much picture reaches the field",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "At zero the field is perfectly regular and the picture has left it entirely; raising it bends the field toward the picture's light. The bottom of the scale is a real reading rather than a disabled state.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    layerCoverage: "selected-layer-controls",
+    id: "selectedLayer.sourceStrength",
+    kind: "control",
+    target: "selectedLayer.sourceStrength",
+    userAction: "Read a picture as bands and move How much the picture drives it.",
+  },
+];
+
 export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,

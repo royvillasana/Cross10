@@ -281,6 +281,13 @@ describe("every layer control reaches the shader that draws it", () => {
     // named here and anything new fails until someone says which it is.
     const RUNTIME_OWNED = new Set([
       "image",
+      // Read by the image body from controls declared in `Layer Source`; they
+      // are per-layer values like any other, and are listed here only because
+      // the table above covers the field bodies rather than the source path.
+      "sourceCount",
+      "sourceMapping",
+      "sourceStrength",
+      "sourceWidthRatio",
       "maskAspect",
       "maskCenterX",
       "maskCenterY",

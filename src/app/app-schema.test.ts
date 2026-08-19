@@ -60,6 +60,7 @@ describe("appSchema", () => {
       // stays its own section rather than becoming an eleventh control in a
       // section already at the cap.
       "Layer Media",
+      "Layer Source",
       // What form the layer takes, independent of what it draws, so it needs
       // neither the kind gate nor a place beside it. Its placement, size and
       // proportion left with 14.1 -- the canvas handles own those -- so what

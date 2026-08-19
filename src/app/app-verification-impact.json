@@ -155,6 +155,10 @@
         "selectedLayer.rampType",
         "selectedLayer.saturation",
         "selectedLayer.separator",
+        "selectedLayer.sourceCount",
+        "selectedLayer.sourceMapping",
+        "selectedLayer.sourceStrength",
+        "selectedLayer.sourceWidthRatio",
         "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio"
@@ -174,6 +178,7 @@
         "selectedLayer.opacity",
         "selectedLayer.phase",
         "selectedLayer.rampType",
+        "selectedLayer.sourceMapping",
         "selectedLayer.type",
         "selectedLayer.widthRatio"
       ],
@@ -214,6 +219,10 @@
         "selectedLayer.rampType",
         "selectedLayer.saturation",
         "selectedLayer.separator",
+        "selectedLayer.sourceCount",
+        "selectedLayer.sourceMapping",
+        "selectedLayer.sourceStrength",
+        "selectedLayer.sourceWidthRatio",
         "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio"

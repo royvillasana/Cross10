@@ -13,6 +13,7 @@ import {
   studioHistoryAcceptanceRows,
   studioLayerAcceptanceRows,
   studioMotionAcceptanceRows,
+  studioSourceAcceptanceRows,
   studioRestoreAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
@@ -157,6 +158,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioBackgroundAcceptanceRows,
   ...studioLayerAcceptanceRows,
   ...studioMotionAcceptanceRows,
+  ...studioSourceAcceptanceRows,
   ...studioRestoreAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
@@ -278,6 +280,21 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["gallery.restore"],
       title: "Previous Stack",
       workflowStage: "revise",
+    },
+    {
+      entity: "Layer source",
+      entityId: "selected-layer-source",
+      groupingReason:
+        "How an imported picture is read -- as itself, or as the thing deciding where a band field's boundaries fall. Separate from the file drop because a drop zone is used once and hides itself when empty, while these are adjusted against the work and must not vanish with it.",
+      id: "selected-layer-source",
+      targets: [
+        "selectedLayer.sourceMapping",
+        "selectedLayer.sourceCount",
+        "selectedLayer.sourceWidthRatio",
+        "selectedLayer.sourceStrength",
+      ],
+      title: "Layer Source",
+      workflowStage: "shape",
     },
     {
       entity: "Layer motion",

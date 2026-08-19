@@ -6,6 +6,7 @@ import { expectToolcraftSelectedLayerControl } from "./browser-layer-evidence-he
 import {
   addStudioGroup,
   addStudioLayer,
+  dismissStudioOnboarding,
   openStudioSingleLayer,
   readStudioCentreSignature,
   readStudioLayerIds,
@@ -2942,4 +2943,107 @@ test("browser: studio difference blending darkens agreement toward black", async
   await expect
     .poll(async () => readCentre(), { timeout: 15_000 })
     .toBeGreaterThan(agreeing + 120);
+});
+
+/**
+ * Reading an imported picture as a field, which is the thing
+ * `media-stylization` is named for and did not do.
+ *
+ * A picture used to be a layer that got *coloured*: the engines recoloured it
+ * and the treatments reached it, but nothing turned a source into the bands this
+ * product is made of. These four proofs cover the reading and its three dials.
+ *
+ * The shared fixture imports a picture and confirms it is drawn as one first,
+ * because every claim below is a claim about a change *from* that.
+ */
+async function openStudioReadPicture(page: Page): Promise<string> {
+  writeImportFixture();
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+  });
+  await page.reload();
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
+  await importStudioImage(page);
+
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 15_000 })
+    .toContain("image");
+
+  const asPicture = await readStudioImageCorners(page);
+  expect(asPicture, "the fixture must draw a picture before it is read").toContain(
+    "red",
+  );
+  return asPicture;
+}
+
+test("browser: studio reads an imported picture as a band field", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  const asPicture = await openStudioReadPicture(page);
+  await setStudioSelectValue(page, "selectedLayer.sourceMapping", "Band width");
+
+  // The picture is gone from the frame: what is drawn is the layer's palette
+  // arranged by the picture's light, rather than the picture's own colours.
+  await expect
+    .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
+    .not.toBe(asPicture);
+});
+
+test("browser: studio band count across a picture changes its frequency", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioReadPicture(page);
+  await setStudioSelectValue(page, "selectedLayer.sourceMapping", "Band width");
+  await setStudioSlider(page, "Bands across the picture", 8);
+  const coarse = await readStudioCentreSignature(page);
+
+  await setStudioSlider(page, "Bands across the picture", 120);
+
+  await expect
+    .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
+    .not.toBe(coarse);
+});
+
+test("browser: studio balance shifts the ink in a read picture", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  await openStudioReadPicture(page);
+  await setStudioSelectValue(page, "selectedLayer.sourceMapping", "Band width");
+  await setStudioSlider(page, "Bands across the picture", 24);
+  const even = await readStudioCentreSignature(page);
+
+  // The rhythm is unchanged; what moves is how much of each band is the first
+  // ink rather than the second.
+  await setStudioSlider(page, "Balance", 0.85);
+
+  await expect
+    .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
+    .not.toBe(even);
+});
+
+test("browser: studio source strength decides how much picture reaches the field", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioReadPicture(page);
+  await setStudioSelectValue(page, "selectedLayer.sourceMapping", "Band phase");
+  await setStudioSlider(page, "Bands across the picture", 24);
+
+  // At zero the picture has left the field entirely and what remains is a
+  // perfectly regular rhythm. That is the honest bottom of this scale rather
+  // than a disabled state, so it has to differ from a reading that lets the
+  // picture through.
+  await setStudioSlider(page, "How much the picture drives it", 0);
+  const regular = await readStudioCentreSignature(page);
+
+  await setStudioSlider(page, "How much the picture drives it", 2);
+
+  await expect
+    .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
+    .not.toBe(regular);
 });
