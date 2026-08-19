@@ -3,15 +3,27 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status is stated per requirement.** Audited against the app on
+2026-08-19 (`outstanding` 1.1). This is the last file of that audit. Two
+requirements describe a nine-tool product that this one is not, and two more are
+where the product's UI deviations are recorded rather than hidden.
 ## Requirements
 ### Requirement: Toolcraft-native application shell
 Croix10 SHALL be assembled through `defineToolcraft` and `ToolcraftApp`, supplying only `ToolcraftAppComposition` fields. Product code MUST NOT hand-compose runtime surfaces, render built-in control components directly, or import modules below `src/toolcraft/ui/components/controls/**`.
+
+**Status: satisfied in the letter, with two deviations recorded rather than
+concealed.** The app is one `ToolcraftApp` fed `appComposition`, nothing below
+`controls/**` is imported, and the product boundary test enforces that.
+
+Two things this file did not anticipate are true and deliberate. The onboarding
+flow renders into a `Dialog` composite, which the decision contracts do not list
+as a product surface — taken on instruction after the supported routes were shown
+closed, and documented at the top of `studio-onboarding.ts`. And two product
+components add DOM to runtime-rendered surfaces: a **Media** item in the layers
+panel's add menu, and **duplicate** and **apply** buttons on each layer row.
+Both exist because those surfaces take no product items (upstream issues 16 and
+18), both relay to commands the runtime already owns, and both fail visibly if
+the runtime renames what they attach to. Nothing signed is edited.
 
 #### Scenario: Controls are declared, not rendered
 - **WHEN** any visual parameter is exposed in the UI
@@ -26,6 +38,12 @@ Croix10 SHALL be assembled through `defineToolcraft` and `ToolcraftApp`, supplyi
 ### Requirement: Product output confined to the canvas surface
 `canvasContent` SHALL contain product output only. App UI, upload prompts, helper copy, placeholder artwork, and CTAs MUST NOT appear there, and the runtime canvas backing MUST remain visible behind product output.
 
+**Status: satisfied.** The canvas holds the composite, the reference overlay,
+the region handles and the onboarding dialog's mount point — no copy, no CTA, no
+upload prompt. `browser canvas contains product output without app UI controls
+or CTA copy` is the runtime's own check on this and it is not in the failing
+set.
+
 #### Scenario: Neutral canvas before content
 - **WHEN** the app loads with no imported source and no engine output yet
 - **THEN** the canvas shows the neutral runtime-backed surface
@@ -33,6 +51,17 @@ Croix10 SHALL be assembled through `defineToolcraft` and `ToolcraftApp`, supplyi
 
 ### Requirement: Entity-scoped control sections
 An `appControlSectionInventory` SHALL be exported declaring every product section's stable `entityId`, human-readable `entity`, exact `targets`, and `groupingReason`. Each product control target SHALL appear exactly once. One entity SHALL stay in one section through ten controls; sections of eight to ten controls SHALL declare `semanticGroup` on every control; an entity above ten controls SHALL split into balanced two-to-ten-control sections sharing the same `entityId` with a unique `workflowStage` and concrete `splitReason`.
+
+**Status: satisfied, and it is the rule the panel is actually built to.**
+Fifteen entries, every target appearing exactly once, and the selected layer is
+split across sections that share its `entityId` with distinct workflow stages —
+pattern, shape, palette, engine, motion, treatment. Thirty-eight controls carry a
+`semanticGroup`.
+
+This is also the rule that makes the sidebar long. The product owner's complaint
+that everything ends up in the right panel is a fair reading of what this
+requirement produces when every control must live in a declared section and the
+framework offers no other surface.
 
 A control and the controls it is read with SHALL sit in the same section, and
 sections that continue one another SHALL be adjacent. `groupingReason` SHALL
@@ -102,6 +131,10 @@ setting rather than as the decision it is.
 ### Requirement: Section titles must not resemble their gating condition
 A section title MUST NOT equal, contain, or be contained by the condition value or option label of a gate that lives in another section. Sections SHALL be titled by the entity they edit, not by the branch that reveals them.
 
+**Status: satisfied, and it shaped a title.** `Layer Media` is named as it is
+precisely to avoid colliding with the `Image` option of the layer-kind select,
+which is the collision this forbids.
+
 #### Scenario: Branch-named sections rejected
 - **WHEN** a section's controls are gated by a selector in another section
 - **THEN** its title does not resemble that selector's condition value or option label
@@ -109,6 +142,15 @@ A section title MUST NOT equal, contain, or be contained by the condition value 
 
 ### Requirement: Gates live in the entity they gate
 A gate control and every control it gates SHALL belong to the same inventory entity, because applicability cases are derived from the gate's own inventory-entry peers and a cross-entity gate derives no proof at all. The global engine and tool selectors are the sole exception; their branch behaviour SHALL be proved by named app-owned Playwright tests, and the exception SHALL be recorded in the worklog.
+
+**Status: satisfied.** Every gate sits with what it gates — the engine select
+with `enginePitch`, `engineAmount` and `engineCursor`; the region shape with its
+side count.
+
+This constraint has a cost the audit met twice. A `select` peer obliges a
+visible-and-hidden case for every other control in its entry, so an entity that
+grows a gate multiplies its own evidence obligations; the answer both times was
+to split the entity rather than to weaken the gate.
 
 #### Scenario: Gate and dependents share an entity
 - **WHEN** a switch or selector gates other controls
@@ -120,6 +162,16 @@ A gate control and every control it gates SHALL belong to the same inventory ent
 
 ### Requirement: Tool selection through a schema control
 The nine tool modules SHALL be selected through a schema `tabs` control, because each selection replaces the workflow view below it and the Toolcraft `toolbar` is runtime-owned and not a product extension point. Engine selection SHALL use `select`. Shared scene parameters SHALL be preserved across tool and engine switches.
+
+**Status: superseded — there are no nine tools.** Croix10 was nine tool modules
+switched by tabs. This product is one instrument: a stack of layers, each of
+which *has* an engine, so there is nothing to switch between and no `tabs`
+control anywhere.
+
+The two clauses that outlived the structure both hold. Engine selection is a
+`select`, per layer. And parameters survive an engine change — a layer keeps its
+angle, count, palette and region when its engine changes, because the engine
+recolours a field rather than replacing one.
 
 #### Scenario: Tools are not in the toolbar
 - **WHEN** the app renders
@@ -138,6 +190,14 @@ The nine tool modules SHALL be selected through a schema `tabs` control, because
 ### Requirement: Conditional applicability instead of disabling
 Every product control SHALL declare `applicability` as `{ mode: "always" }` or `{ mode: "conditional", all: [...] }`. Inactive controls SHALL be absent while their values remain preserved. `disabled` and `disabledWhen` MUST NOT be used.
 
+**Status: satisfied.** Every control declares one of the two modes and neither
+`disabled` nor `disabledWhen` appears in any section.
+
+The limit of this mechanism is recorded where it bites: a predicate may only name
+a *rendered control's* target, so nothing can be gated on runtime state. That is
+why the apply press cannot be hidden when no layer is selected and is inert
+instead, and why restore is offered when there is nothing to restore.
+
 #### Scenario: Inapplicable controls are absent
 - **WHEN** the Chromosaturation engine is active
 - **THEN** stripe geometry controls the engine does not consume are absent from the panel rather than visible and inert
@@ -148,6 +208,14 @@ Every product control SHALL declare `applicability` as `{ mode: "always" }` or `
 
 ### Requirement: Product keyboard shortcut
 Randomize SHALL be reachable by pressing `R` when no text or code input has focus. Playback transport, undo, and redo SHALL remain runtime-owned and MUST NOT be rebound by product code.
+
+**Status: half satisfied, and the built half is a different key.** There is no
+`R` because there is no randomize (`outstanding` 1a.2). The product does own one
+shortcut — `P`, which hands the canvas to the pen — declared in
+`studio-shortcuts.ts`.
+
+The prohibition holds exactly: transport, undo and redo are untouched, and the
+product binds nothing that the runtime already owns.
 
 #### Scenario: R randomizes
 - **WHEN** the user presses `R` with no text input focused
@@ -164,6 +232,10 @@ Randomize SHALL be reachable by pressing `R` when no text or code input has focu
 
 ### Requirement: Reset restores schema defaults
 Every resettable control SHALL declare `defaultValue`, and section reset SHALL restore only that section's targets.
+
+**Status: satisfied.** Every control carries a `defaultValue`, and reset is the
+runtime's own per-section action operating on that section's declared targets —
+the product implements no reset of its own.
 
 #### Scenario: Section reset is scoped
 - **WHEN** the user triggers reset on the geometry section header
