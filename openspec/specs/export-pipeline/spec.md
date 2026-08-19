@@ -3,15 +3,25 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status here is not audited.** Unlike `shader-authoring` and
-`shader-delivery`, no requirement in this file has been checked against the
-Croix10 app in this pass, so it states intent rather than confirmed behaviour.
-Auditing them is carried as a task in the `outstanding` change; until that is
-done, treat every requirement below as a claim to verify rather than one to
-rely on.
+**Build status is stated per requirement.** Audited against the app on
+2026-08-19 (`outstanding` 1.1). Most of this was built in
+`video-export-and-motion` and is proved against the artifact rather than the
+button; two requirements have no subject in this product and say why.
 ## Requirements
 ### Requirement: Runtime owns artifact export
 Image and video delivery SHALL use typed runtime `export-image` and `export-video` panel actions. Product code SHALL contribute exactly one `ToolcraftAppComposition.exportRenderer` and nothing else. Product code MUST NOT allocate export canvases, call `toBlob` or `toDataURL`, create object URLs, download artifacts, instantiate `MediaRecorder` or `VideoEncoder`, call `canvas.captureStream()`, or import an encoder library.
+
+**Status: satisfied, and asserted rather than trusted.**
+`studio-delivery-boundary.test.ts` scans product source for every call named
+here and fails on any of them, and separately allows exactly one canvas
+allocation — the offscreen surface that obtains a WebGL2 context — naming which
+file and why. That is a rendering surface, never encoded and never handed to
+anyone.
+
+One clarification the test had to learn: `.click()` is not the signal it looks
+like. The product clicks a file input to open the system *open* dialog, which is
+bytes coming in. The boundary is bytes going out, so the check names anchors and
+download attributes instead.
 
 #### Scenario: One shared export renderer
 - **WHEN** either image or video export runs
@@ -29,6 +39,17 @@ Image and video delivery SHALL use typed runtime `export-image` and `export-vide
 ### Requirement: WebGL output composited into the supplied 2D context
 Because `renderFrame` supplies a `CanvasRenderingContext2D`, the product SHALL render its WebGL passes into its own render target through the supplied `rendererPipeline` client and composite the result into that context. It SHALL use the supplied `timeSeconds` and `timelineProgress` rather than reconstructing time. The asynchronous return SHALL be used whenever a frame depends on work that must complete first.
 
+**Status: satisfied.** The frame draws into its own WebGL surface and composites
+into the supplied 2D context, and it uses the supplied `timelineProgress` rather
+than reading the timeline — which is what makes a video a series of scenes
+rather than one scene encoded repeatedly. Proved by breaking it: passing `0`
+instead makes `browser: studio exports a video that carries the timeline` fail on
+its not-one-frame-repeated assertion.
+
+The asynchronous return is unused because no frame here depends on prior work.
+A video layer would be the first to need it (`outstanding` 1a.7), since a seek
+must complete before the frame is sampled.
+
 #### Scenario: Passes run through the supplied pipeline
 - **WHEN** an export frame requires GPU passes
 - **THEN** they execute through the `rendererPipeline` client supplied to the frame context, the same compiled registration the preview uses
@@ -45,12 +66,23 @@ Because `renderFrame` supplies a `CanvasRenderingContext2D`, the product SHALL r
 ### Requirement: Export renderer identity
 The composition SHALL supply a non-blank `baseFileName` on the export renderer, since the runtime types it as required and rejects a blank value.
 
+**Status: satisfied.** `baseFileName: "croix10"`.
+
 #### Scenario: Artifact names derive from the product
 - **WHEN** an artifact is downloaded
 - **THEN** its filename derives from the declared non-blank `baseFileName` rather than the runtime fallback
 
 ### Requirement: Compound control part coverage
 Acceptance SHALL declare `controlPartCoverage` for every compound control. The gradient SHALL cover `gradientType`, `angle`, `stops.position`, `stops.color`, and `stops.opacity`. The palette collection SHALL cover `add`, `remove`, and `items`, including its limits, full-default add, sibling-preserving edit, preview and export effect, and whole-record removal.
+
+**Status: not applicable — there are no compound controls to cover.** The
+gradient is a layer rather than a `gradient` control, and the palette is four
+`color` controls plus a count rather than a collection. Both substitutions are
+recorded in `color-and-gradient-system`, and the second is a gap
+(`outstanding` 1a.9) rather than a design.
+
+If the palette becomes a real collection, this requirement acquires a subject
+and its list of parts is the right list.
 
 #### Scenario: Gradient parts each drive output
 - **WHEN** each declared gradient part is changed
@@ -63,6 +95,11 @@ Acceptance SHALL declare `controlPartCoverage` for every compound control. The g
 ### Requirement: Declared export intent
 `productReadiness.exportIntent` SHALL declare image as `toolcraft-default` and video as `user-requested` with the explicit user-request evidence recorded. Schema actions and settings sections SHALL correspond exactly to that resolved intent.
 
+**Status: satisfied.** Image is `toolcraft-default`, video is `user-requested`
+with the request itself as the recorded evidence. Until video was asked for, the
+product and this spec disagreed about it — the spec had required `Export Video`
+all along — and flipping the intent is what settled which of them was wrong.
+
 #### Scenario: Image and video layout
 - **WHEN** the controls panel is inspected
 - **THEN** `Image Export` appears immediately before `Video Export`, `Video Export` sits directly above the sticky actions, `Export Video` is the primary sticky action, and `Export PNG` is secondary
@@ -73,6 +110,10 @@ Acceptance SHALL declare `controlPartCoverage` for every compound control. The g
 
 ### Requirement: Image export settings and real output size
 An `Image Export` section SHALL expose `export.image.format` (default `png`, options PNG and JPG) and `export.image.resolution` (default `4k`, options 2K, 4K, 8K) as two `select` controls in one compact two-column row. The selected resolution SHALL produce real 2048, 4096, or 8192 pixel long-edge output.
+
+**Status: satisfied.** Both selects with those defaults and options, and the
+resolution produces real pixels rather than a label — proved by decoding the
+artifact and reading its dimensions.
 
 Canvas sizing SHALL have exactly one owner. No product **control** SHALL duplicate
 it: a width, height, or aspect control authored into the control surface beside the
@@ -115,6 +156,14 @@ the destination rather than claiming an affiliation with it.
 ### Requirement: Seamless-loop video export
 `Export Video` SHALL be available with a `Video Export` section exposing `export.video.format` (default `mp4`, options MP4 and WebM) and `export.video.resolution` (default `current`, options Current and 4K). Duration SHALL follow runtime timeline duration, and the runtime's fixed 30 FPS offline schedule SHALL be used.
 
+**Status: satisfied, and proved on the file rather than the panel.** The
+section and its defaults exist; the artifact's packet timings are asserted
+against the runtime's own schedule, so a renderer that fell behind and dropped
+frames would fail rather than produce a playable file running faster than the
+composition it came from. Duration follows the timeline, and the file carries
+exactly one duration's worth of frames — it does not hold both ends of the loop,
+which would hitch once per cycle.
+
 #### Scenario: Exported video tiles seamlessly
 - **WHEN** the user exports video
 - **THEN** the file covers exactly the timeline duration and its last frame transitions into its first with no visible jump on repeat
@@ -134,6 +183,15 @@ the destination rather than claiming an affiliation with it.
 ### Requirement: SVG delivered by clipboard copy
 For engine states expressible as vector geometry, an SVG copy action SHALL place SVG markup on the clipboard. It SHALL be an additional product action that does not alter the recorded artifact intent. A product-written SVG file download MUST NOT exist.
 
+**Status: pending — not built.** There is no SVG copy. What the clipboard
+carries is assembled GLSL, which is the delivery this product actually made
+(`shader-delivery` R55).
+
+Worth noting the shape it would take if built: a stripes layer with no jitter,
+no taper and no engine is expressible as rectangles, and almost nothing else in
+the product is. An SVG action that silently omitted the parts it could not draw
+would be worse than none. Carried as `outstanding` 1a.12.
+
 #### Scenario: Copying Couleur Additive as SVG
 - **WHEN** the Couleur Additive engine is active with jitter at zero and no post FX enabled, and the user copies SVG
 - **THEN** valid SVG markup with vector bands and separator lines matching the composition is placed on the clipboard with a confirmation
@@ -145,12 +203,25 @@ For engine states expressible as vector geometry, an SVG copy action SHALL place
 ### Requirement: GIF export is not provided
 GIF SHALL NOT be offered, because the runtime encoder provides MP4 and WebM and product-owned encoders are forbidden. Seamless-loop delivery is covered by WebM.
 
+**Status: satisfied.** No GIF anywhere. The reasoning is now doubly true: the
+session confirmed that a product cannot even stage an imported byte, let alone
+run an encoder.
+
 #### Scenario: No GIF affordance
 - **WHEN** export settings and sticky actions are inspected
 - **THEN** no GIF format option or GIF action exists anywhere in the app
 
 ### Requirement: Export progress and failure
 Runtime export actions SHALL own their Promise and report progress through the sticky footer indicator. Non-export copy actions SHALL return their real Promise from `onPanelAction` and report determinate progress where available. Oversized or empty scenes SHALL fail with visible typed feedback before canvas allocation.
+
+**Status: satisfied for what exists.** The runtime owns export progress, and
+the copy-source action returns its real clipboard Promise rather than an
+already-resolved one — handing back a resolved Promise would report the copy
+finished before the write had.
+
+The oversized-and-empty clause is the runtime's to enforce and has no product
+path that could bypass it, since the product never allocates an artifact
+canvas.
 
 #### Scenario: UI responsive during export
 - **WHEN** a long video export is encoding

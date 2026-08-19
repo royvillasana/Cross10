@@ -39,6 +39,8 @@ here as they are found, so 1.1 produces work rather than only verdicts.
 
 - [ ] 1a.11 **A picture is treated but never re-rendered through the engines** (`media-stylization`). The engines recolour an imported image and the treatments apply to it, but nothing reads its luminance to drive stripe width or phase, there is no mapping mode, and no quantization to the palette. That is the whole point of the capability: a source should *become* a field, not merely get coloured. Sampling resolution belongs with it rather than as its own task
 
+- [ ] 1a.12 **No SVG copy action** (`export-pipeline`). The spec asks for SVG markup on the clipboard for engine states expressible as vector geometry; what the clipboard carries is assembled GLSL. Worth scoping before building: a stripes layer with no jitter, no taper and no engine is expressible as rectangles, and almost nothing else in the product is — so an SVG action that silently omitted the parts it could not draw would be worse than not having one
+
 ## 2. Unbuilt features, scoped and decided
 
 - [x] 2.1 **Per-layer animation (SS group 6).** *Done. Drift is per-layer and counted in whole cycles per loop (`video-export-and-motion`); the two-layer proof this task asks for is `browser: studio returns two layers drifting at different rates`, and writing it found a real bug — the gradient's drift translated a ramp that has an end, so a layer went black mid-loop while its seam still closed.* The one pending requirement in the main specs. Each layer animatable over the runtime timeline, loop seams held per layer, and a proof that two layers at different rates both return to their first frame. Declaring a timeline obliges playback coverage in the same batch — which is why it was never half-started
