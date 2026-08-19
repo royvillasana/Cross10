@@ -201,7 +201,12 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
   {
     defaultValue: 0,
     name: "blendMode",
-    optionValues: ["normal", "multiply", "screen", "overlay"],
+    // The index into this list *is* the uniform value the shader branches on,
+    // so its order is the contract with `studioBlend` and with the section's
+    // option order. Adding an option to the panel without adding it here leaves
+    // the new mode mapping to zero, which renders as `normal` and looks exactly
+    // like a blend that did nothing.
+    optionValues: ["normal", "multiply", "screen", "overlay", "difference", "additive"],
     type: "float",
   },
 ];
@@ -314,11 +319,33 @@ vec3 studioBlend(vec3 below, vec3 above, float mode) {
   if (mode < 0.5) return above;
   if (mode < 1.5) return below * above;
   if (mode < 2.5) return 1.0 - (1.0 - below) * (1.0 - above);
-  return mix(
-    2.0 * below * above,
-    1.0 - 2.0 * (1.0 - below) * (1.0 - above),
-    step(vec3(0.5), below)
-  );
+  if (mode < 3.5) {
+    return mix(
+      2.0 * below * above,
+      1.0 - 2.0 * (1.0 - below) * (1.0 - above),
+      step(vec3(0.5), below)
+    );
+  }
+
+  // Difference: how far apart two fields are, channel by channel. Identical
+  // colours collapse to black, which is what makes this the reading for "how
+  // far off am I" rather than "are both present".
+  if (mode < 4.5) return abs(below - above);
+
+  // Additive, and this one is not decoration. *Couleur Additive* is a technique
+  // this product ships entries for, and *Transchromie* is defined as
+  // overlapping translucent planes with selectable subtractive and additive
+  // mixing -- neither can be rendered as specified without it.
+  //
+  // Summed in linear light, which is why this is a plain add: these values are
+  // radiometric here rather than sRGB, so adding them is what light does when
+  // two projections overlap.
+  //
+  // Clamped here rather than trusting the composite, which does not clamp: it
+  // mixes toward the blended colour and hands the result on. A sum above one
+  // would travel to the sRGB conversion and come back as whatever that does
+  // with out-of-range input. A saturated overlap should read as white.
+  return min(below + above, vec3(1.0));
 }
 
 // Source-over in linear light. Weight folds opacity and visibility together so a

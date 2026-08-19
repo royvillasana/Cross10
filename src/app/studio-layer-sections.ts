@@ -809,6 +809,10 @@ widthRatio: {
           { label: "Multiply", value: "multiply" },
           { label: "Screen", value: "screen" },
           { label: "Overlay", value: "overlay" },
+          // Ordered to match the branch order in `studioBlend`, which is the
+          // contract the shader reads this uniform through.
+          { label: "Difference", value: "difference" },
+          { label: "Additive", value: "additive" },
         ],
         performanceReason:
           "Selects among four expressions of the two colours the composite already holds.",

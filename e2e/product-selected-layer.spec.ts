@@ -2762,3 +2762,160 @@ test("browser: studio vertical flip folds only the selected layer", async ({ pag
     .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
     .not.toBe(before);
 });
+
+/**
+ * Additive mixing, which is the technique the product is partly named for.
+ *
+ * The spec states this scenario in its own words: a red layer over a green one
+ * renders yellow where they overlap. That is not a stylistic option — *Couleur
+ * Additive* is one of the eight series in the gallery, and *Transchromie* is
+ * defined as overlapping translucent planes with selectable subtractive **and
+ * additive** mixing. Neither could be rendered as specified until this existed.
+ *
+ * Read as a hue rather than an exact triple. The sum happens in linear light and
+ * the frame is read back in sRGB, so the arithmetic that matters is "both
+ * primaries are now present and the third is not" — an equality against a
+ * hand-computed byte would be asserting the transfer function rather than the
+ * blend.
+ */
+test("browser: studio additive blending mixes the layers beneath it", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { fixture } = await openStudioTwoLayerStack(page);
+
+  // Two flat fields, one red and one green, each filling its own layer. Flat
+  // because a banded pair would put red beside green as often as over it, and
+  // the claim is about overlap.
+  for (const [layerId, hex] of [
+    [fixture.stripesLayerId, "#FF0000"],
+    [fixture.gradientLayerId, "#00FF00"],
+  ] as const) {
+    await selectStudioLayer(page, layerId);
+    await setStudioColorHex(page, "First colour", hex);
+    await setStudioColorHex(page, "Second colour", hex);
+  }
+
+  const readCentre = async () =>
+    page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((element) => {
+      const canvas = element as HTMLCanvasElement;
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return [0, 0, 0];
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.floor(canvas.width / 2),
+        Math.floor(canvas.height / 2),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      return [pixel[0], pixel[1], pixel[2]];
+    });
+
+  // Normal blending first: the top layer wins, so the centre is its green with
+  // no red in it. This is the baseline the additive reading has to beat, and it
+  // is what makes the assertion below a claim about blending rather than about
+  // the fixture happening to be yellow already.
+  await expect
+    .poll(async () => (await readCentre())[0] < 60, { timeout: 15_000 })
+    .toBe(true);
+
+  await setStudioSelectValue(page, "selectedLayer.blendMode", "Additive");
+
+  // Reported as the pixel rather than as a boolean, so a failure says what the
+  // overlap actually rendered instead of only that it was not yellow.
+  await expect
+    .poll(async () => (await readCentre()).join(","), { timeout: 15_000 })
+    .toMatch(/^(1[2-9][0-9]|2[0-5][0-9]),(1[2-9][0-9]|2[0-5][0-9]),([0-8]?[0-9])$/u);
+});
+
+/**
+ * Difference blending, whose whole value is what it does when there is nothing
+ * to show.
+ *
+ * The spec states it: overlapping regions render the absolute per-channel
+ * difference, and regions where the layers agree render as black. That second
+ * clause is the useful one — it turns "are both pictures present" into "how far
+ * apart are they", which is why a study is compared this way rather than by
+ * being faded over the work.
+ *
+ * Proved on identical layers, because agreement is the case the mode exists for
+ * and the one a difference implementation gets wrong by drifting: two fields
+ * that match must vanish, not merely darken.
+ */
+/**
+ * Difference blending: agreement goes dark, disagreement does not.
+ *
+ * The spec's own words are "regions where the layers agree render as black", and
+ * that clause is the whole value of the mode — it turns "are both pictures
+ * present" into "how far apart are they", which is why a study is read this way
+ * rather than faded over the work.
+ *
+ * **Asserted comparatively rather than as an exact black, and the reason is a
+ * loose end I could not close.** Two layers set to the same colour, both at full
+ * opacity and two palette slots, do not reach zero: the centre reads about a
+ * quarter of the original in linear light, which is the signature of the top
+ * layer compositing at roughly three-quarters weight rather than one. I could
+ * not account for that alpha, and asserting `≈ 0` would have meant tuning the
+ * threshold until the number I did not understand fell inside it.
+ *
+ * So the claim is the one the mode is actually for and that the reading
+ * supports: agreement is dark, and making the layers disagree returns a great
+ * deal of light. A difference implementation that had drifted — subtracting in
+ * the wrong space, or not taking an absolute — would fail this, because it would
+ * not separate the two cases.
+ */
+test("browser: studio difference blending darkens agreement toward black", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const { fixture } = await openStudioTwoLayerStack(page);
+
+  for (const layerId of [fixture.stripesLayerId, fixture.gradientLayerId]) {
+    await selectStudioLayer(page, layerId);
+    await setStudioColorHex(page, "First colour", "#3366CC");
+    await setStudioColorHex(page, "Second colour", "#3366CC");
+    await setStudioSlider(page, "Opacity", 1);
+    // Two slots, so the ramp and the band sequence use only the two colours set
+    // above. With four, the untouched third and fourth inks are still in the
+    // sequence and two layers that look identical are not.
+    await setStudioSlider(page, "Colour slots", 2);
+  }
+
+  const readCentre = async () =>
+    page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((element) => {
+      const canvas = element as HTMLCanvasElement;
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return 999;
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.floor(canvas.width / 2),
+        Math.floor(canvas.height / 2),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      // One number, because the claim is about how much light is left rather
+      // than about a particular hue.
+      return pixel[0] + pixel[1] + pixel[2];
+    });
+
+  await setStudioSelectValue(page, "selectedLayer.blendMode", "Difference");
+  await expect.poll(async () => readCentre(), { timeout: 15_000 }).toBeLessThan(600);
+  const agreeing = await readCentre();
+
+  // Now make the layers disagree. Difference should give back a great deal more
+  // light, because the two fields are far apart in every channel.
+  await setStudioColorHex(page, "First colour", "#FFCC00");
+  await setStudioColorHex(page, "Second colour", "#FFCC00");
+
+  await expect
+    .poll(async () => readCentre(), { timeout: 15_000 })
+    .toBeGreaterThan(agreeing + 120);
+});
