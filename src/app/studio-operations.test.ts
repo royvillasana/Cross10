@@ -17,6 +17,7 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   STUDIO_VERTEX_PATH_TARGET,
 } from "./studio-stack-state";
+import { studioVideoLoopTime } from "./studio-video";
 
 /**
  * The declarative half of the operations, as distinct from the controls.
@@ -153,6 +154,32 @@ describe("what the runtime is asked to do with media", () => {
     // A picture with no kind to land in would import and draw nothing.
     expect(optionsOf("selectedLayer.type")).toContain("image");
     expect(appSchema.panels.layers).toBeTruthy();
+  });
+
+  it("declares importing a video creates the layer that draws it", () => {
+    // A clip arrives through its own surface, because the runtime routes an
+    // import by what the file is: its picture importer takes only files that
+    // decode as pictures, and its file importer takes only a control that says
+    // so. Two controls is what that leaves; one would take neither.
+    expect(controlTargets.has("media.video")).toBe(true);
+    expect(controlTargets.has("media.image")).toBe(true);
+
+    // And it lands in the picture layer kind rather than a kind of its own. A
+    // frame of a clip is a picture, so every treatment, engine and source
+    // mapping that reaches a still reaches a clip unchanged -- and the thing
+    // that would break that is a fourth layer kind nobody had to write.
+    expect(optionsOf("selectedLayer.type")).toContain("image");
+    expect(optionsOf("selectedLayer.type")).not.toContain("video");
+
+    // The frame the layer draws is chosen by loop position, not by a player,
+    // which is what makes a clip export as a loop that closes: the frame at the
+    // end of the loop is the frame at its start, for any clip length.
+    for (const clipSeconds of [0.5, 1.7, 4, 30]) {
+      expect(studioVideoLoopTime(clipSeconds, 4, 1)).toBeCloseTo(
+        studioVideoLoopTime(clipSeconds, 4, 0),
+        10,
+      );
+    }
   });
 
   it("declares the runtime image transform reaches the rendered frame", () => {

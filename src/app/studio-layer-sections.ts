@@ -402,6 +402,40 @@ widthRatio: {
         target: "media.image",
         type: "fileDrop",
       },
+      /**
+       * The same act for a moving source, and a separate control because the
+       * runtime routes an import by what the file is.
+       *
+       * Its importer matches an image batch only when every file decodes as a
+       * picture, and its file importer matches only a control that declares
+       * `assetKind: "file"`. Those two facts together mean one surface cannot
+       * take both: a video offered to the picture control matches no importer
+       * at all and fails, and a picture offered to a file control loses the
+       * decode that gives it a size and the rotate and flip actions that come
+       * with it. The registry that would let a product add a third importer is
+       * signed, so this is the shape the runtime leaves available rather than
+       * the shape a single "Media" button would want.
+       *
+       * What the product does with the result is the same either way: the asset
+       * carries bytes and a layer, and the canvas binds a frame of it as the
+       * texture an image layer already draws.
+       */
+      video: {
+        semanticGroup: "region",
+        applicability: { mode: "always" },
+        accept: "video/mp4,video/webm,video/ogg,video/quicktime",
+        assetKind: "file",
+        label: "Import video",
+        // One clip per layer, like one picture per layer: the layer is what
+        // draws it, so a second file would have nowhere to go that is not a
+        // second layer.
+        multiple: false,
+        performanceReason:
+          "Decode is the browser's, on its own thread; the draw uploads the frame the element already holds.",
+        performanceRole: "responsiveness",
+        target: "media.video",
+        type: "fileDrop",
+      },
     },
     // Its own section because a file drop renders as a surface rather than a
     // field, and titled so it collides with none of the layer-kind option

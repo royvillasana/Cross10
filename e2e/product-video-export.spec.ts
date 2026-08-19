@@ -29,6 +29,13 @@ async function setStudioReference(page: Page, label: string): Promise<void> {
     .getByRole("button", { name: "Work against a study" })
     .first()
     .click();
+  // How hard the study shows is set here, and *before* the study is chosen,
+  // because choosing one closes the step. It no longer exists as a panel
+  // control -- the product owner removed that section on sight -- and this
+  // proof kept driving a slider that had stopped being rendered, so it failed
+  // for that reason rather than for its own subject. That is the shape a stale
+  // proof takes: an assertion about artifacts, timing out on a control.
+  await page.getByRole("button", { name: "Full", exact: true }).first().click();
   await page.locator(`[data-studio-onboarding-study="${preset.id}"]`).click();
 }
 import {
@@ -207,7 +214,6 @@ test("browser: studio video export carries no trace of the study", async ({ page
   });
 
   await setStudioReference(page, STUDIO_REFERENCE_LABEL);
-  await setStudioSlider(page, "Reference opacity", 1);
   // Fully opaque and on screen: if the overlay can reach the artifact at all,
   // this is the setting under which it would be unmissable.
   await expect(page.locator("[data-studio-reference]")).toHaveCount(1);

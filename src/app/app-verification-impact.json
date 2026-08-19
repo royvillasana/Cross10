@@ -48,7 +48,8 @@
     },
     {
       "acceptanceIds": [
-        "media.image"
+        "media.image",
+        "media.video"
       ],
       "kind": "presentation",
       "path": "src/app/studio-add-media-menu.tsx"
@@ -79,7 +80,8 @@
         "layers.imageComposite",
         "layers.reorder",
         "layers.selection",
-        "layers.visibility"
+        "layers.visibility",
+        "media.video"
       ],
       "kind": "performance",
       "passIds": [
@@ -125,6 +127,7 @@
     },
     {
       "acceptanceIds": [
+        "media.video",
         "selectedLayer.angle",
         "selectedLayer.blendMode",
         "selectedLayer.colorA",
@@ -170,6 +173,7 @@
       "acceptanceIds": [
         "history.undo",
         "layers.selection",
+        "media.video",
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
@@ -232,6 +236,15 @@
         "layer-stack"
       ],
       "path": "src/app/studio-layers.ts"
+    },
+    {
+      "acceptanceIds": [
+        "export.image-action",
+        "media.image",
+        "media.video"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-media-registry.ts"
     },
     {
       "acceptanceIds": [
@@ -368,6 +381,7 @@
         "layers.visibility",
         "media.image",
         "media.transform",
+        "media.video",
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
@@ -465,6 +479,13 @@
       ],
       "kind": "presentation",
       "path": "src/app/studio-technique-thumbnails.ts"
+    },
+    {
+      "acceptanceIds": [
+        "media.video"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-video.ts"
     }
   ],
   "version": 3

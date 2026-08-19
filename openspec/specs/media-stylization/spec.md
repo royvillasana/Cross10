@@ -121,16 +121,27 @@ body samples the texture once whatever the band count is.
 ### Requirement: Imported video sources
 The video tool SHALL accept an imported video file through a `fileDrop` control with `assetKind: "file"`, `multiple: false`, and `accept` narrowed to video MIME types and extensions. The decode surface SHALL be an imperatively created, never-mounted `<video>` element sourced from the blob URL returned by `useToolcraftMediaPresentationUrls`, retained and released through that hook's lifecycle. Product code MUST NOT read the binary repository, construct its own blob from state, or place the video element inside `canvasContent`.
 
-**Status: pending — nothing of video exists.** No video import, no decode
-surface, no frame sampling. Asked for directly by the product owner and scoped
-as `outstanding` 1a.7: a video plays as an infinite loop, like a GIF, which
-means it is sampled *by loop position* rather than played on its own clock.
+**Status: satisfied.** A clip arrives through its own `fileDrop` — `assetKind:
+"file"`, `multiple: false`, accept narrowed to video types — and is decoded by a
+never-mounted `<video>` element fed by the presentation-URL hook, exactly as
+written here. The constraints held: no product module reads the binary
+repository or builds its own blob, and the element is never placed in the tree.
 
-The constraints written here survive the wait and should be read before building
-it: the decode surface is a never-mounted element fed by the presentation-URL
-hook, and product code neither reads the binary repository nor makes its own
-blob. That boundary is the same one an attempt at product-owned image import ran
-into and lost to this session.
+Two surfaces rather than one, and that is forced rather than chosen. The
+runtime's picture importer matches only a batch in which every file decodes as a
+picture; its file importer matches only a control that declares `assetKind:
+"file"`. So one control cannot take both kinds — a clip offered to the picture
+control matches no importer at all, and a picture offered to the file control
+loses the decode that gives it a size and the rotate and flip actions that come
+with it. The registry that would let a product add a third importer is signed.
+The `+` menu therefore offers **Image** and **Video** rather than one **Media**,
+which is a deviation from the instruction's letter taken to keep its substance:
+a labelled item, one press, the system dialog.
+
+What a clip is *not* is a fourth layer kind. A frame of a clip is a picture, so
+the body that draws a picture draws it, and every treatment, engine and source
+mapping — including reading the source as a band field — reaches a moving source
+unchanged and without a line written for it.
 
 #### Scenario: Video resolved through the sanctioned accessor
 - **WHEN** a video file is attached
@@ -149,12 +160,32 @@ into and lost to this session.
 ### Requirement: Deterministic video sampling for export
 Video frame selection SHALL be a deterministic function of timeline time in both preview and export. The `exportRenderer` frame callback SHALL await the seek before sampling, using its supported asynchronous return. Because `currentTime` seek precision is codec- and container-dependent, parity SHALL be asserted to nearest-frame tolerance rather than exact frame identity.
 
-**Status: pending, and now half-answered by something else.** No video, so no
-sampling. But the export path it describes exists and behaves as required: the
-renderer is handed the schedule's own moment and draws that, rather than
-whatever the timeline happens to show, which is what makes a video export a
-series of scenes rather than one scene encoded repeatedly. A video layer would
-join that path rather than needing a new one.
+**Status: satisfied, with one scenario below not separately proved.** Frame
+selection is a pure function of loop position in both paths, and the export
+callback awaits the seek before drawing — the callback's return type already
+allowed a promise, so nothing had to be worked around.
+
+The open question the task carried — what to do when the clip is not the length
+of the loop — is answered by neither *fit* nor *repeat* but by repeating a
+**whole number of times**, chosen as the nearest whole number to the clip's
+natural rate. Fit always closes the seam and would run a thirty-second clip at
+eight times speed inside a four-second loop; repeat keeps the motion honest and
+closes the seam only when the lengths happen to divide. A whole number of
+repeats closes the seam by construction, because a whole number of cycles ends
+where it began, and holds the speed error to the distance to the nearest
+integer. It is the same argument the drift controls already make.
+
+Building this found a real gap that had nothing to do with video: **the export
+frame was being built with an empty media map**, so an imported picture drew
+nothing into an artifact. A composition an author could see on screen exported
+without it. That was survivable while a picture was decoration and is not
+survivable now that a picture can *be* the composition, so the decoded sources
+are shared with the export path and the still export is proved to carry them.
+
+Not separately proved: *Exported frames differ*. What is proved is that a clip
+frame reaches an artifact and that the seek is awaited; that two frames of an
+encoded video differ from one another is asserted by neither this row nor the
+video-export rows, and should not be read as covered.
 
 #### Scenario: Export awaits the seek
 - **WHEN** the runtime calls the export frame callback with a scheduled time

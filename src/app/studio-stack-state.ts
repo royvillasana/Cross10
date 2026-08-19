@@ -512,9 +512,19 @@ export function collectStudioSelectedLayerEdit(
   return { typeId: entry.typeId, values: next };
 }
 
-/** An uploaded picture and the transform the runtime holds for it. */
+/** An uploaded source and the transform the runtime holds for it. */
 export type StudioLayerMedia = Readonly<{
   image: TexImageSource;
+  /**
+   * Whether this source's pixels change between draws.
+   *
+   * True for a clip, whose element is seeked to the loop position and whose
+   * frame therefore differs each time the renderer asks. It is carried here
+   * rather than inferred from the element's type because it is a statement
+   * about the *draw* -- the renderer re-uploads whatever it is given, and this
+   * is what tells the scene that the loop has to keep reaching it.
+   */
+  moving?: boolean;
   transform?: Readonly<{
     flipHorizontal?: boolean;
     flipVertical?: boolean;

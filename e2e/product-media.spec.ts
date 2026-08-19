@@ -1,9 +1,13 @@
 import { expect } from "@playwright/test";
 
 import { createToolcraftBrowserProofSession } from "./browser-proof-session";
+import { TOOLCRAFT_DECODED_OBSERVATION_SIZE } from "./decoded-pixel-observation";
+import { inspectToolcraftImageDownload } from "./image-artifact-inspection";
 import {
   IMPORT_FIXTURE,
   importStudioImage,
+  importStudioVideo,
+  readStudioFrameColour,
   readStudioImageCorners,
   writeImportFixture,
 } from "./studio-import-fixture";
@@ -131,4 +135,107 @@ test("browser: studio image transform turns what the layer draws", async ({ page
   await expect
     .poll(async () => readStudioImageCorners(page), { timeout: 15_000 })
     .toBe("topLeft=white topRight=blue");
+});
+
+test("browser: studio video import creates a layer that draws it", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  // Same empty-stack preparation as the picture proof above, and for the same
+  // reason: anything already in the stack composites over the clip and is what
+  // the centre sample would read.
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+  });
+  await page.reload();
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+  await dismissStudioOnboarding(page);
+  const before = await readStudioLayerIds(page);
+
+  await importStudioVideo(page);
+
+  // Upload: the runtime made a layer for the clip, and the product draws it as
+  // a picture -- which is the claim that video is a source rather than a second
+  // renderer. A frame of a clip is a picture, so the body that draws a picture
+  // draws it, and the stack signature says so.
+  await expect
+    .poll(async () => (await readStudioLayerIds(page)).length, { timeout: 20_000 })
+    .toBe(before.length + 1);
+  await expect
+    .poll(async () => readStudioStackSignature(page), { timeout: 20_000 })
+    .toContain("image");
+  await expect
+    .poll(async () => readStudioFrameColour(page), { timeout: 20_000 })
+    .toMatch(/^(red|blue)$/);
+
+  // The clip runs, and it runs from the loop rather than from a player. The
+  // fixture is red for its first second and blue for its second, so a frame
+  // that follows the loop shows both within one turn of it and a frame that is
+  // stuck on whatever decoded first shows only one.
+  //
+  // Collected by sampling rather than by waiting for a particular colour,
+  // because which one is on screen at any instant depends on where the loop
+  // happens to be -- the claim is that both occur, not that either occurs now.
+  const seen = new Set<string>();
+  await expect
+    .poll(
+      async () => {
+        seen.add(await readStudioFrameColour(page));
+        return seen.size;
+      },
+      { intervals: [200], timeout: 30_000 },
+    )
+    .toBeGreaterThan(1);
+  expect([...seen].sort()).toEqual(["blue", "red"]);
+
+  // And the clip reaches the artifact, not only the screen.
+  //
+  // This is the half that was quietly missing for pictures too: the export
+  // frame was built with an empty media map, so an imported source drew nothing
+  // into a file. Invisible while a picture was decoration; not invisible once a
+  // picture is the composition. Proved on the still export because it is the
+  // cheapest artifact that can carry the claim -- the video export walks the
+  // same frame renderer, one moment at a time.
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PNG" }).click();
+  const { observation } = await inspectToolcraftImageDownload({
+    backgroundRgba: [0, 0, 0, 0],
+    download: await pending,
+    page,
+  });
+  const size = TOOLCRAFT_DECODED_OBSERVATION_SIZE;
+  const middle = (Math.floor(size / 2) * size + Math.floor(size / 2)) * 4;
+  const [exportedRed, exportedGreen, exportedBlue] = [
+    observation.normalizedPixels[middle] ?? 0,
+    observation.normalizedPixels[middle + 1] ?? 0,
+    observation.normalizedPixels[middle + 2] ?? 0,
+  ];
+  // One of the fixture's two flat halves, whichever the loop was on: the claim
+  // is that a frame of the clip is in the file, not which frame.
+  const exported =
+    exportedRed > 150 && exportedGreen < 120 && exportedBlue < 120
+      ? "red"
+      : exportedBlue > 150 && exportedRed < 120
+        ? "blue"
+        : `other(${exportedRed},${exportedGreen},${exportedBlue})`;
+  expect(exported).toMatch(/^(red|blue)$/);
+
+  // Remove: deleting the layer takes the clip with it.
+  const imported = (await readStudioLayerIds(page)).find(
+    (id) => !before.includes(id),
+  );
+  const row = page.locator(`[data-layer-id="${imported}"]`);
+  await row.hover();
+  await row
+    .locator('button[aria-label^="Delete"], button[aria-label^="Remove"]')
+    .first()
+    .click();
+  await expect
+    .poll(async () => (await readStudioLayerIds(page)).length, { timeout: 15_000 })
+    .toBe(before.length);
+  await expect
+    .poll(async () => readStudioFrameColour(page), { timeout: 15_000 })
+    .not.toMatch(/^(red|blue)$/);
 });

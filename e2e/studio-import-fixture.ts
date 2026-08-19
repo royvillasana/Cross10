@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 
 import { type Page } from "@playwright/test";
@@ -111,6 +112,55 @@ export async function readStudioImageCorners(page: Page): Promise<string> {
   });
 }
 
+/**
+ * A two-second clip whose halves are flat and unmistakable: red, then blue.
+ *
+ * Committed rather than generated, unlike the picture beside it. A PNG can be
+ * written by hand in fifty lines; a video container cannot, and generating one
+ * at test time would make the suite depend on an encoder being installed. Flat
+ * halves for the same reason the picture has flat quadrants -- what is read back
+ * has to say which frame it came from with no interpretation.
+ */
+const VIDEO_FIXTURE = path.join(
+  // `fileURLToPath` rather than the URL's own pathname: this repository lives
+  // under a directory with a space in its name, and a pathname keeps that space
+  // percent-encoded, which is a path no file exists at.
+  path.dirname(fileURLToPath(import.meta.url)),
+  "fixtures",
+  "studio-halves.webm",
+);
+
+/** The colour at the middle of the frame, named rather than measured. */
+export async function readStudioFrameColour(page: Page): Promise<string> {
+  return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl) return "nogl";
+    const pixel = new Uint8Array(4);
+    gl.readPixels(
+      Math.round(canvas.width * 0.5),
+      Math.round(canvas.height * 0.5),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixel,
+    );
+    const [red, green, blue] = [pixel[0] ?? 0, pixel[1] ?? 0, pixel[2] ?? 0];
+    if (red > 150 && green < 120 && blue < 120) return "red";
+    if (blue > 150 && red < 120) return "blue";
+    return `other(${red},${green},${blue})`;
+  });
+}
+
+export async function importStudioVideo(page: Page): Promise<void> {
+  await page
+    .locator('[data-toolcraft-control-target="media.video"]')
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles(VIDEO_FIXTURE);
+}
+
 export async function importStudioImage(page: Page): Promise<void> {
   await page
     .locator('[data-toolcraft-control-target="media.image"]')
@@ -119,4 +169,4 @@ export async function importStudioImage(page: Page): Promise<void> {
     .setInputFiles(IMPORT_FIXTURE);
 }
 
-export { IMPORT_FIXTURE, writeImportFixture };
+export { IMPORT_FIXTURE, VIDEO_FIXTURE, writeImportFixture };

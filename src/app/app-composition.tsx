@@ -21,6 +21,10 @@ import {
   writeStudioLayerEntry,
 } from "./studio-stack-state";
 import {
+  readStudioMediaRegistry,
+  seekStudioMediaToLoop,
+} from "./studio-media-registry";
+import {
   STUDIO_ONBOARDING_APPLY,
   STUDIO_ONBOARDING_CHOOSING,
   STUDIO_ONBOARDING_REFERENCE,
@@ -43,7 +47,7 @@ import { createStudioStackRenderer } from "./studio-stack-render";
  * The runtime still owns backing allocation for the artifact, background,
  * encoding, download, and progress; this only contributes pixels.
  */
-function renderStudioExportFrame({
+async function renderStudioExportFrame({
   context,
   frame,
   pixelRatio,
@@ -51,7 +55,7 @@ function renderStudioExportFrame({
   timelineProgress,
 }: Parameters<
   NonNullable<ToolcraftAppComposition["exportRenderer"]>["renderFrame"]
->[0]): void {
+>[0]): Promise<void> {
   const sceneWidth = Math.max(1, Math.round(frame.width));
   const sceneHeight = Math.max(1, Math.round(frame.height));
   const scale = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
@@ -68,6 +72,22 @@ function renderStudioExportFrame({
     preserveDrawingBuffer: true,
   });
   if (!gl) return;
+
+  /**
+   * The same decoded sources the preview is drawing, moved to this frame's
+   * moment before anything is drawn.
+   *
+   * Awaited, unlike the preview's seek. Nobody is watching an artifact being
+   * made, so there is nothing to be responsive for, and a frame encoded before
+   * the decoder arrived is wrong in a file that outlives the session.
+   */
+  const media = readStudioMediaRegistry();
+  await seekStudioMediaToLoop(
+    media,
+    (state as { timeline?: { durationSeconds?: number } }).timeline
+      ?.durationSeconds ?? 0,
+    timelineProgress,
+  );
 
   const renderer = createStudioStackRenderer(gl);
   try {
@@ -88,7 +108,7 @@ function renderStudioExportFrame({
       buildStudioSceneParameters(
         state,
         false,
-        new Map(),
+        media,
         STUDIO_CURSOR_AWAY,
         timelineProgress,
       ),

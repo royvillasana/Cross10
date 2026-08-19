@@ -28,8 +28,14 @@ import {
 } from "./studio-stack-state";
 import {
   buildStudioSceneParameters,
+  readStudioLoopProgress,
   readStudioRenderScale,
 } from "./studio-scene";
+import { setStudioMediaRegistry } from "./studio-media-registry";
+import {
+  isStudioVideoAsset,
+  studioVideoLoopTime,
+} from "./studio-video";
 import {
   createStudioStackRenderer,
   type StudioStackRenderer,
@@ -112,7 +118,9 @@ export function StudioCanvas(): React.JSX.Element {
   React.useEffect(() => {
     let cancelled = false;
     const wanted = mediaAssets.filter(
-      (asset) => asset.assetKind === "image" && presentationUrls.has(asset.id),
+      (asset) =>
+        (asset.assetKind === "image" || isStudioVideoAsset(asset)) &&
+        presentationUrls.has(asset.id),
     );
 
     void Promise.all(
@@ -120,6 +128,50 @@ export function StudioCanvas(): React.JSX.Element {
         const url = presentationUrls.get(asset.id);
         if (!url) return null;
         try {
+          if (isStudioVideoAsset(asset)) {
+            // Handed to an element rather than fetched into memory. A clip is
+            // large enough that reading it whole to hand the bytes back to a
+            // decoder would cost the memory twice for nothing, and the element
+            // is the only thing that can seek anyway.
+            //
+            // Muted and inline because it is a texture, not a player: the
+            // author hears the composition's silence, and an element that
+            // asks for sound is an element some browsers refuse to decode
+            // without a gesture. Never played -- `currentTime` is written from
+            // the loop below, which is what makes the clip a source read at a
+            // position rather than something running beside the work.
+            const element = document.createElement("video");
+            element.crossOrigin = "anonymous";
+            element.muted = true;
+            element.loop = true;
+            element.playsInline = true;
+            element.preload = "auto";
+            element.src = url;
+            await new Promise<void>((resolve, reject) => {
+              const settle = (): void => {
+                element.removeEventListener("loadeddata", settle);
+                element.removeEventListener("error", fail);
+                resolve();
+              };
+              const fail = (): void => {
+                element.removeEventListener("loadeddata", settle);
+                element.removeEventListener("error", fail);
+                reject(new Error("clip did not decode"));
+              };
+              // `loadeddata` rather than `loadedmetadata`: metadata gives the
+              // duration but not a frame, and a texture uploaded from an
+              // element with no frame yet is undefined on some drivers and
+              // black on the rest.
+              element.addEventListener("loadeddata", settle);
+              element.addEventListener("error", fail);
+              element.load();
+            });
+            return [
+              asset.layerId,
+              { image: element, moving: true },
+            ] as readonly [string, StudioLayerMedia];
+          }
+
           const response = await fetch(url);
           const blob = await response.blob();
           return [
@@ -132,7 +184,7 @@ export function StudioCanvas(): React.JSX.Element {
                 ? { transform: asset.transform }
                 : {}),
             },
-          ] as const;
+          ] as readonly [string, StudioLayerMedia];
         } catch {
           // A picture that will not decode is a picture the layer does not
           // have. The layer still draws, with nothing where the image would be,
@@ -142,7 +194,21 @@ export function StudioCanvas(): React.JSX.Element {
       }),
     ).then((entries) => {
       if (cancelled) return;
-      setImages(new Map(entries.filter((entry) => entry !== null)));
+      setImages((previous) => {
+        const next = new Map(entries.filter((entry) => entry !== null));
+        // A clip that is no longer in the stack keeps its decoder alive and its
+        // buffer resident until the element is told to let go. Dropping the map
+        // entry alone does not do it, because the element is still referenced
+        // by the pending decode until GC gets to it.
+        for (const [layerId, media] of previous) {
+          if (next.get(layerId)?.image === media.image) continue;
+          if (media.image instanceof HTMLVideoElement) {
+            media.image.removeAttribute("src");
+            media.image.load();
+          }
+        }
+        return next;
+      });
     });
 
     return () => {
@@ -160,6 +226,47 @@ export function StudioCanvas(): React.JSX.Element {
       )
       .join("|"),
   ]);
+
+  /**
+   * Every clip moved to the frame this loop position asks for.
+   *
+   * Done on the way to building the scene rather than inside the draw, because
+   * the draw must stay pure -- it is run again by the export path, at positions
+   * the preview never visited, and a renderer that seeked would make the two
+   * paths disagree about what a frame is.
+   *
+   * The seek is written and not awaited. Waiting for `seeked` at sixty frames a
+   * second would either stall the frame or arrive after the draw that wanted
+   * it; writing it means the element decodes toward the position while the
+   * renderer uploads whatever frame it currently holds, which for forward
+   * motion is at most a frame behind and for a scrub catches up within one.
+   * The export path is the one that needs the exact frame, and it awaits.
+   */
+  const loopProgress = readStudioLoopProgress(state);
+  const loopSeconds =
+    (state as { timeline?: { durationSeconds?: number } }).timeline
+      ?.durationSeconds ?? 0;
+
+  // Published where the export frame can reach it, because the runtime calls
+  // that frame from outside this tree. The alternative is decoding everything a
+  // second time for the artifact, which would cost the memory twice and build
+  // the file from pixels the author never saw.
+  React.useEffect(() => {
+    setStudioMediaRegistry(images);
+  }, [images]);
+
+  React.useEffect(() => {
+    for (const media of images.values()) {
+      if (!media.moving || !(media.image instanceof HTMLVideoElement)) continue;
+      const clipSeconds = media.image.duration;
+      if (!Number.isFinite(clipSeconds) || clipSeconds <= 0) continue;
+      media.image.currentTime = studioVideoLoopTime(
+        clipSeconds,
+        loopSeconds,
+        loopProgress,
+      );
+    }
+  }, [images, loopProgress, loopSeconds]);
 
   const parameters = useStableStudioSceneParameters(
     React.useMemo(

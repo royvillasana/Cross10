@@ -16,6 +16,7 @@ import {
   type StudioLayerRecord,
 } from "./studio-stack-state";
 import { type StudioLayerTypeId } from "./studio-layers";
+import { isStudioVideoAsset } from "./studio-video";
 
 /**
  * Keeps the per-layer record and the `selectedLayer.*` controls in step (R56).
@@ -65,10 +66,17 @@ export function useStudioLayerSync(): void {
    * `typeId: "stripes"`; the asset is what makes it a picture. Both directions
    * of this sync have to ask the runtime rather than the record, or the controls
    * the image body reads are projected from nothing and collected into nothing.
+   *
+   * A clip counts, and that is the whole of what makes video a layer kind here
+   * rather than a second renderer: a frame of a clip is a picture, so the body
+   * that draws a picture draws it, and every treatment, engine and source
+   * mapping that already reaches a still reaches a moving one unchanged. What
+   * differs is only which frame the texture holds, which is the canvas's
+   * business and not this file's.
    */
   const pictureLayerIds = new Set(
     (state.mediaAssets ?? [])
-      .filter((asset) => asset.assetKind === "image")
+      .filter((asset) => asset.assetKind === "image" || isStudioVideoAsset(asset))
       .map((asset) => asset.layerId)
       .filter((id): id is string => typeof id === "string"),
   );

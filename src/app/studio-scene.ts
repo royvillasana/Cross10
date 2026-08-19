@@ -144,6 +144,25 @@ function hasStudioDrift(layers: readonly StudioLayerValues[]): boolean {
  * Reads rather than writes: this runs on the way to the renderer, so it must not
  * mutate the record or dispatch. The write direction is `useStudioLayerSync`.
  */
+/**
+ * Whether anything in the stack is a clip, which moves for the same reason.
+ *
+ * The pin above exists so a still composition does not rebuild its scene sixty
+ * times a second. A clip is the other case: it is read at the loop position, so
+ * pinning the loop would freeze it on its first frame and the layer would look
+ * like a still that failed to decode. So a composition holding a clip pays the
+ * same cost a drifting one does, and for the same reason -- something in it
+ * genuinely changes with the clock.
+ */
+function hasStudioMovingMedia(
+  images: ReadonlyMap<string, StudioLayerMedia>,
+): boolean {
+  for (const media of images.values()) {
+    if (media.moving) return true;
+  }
+  return false;
+}
+
 export function buildStudioSceneParameters(
   state: StudioSceneStateSlice,
   includeBackground: boolean,
@@ -198,7 +217,11 @@ export function buildStudioSceneParameters(
     // An explicit position always wins -- the export path names the moment it is
     // drawing, and a still export passes zero. Otherwise the clock only reaches
     // the scene if something in the stack responds to it.
-    loop: loop ?? (hasStudioDrift(stack) ? readStudioLoopProgress(state) : 0),
+    loop:
+      loop ??
+      (hasStudioDrift(stack) || hasStudioMovingMedia(images)
+        ? readStudioLoopProgress(state)
+        : 0),
     // Passed in rather than read from `export.includeBackground`, because the
     // two are different questions. The switch says whether an exported artifact
     // carries the background; whether the *preview* shows it is the runtime's

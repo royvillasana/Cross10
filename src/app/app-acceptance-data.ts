@@ -250,9 +250,9 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       entity: "Selected layer",
       entityId: "selected-layer-media",
       groupingReason:
-        "Bringing a picture into the stack. Its own stage because a file drop renders as a surface rather than as a field, and because import, storage and the transform buttons beside it belong to the runtime -- what this product owns is the layer that draws the result.",
+        "Bringing a source into the stack. Its own stage because a file drop renders as a surface rather than as a field, and because import, storage and the transform buttons beside it belong to the runtime -- what this product owns is the layer that draws the result. Two surfaces rather than one because the runtime routes an import by what the file is, and a still and a moving source take different importers; they are one stage because to an author they are one act.",
       id: "selected-layer-media",
-      targets: ["media.image"],
+      targets: ["media.image", "media.video"],
       title: "Layer Media",
       workflowStage: "confine",
     },

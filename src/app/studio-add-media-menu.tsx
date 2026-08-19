@@ -3,7 +3,7 @@ import * as React from "react";
 import { useToolcraftSelector } from "@/toolcraft/runtime/react";
 
 /**
- * A third item in the layers panel's `+` menu: **Media**.
+ * Two more items in the layers panel's `+` menu: **Image** and **Video**.
  *
  * **Why this is done to the DOM rather than through the schema.** The menu is
  * two hardcoded buttons in `layers-panel.tsx`, which is signed runtime source
@@ -31,8 +31,46 @@ import { useToolcraftSelector } from "@/toolcraft/runtime/react";
  * into view.
  */
 
-/** The runtime's own import control, wherever the panel has put it. */
+/** The runtime's own import controls, wherever the panel has put them. */
 const MEDIA_CONTROL = '[data-toolcraft-control-target="media.image"]';
+const VIDEO_CONTROL = '[data-toolcraft-control-target="media.video"]';
+
+/**
+ * Why two items rather than the one "Media" that was asked for.
+ *
+ * Not a preference. The runtime routes an import by what the file is: its
+ * picture importer matches only when every file in the batch decodes as a
+ * picture, and its file importer matches only a control that declares
+ * `assetKind: "file"`. So one surface cannot take both -- a clip offered to the
+ * picture control matches no importer and fails outright, and a picture offered
+ * to the file control loses the decode that gives it a size and the rotate and
+ * flip actions that come with it. The registry that would let a product add a
+ * third importer is signed source.
+ *
+ * A single item could still have been kept by opening one dialog and routing
+ * afterwards, but the routing would have to happen after the file is chosen,
+ * which means telling an author their pick was the wrong kind *after* they made
+ * it. Two labelled items say which is which before the dialog opens, which is
+ * the part of the original instruction that actually mattered: press a thing,
+ * see the system window.
+ */
+const MEDIA_ITEMS = [
+  {
+    control: MEDIA_CONTROL,
+    icon:
+      '<rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<circle cx="8.5" cy="9.5" r="1.6" fill="currentColor"/>' +
+      '<path d="M4 17l5-5 4 4 3-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    label: "Image",
+  },
+  {
+    control: VIDEO_CONTROL,
+    icon:
+      '<rect x="3" y="5" width="13" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M16 10l5-3v10l-5-3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+    label: "Video",
+  },
+] as const;
 
 /** Marks the item so it is added once per opening rather than once per mutation. */
 const ADDED = "data-studio-add-media";
@@ -60,6 +98,11 @@ const ADDED = "data-studio-add-media";
  */
 function hideEmptyImportControl(empty: boolean): void {
   const control = document.querySelector<HTMLElement>(MEDIA_CONTROL);
+  // The clip surface has no such second life: the runtime's file presentation
+  // is a paperclip and a filename, which tells an author nothing they cannot
+  // see in the layer row, so it is hidden whether or not it holds anything.
+  const video = document.querySelector<HTMLElement>(VIDEO_CONTROL);
+  if (video) clip(video, true);
   if (!control) return;
 
   // The `<section>`, not the nearest `[data-slot]` — that is the collapsible
@@ -72,15 +115,25 @@ function hideEmptyImportControl(empty: boolean): void {
     [section, empty],
   ] as const) {
     if (!node) continue;
-    // Restored by clearing rather than by setting a value back, so the element
-    // returns to whatever the runtime's own styles say instead of to a guess.
-    node.style.blockSize = hidden ? "0" : "";
-    node.style.clipPath = hidden ? "inset(50%)" : "";
-    node.style.margin = hidden ? "0" : "";
-    node.style.overflow = hidden ? "hidden" : "";
-    node.style.padding = hidden ? "0" : "";
-    node.style.position = hidden ? "absolute" : "";
+    clip(node, hidden);
   }
+}
+
+/**
+ * Takes an element out of view without taking it out of the document.
+ *
+ * Clipped rather than removed from layout, because the menu items press these
+ * controls' file inputs and an input with no box is not reliably clickable.
+ * Restored by clearing rather than by setting a value back, so the element
+ * returns to whatever the runtime's own styles say instead of to a guess.
+ */
+function clip(node: HTMLElement, hidden: boolean): void {
+  node.style.blockSize = hidden ? "0" : "";
+  node.style.clipPath = hidden ? "inset(50%)" : "";
+  node.style.margin = hidden ? "0" : "";
+  node.style.overflow = hidden ? "hidden" : "";
+  node.style.padding = hidden ? "0" : "";
+  node.style.position = hidden ? "absolute" : "";
 }
 
 function findAddLayerMenu(): HTMLElement | null {
@@ -99,9 +152,9 @@ function findAddLayerMenu(): HTMLElement | null {
   return null;
 }
 
-function openSystemFilePicker(): void {
+function openSystemFilePicker(control: string): void {
   const input = document.querySelector<HTMLInputElement>(
-    `${MEDIA_CONTROL} input[type="file"]`,
+    `${control} input[type="file"]`,
   );
   // Called synchronously inside the click handler, because the browser only
   // opens a file dialog while it still considers itself inside a user gesture.
@@ -136,42 +189,41 @@ export function StudioAddMediaMenuItem(): null {
       );
       if (!template) return;
 
-      // Cloned from the sibling rather than built, so the item inherits the
-      // menu's classes *and* its icon slot. Restating either would drift the
-      // moment the runtime restyles its own menu, and a bare button beside two
-      // iconed ones reads as broken rather than as added.
-      const item = template.cloneNode(true) as HTMLButtonElement;
-      item.setAttribute(ADDED, "");
-      item.type = "button";
+      for (const entry of MEDIA_ITEMS) {
+        // Cloned from the sibling rather than built, so the item inherits the
+        // menu's classes *and* its icon slot. Restating either would drift the
+        // moment the runtime restyles its own menu, and a bare button beside
+        // two iconed ones reads as broken rather than as added.
+        const item = template.cloneNode(true) as HTMLButtonElement;
+        item.setAttribute(ADDED, "");
+        item.type = "button";
 
-      const icon = item.querySelector("svg");
-      if (icon) {
-        // A framed picture, in the stroke weight the neighbouring icons use.
-        icon.innerHTML =
-          '<rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
-          '<circle cx="8.5" cy="9.5" r="1.6" fill="currentColor"/>' +
-          '<path d="M4 17l5-5 4 4 3-2 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
-        icon.setAttribute("viewBox", "0 0 24 24");
-      }
+        const icon = item.querySelector("svg");
+        if (icon) {
+          icon.innerHTML = entry.icon;
+          icon.setAttribute("viewBox", "0 0 24 24");
+        }
 
-      // Replaces the label without disturbing the icon beside it.
-      for (const node of [...item.childNodes]) {
-        if (node.nodeType === Node.TEXT_NODE) node.textContent = "Media";
+        // Replaces the label without disturbing the icon beside it.
+        for (const node of [...item.childNodes]) {
+          if (node.nodeType === Node.TEXT_NODE) node.textContent = entry.label;
+        }
+        if (!item.textContent?.includes(entry.label)) item.append(entry.label);
+        item.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openSystemFilePicker(entry.control);
+          // The menu is deliberately not dismissed here, because it cannot be.
+          // The popover ignores untrusted events: a synthetic Escape, an
+          // outside pointerdown and a second press of its own trigger were all
+          // tried and all ignored, and hiding its element is worse than
+          // useless because the same node is reused the next time it opens. So
+          // the system dialog covers it and the author's next real click
+          // closes it, which is how a menu behaves anywhere else when a modal
+          // opens over it.
+        });
+        menu.append(item);
       }
-      if (!item.textContent?.includes("Media")) item.append("Media");
-      item.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openSystemFilePicker();
-        // The menu is deliberately not dismissed here, because it cannot be.
-        // The popover ignores untrusted events: a synthetic Escape, an outside
-        // pointerdown and a second press of its own trigger were all tried and
-        // all ignored, and hiding its element is worse than useless because the
-        // same node is reused the next time it opens. So the system dialog
-        // covers it and the author's next real click closes it, which is how a
-        // menu behaves anywhere else when a modal opens over it.
-      });
-      menu.append(item);
     };
 
     const sync = (): void => {

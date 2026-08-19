@@ -434,6 +434,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares importing a video creates the layer that draws it",
+    browser: true,
+    browserTestName: "browser: studio video import creates a layer that draws it",
+    componentType: "fileDrop",
+    evidence: "media-lifecycle",
+    expectedObservable:
+      "Choosing a video on Import video brings it in through the runtime, which creates a layer for it, and that layer draws a frame of the clip rather than a procedural field. The clip runs as an endless loop tied to the timeline, so the frame the layer draws changes as the loop advances and is the same frame again at the same loop position. Deleting the layer removes the clip with it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "media.video",
+    kind: "control",
+    mediaLifecycleCoverage: ["upload", "remove", "reset"],
+    target: "media.video",
+    userAction: "Press Import video and choose a clip, then move the loop and delete its layer.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the runtime image transform reaches the rendered frame",
     browser: true,
     browserTestName: "browser: studio image transform turns what the layer draws",
