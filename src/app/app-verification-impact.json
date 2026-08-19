@@ -76,6 +76,7 @@
         "canvas.infinity-export",
         "canvas.infinity-mode",
         "canvas.render-scale",
+        "canvas.viewport-yield",
         "history.undo",
         "layers.imageComposite",
         "layers.reorder",
@@ -486,6 +487,16 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-video.ts"
+    },
+    {
+      "acceptanceIds": [
+        "canvas.viewport-yield"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "layer-stack"
+      ],
+      "path": "src/app/studio-viewport-gesture.ts"
     }
   ],
   "version": 3

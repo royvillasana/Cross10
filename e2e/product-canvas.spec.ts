@@ -286,3 +286,110 @@ test("browser: studio infinite video export holds one frame size across the loop
   expect(inspection.height).toBeGreaterThan(0);
   expect(inspection.frameCount).toBe(schedule.length);
 });
+
+/**
+ * The loop position the last drawn frame saw.
+ *
+ * An attribute read rather than a pixel read, and that is not a shortcut. A
+ * `readPixels` is a GPU sync, and on a composition that is animating at this
+ * backing size one takes over a second -- long enough that the gesture being
+ * measured would end mid-read and what came back would be a frame from
+ * afterwards. The attribute is written from the same parameters the draw used,
+ * so it says what the renderer drew rather than what the clock says, which is
+ * exactly the difference this proof turns on.
+ */
+async function readStudioDrawnLoop(page: Page): Promise<string> {
+  return (
+    (await page
+      .locator("[data-toolcraft-product-output]")
+      .getAttribute("data-timeline-progress")) ?? ""
+  );
+}
+
+/**
+ * Panning a composition that is playing must not make the renderer race the drag.
+ *
+ * A pan is a transform the runtime applies to a surface whose pixels have not
+ * changed, so it costs nothing on its own. It began to cost everything once
+ * compositions animated: a drifting stack rebuilds its scene sixty times a
+ * second and redraws the whole program, while the browser is trying to
+ * composite the drag at the same rate.
+ *
+ * What the product does is hold the loop at the value the scene last used, so
+ * the parameters are identical, the memo holds, and the renderer sleeps for the
+ * length of the gesture. The two halves of the claim are therefore: no frame is
+ * drawn at a new moment while the view is being dragged, and frames resume
+ * afterwards -- from where the clock reached rather than from where the drag
+ * left off, which is what makes this a yield rather than a stall.
+ *
+ * The second half is what stops this being a proof that the animation broke. A
+ * held frame and a dead renderer look identical for the length of one gesture.
+ */
+test("browser: studio holds the frame while the view is panned and resumes on the clock", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  // Deliberately not through `timelineScrubber`, which pauses: this is about
+  // what happens while the clock is running, so playback is left alone from
+  // start to finish and asserted to be untouched at the end.
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  const playing = async (): Promise<boolean> =>
+    page.getByRole("button", { name: "Pause playback" }).isVisible();
+  const wasPlaying = await playing();
+  expect(wasPlaying, "the runtime should open playing, or this proves nothing").toBe(
+    true,
+  );
+
+  // The composition genuinely draws new moments when nobody is touching it.
+  // Without this the hold below would pass just as happily against a stack that
+  // never animated, which is the vacuous shape this kind of proof takes.
+  const idle = await readStudioDrawnLoop(page);
+  await expect
+    .poll(async () => readStudioDrawnLoop(page), { timeout: 15_000 })
+    .not.toBe(idle);
+
+  // Panned with the wheel, because that is this product's pan. Pointer-drag
+  // panning is a schema capability (`canvas.draggable`) the studio does not
+  // declare -- the canvas is where shapes are handled, so dragging on it moves
+  // a region rather than the view. The wheel gesture goes through the same
+  // transient viewport writes a drag would, which is what the hold watches.
+  const canvas = page.locator("[data-toolcraft-product-output]");
+  const box = await canvas.boundingBox();
+  expect(box).toBeTruthy();
+  await page.mouse.move(
+    (box?.x ?? 0) + (box?.width ?? 0) / 2,
+    (box?.y ?? 0) + (box?.height ?? 0) / 2,
+  );
+
+  // One tick before sampling starts. The product learns a gesture is under way
+  // by seeing the view move, so the first tick is the one that begins the hold
+  // rather than one already held -- sampling from it would assert the hold
+  // happened before its own cause.
+  await page.mouse.wheel(0, 40);
+
+  const during: string[] = [];
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.wheel(0, 40);
+    during.push(await readStudioDrawnLoop(page));
+  }
+
+  expect(
+    new Set(during).size,
+    "no new moment may be drawn for the length of the gesture",
+  ).toBe(1);
+
+  // And it comes back. The clock ran underneath the whole time, so what resumes
+  // is the moment the timeline reached rather than the one the drag left off
+  // at -- which is why nothing here dispatches a play command to restart it.
+  await expect
+    .poll(async () => readStudioDrawnLoop(page), { timeout: 15_000 })
+    .not.toBe(during[0]);
+
+  expect(
+    await playing(),
+    "a gesture must not change whether the composition is playing",
+  ).toBe(wasPlaying);
+});

@@ -1335,6 +1335,24 @@ export const studioExportAcceptanceRows: readonly ToolcraftComponentAcceptance[]
     },
     {
       automated: true,
+      automatedTestName: "declares animation work yields while the view is moved",
+      browser: true,
+      browserTestName:
+        "browser: studio holds the frame while the view is panned and resumes on the clock",
+      componentType: "canvas",
+      evidence: "viewport-side-effect",
+      expectedObservable:
+        "Panning or zooming a playing composition stops it redrawing for the length of the gesture: the frame on screen is the one that was already there. Play state is unchanged throughout -- nothing is paused and nothing is resumed -- and once the gesture ends the composition continues from the moment the clock reached rather than from the moment the drag stopped.",
+      fixture: "Croix10 with a drifting single-layer stack, playback running",
+      id: "canvas.viewport-yield",
+      infinityCanvasCoverage: "mode-and-restoration",
+      kind: "runtime",
+      target: "canvas.infinity",
+      userAction:
+        "Start a drifting composition playing, then drag the canvas and watch the frame during and after the gesture.",
+    },
+    {
+      automated: true,
       automatedTestName: "declares render scale changes preview backing pixels only",
       browser: true,
       browserTestName:

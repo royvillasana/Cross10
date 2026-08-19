@@ -33,6 +33,11 @@ import {
 } from "./studio-scene";
 import { setStudioMediaRegistry } from "./studio-media-registry";
 import {
+  readStudioViewportPose,
+  useStudioViewportGesture,
+  type StudioViewportPose,
+} from "./studio-viewport-gesture";
+import {
   isStudioVideoAsset,
   studioVideoLoopTime,
 } from "./studio-video";
@@ -255,7 +260,38 @@ export function StudioCanvas(): React.JSX.Element {
     setStudioMediaRegistry(images);
   }, [images]);
 
+  /**
+   * The frame is held still while the view is being moved.
+   *
+   * Panning and zooming are a transform the runtime applies to a surface whose
+   * pixels have not changed, so a gesture costs nothing by itself. It began to
+   * cost everything once compositions animated: a drifting stack -- or one
+   * holding a clip -- rebuilds its scene every frame and redraws the whole
+   * program, while the browser is trying to composite a drag at the same rate.
+   *
+   * So during a gesture the loop is pinned to the value the scene last used.
+   * The parameters come out byte-identical, the memo holds, and the renderer
+   * sleeps until the gesture ends. Nothing is approximated: the frame on screen
+   * is the frame that was already there, which is the one the author is
+   * dragging.
+   *
+   * Play state is deliberately untouched. Dispatching a pause on gesture start
+   * would look the same for one drag and be wrong in every way that lasts --
+   * two history entries per gesture, a fight with an author who paused on
+   * purpose, and a resume at the moment the drag ended rather than the moment
+   * the clock reached. Freezing what the *reader* passes leaves the timeline
+   * running underneath, so the resumed frame is the one the clock says it is.
+   */
+  const moving = useStudioViewportGesture(
+    readStudioViewportPose((state as { canvas?: StudioViewportPose }).canvas),
+  );
+  const heldLoop = React.useRef(0);
+
   React.useEffect(() => {
+    // Held with the rest of the animation while the view is being moved: a
+    // decoder seeking every frame is exactly the non-essential work a gesture
+    // should not be competing with, and the frame on screen is frozen anyway.
+    if (moving) return;
     for (const media of images.values()) {
       if (!media.moving || !(media.image instanceof HTMLVideoElement)) continue;
       const clipSeconds = media.image.duration;
@@ -266,7 +302,8 @@ export function StudioCanvas(): React.JSX.Element {
         loopProgress,
       );
     }
-  }, [images, loopProgress, loopSeconds]);
+  }, [images, loopProgress, loopSeconds, moving]);
+
 
   const parameters = useStableStudioSceneParameters(
     React.useMemo(
@@ -275,10 +312,17 @@ export function StudioCanvas(): React.JSX.Element {
           state,
           shouldIncludeToolcraftPreviewBackground({ state }),
           images,
+          undefined,
+          moving ? heldLoop.current : undefined,
         ),
-      [images, state],
+      [images, moving, state],
     ),
   );
+  // Recorded after the build rather than computed beside it, so what is held is
+  // the value the scene actually used -- including the zero an undrifted
+  // composition is pinned to, which a second derivation here could disagree
+  // with the moment either rule changed.
+  heldLoop.current = parameters.loop;
 
   // Acquired on first pass execution rather than in an effect: the pipeline pass
   // runs in a layout effect, so an ordinary effect would not have created the

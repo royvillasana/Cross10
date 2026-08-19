@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { appProductReadiness, appTransferMode } from "./app-acceptance-data";
@@ -18,6 +19,7 @@ import {
   STUDIO_VERTEX_PATH_TARGET,
 } from "./studio-stack-state";
 import { studioVideoLoopTime } from "./studio-video";
+import { readStudioViewportPose } from "./studio-viewport-gesture";
 
 /**
  * The declarative half of the operations, as distinct from the controls.
@@ -187,6 +189,35 @@ describe("what the runtime is asked to do with media", () => {
     // carries it, which is why the image layer type declares its own transform
     // uniforms rather than drawing the asset at a fixed rectangle.
     expect(controlTargets.has("selectedLayer.type")).toBe(true);
+  });
+});
+
+describe("what the renderer does while the view is moved", () => {
+  it("declares animation work yields while the view is moved", () => {
+    // The gesture is seen from outside the runtime, by the one thing a pan or a
+    // zoom changes that a product can read. A check by identity instead would
+    // report a gesture on every unrelated write -- the runtime rebuilds this
+    // slice constantly -- and would freeze the animation whenever an author
+    // touched a slider, which is the opposite of the intent.
+    const still = readStudioViewportPose({ offset: { x: 4, y: 8 }, zoom: 2 });
+    expect(readStudioViewportPose({ offset: { x: 4, y: 8 }, zoom: 2 })).toBe(still);
+    expect(readStudioViewportPose({ offset: { x: 5, y: 8 }, zoom: 2 })).not.toBe(
+      still,
+    );
+    expect(readStudioViewportPose({ offset: { x: 4, y: 8 }, zoom: 2.5 })).not.toBe(
+      still,
+    );
+
+    // And the yielding is a held *reading* rather than a dispatched pause. No
+    // playback command exists in the product at all, which is what makes "play
+    // state is unchanged during a gesture" a property of the design rather than
+    // a promise about a code path.
+    const source = readFileSync(
+      new URL("./studio-canvas.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(source).not.toContain("timeline.pause");
+    expect(source).not.toContain("timeline.play");
   });
 });
 

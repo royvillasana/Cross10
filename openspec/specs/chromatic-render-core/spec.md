@@ -169,15 +169,33 @@ limit rather than a frame budget.
 ### Requirement: Animation work yields during viewport interaction
 The renderer SHALL suspend or coalesce non-essential animation work during canvas drag, pan, pinch, zoom, and radar or center interactions, then resume from the correct timeline time without changing play or pause state.
 
-**Status: pending — not built, and now newly relevant.** No such yielding
-exists. It did not matter while nothing animated; the loop introduced in
-`video-export-and-motion` means a drifting composition now renders continuously
-while the viewport is being dragged.
+**Status: satisfied.** While the view is being moved, the loop is held at the
+value the scene last used, so the parameters come out identical, the memo holds,
+and the renderer sleeps for the length of the gesture. Nothing is approximated
+or dropped: the frame on screen is the frame that was already there, which is
+the one the author is moving.
 
-There is a mitigating half that was built: a composition declaring no drift is
-pinned to loop zero, so its scene is unchanged frame to frame and nothing
-redraws. The gap is real only for compositions that do drift. Carried as
-`outstanding` 1a.8.
+**Play state is never touched, and that is the requirement's real content.** A
+pause dispatched on gesture start and undone at the end would look identical for
+one gesture and be wrong in every way that lasts — two history entries per
+gesture, a fight with an author who paused deliberately, and a resume at the
+moment the gesture ended rather than the moment the clock reached. Freezing what
+the *reader* passes leaves the timeline running underneath, so the resumed frame
+is the one the clock says it is, whatever the gesture cost.
+
+The gesture is seen from outside the runtime, by the pose the transient viewport
+writes change. Deliberately compared as a value rather than by identity: the
+runtime rebuilds that slice on unrelated writes, so an identity check would
+report a gesture on every slider move and freeze the animation whenever an
+author touched anything.
+
+Two notes on the proof. It reads the loop position of the last *drawn* frame
+rather than sampling pixels, because a `readPixels` on an animating composition
+at this backing size takes over a second — long enough that the gesture would
+end mid-read and the sample would come from afterwards. And it pans with the
+wheel, because pointer-drag panning is a schema capability this product does not
+declare: the canvas is where shapes are handled, so dragging on it moves a
+region rather than the view.
 
 #### Scenario: Pan does not change playback state
 - **WHEN** the user pans the canvas while playback is running

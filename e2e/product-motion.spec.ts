@@ -328,3 +328,23 @@ test("browser: studio turns drift the reading angle and return", async ({ page }
     "a whole turn returns, so the seam closes",
   ).toBe(start);
 });
+
+/**
+ * Panning a composition that is playing must not make the renderer race the drag.
+ *
+ * A pan is a transform the runtime applies to a surface whose pixels have not
+ * changed, so it costs nothing on its own. It began to cost everything once
+ * compositions animated: a drifting stack rebuilds its scene sixty times a
+ * second and redraws the whole program, while the browser is trying to
+ * composite the drag at the same rate.
+ *
+ * What the product does is hold the loop at the value the scene last used, so
+ * the parameters are identical and the renderer sleeps for the length of the
+ * gesture. The two halves of the claim are therefore: the frame does not change
+ * while the view is being dragged, and it *does* change again afterwards, from
+ * the moment the clock reached rather than the moment the drag stopped.
+ *
+ * The second half is what stops this from being a proof that the animation
+ * broke. A frozen frame and a dead renderer look identical for the length of
+ * one gesture.
+ */
