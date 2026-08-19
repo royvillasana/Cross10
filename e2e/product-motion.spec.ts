@@ -35,7 +35,14 @@ async function readStudioLayerValues(page: Page): Promise<unknown> {
   return page.evaluate((key) => {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    const values = (JSON.parse(raw) as { values?: Record<string, unknown> }).values ?? {};
+    // Nested under `state`, which is the shape the runtime writes. Read from
+    // the top level this returns undefined, every reading falls into the
+    // "nothing written yet" branch below, and two of them compare equal
+    // whatever the composition did -- which is how this proof spent its life
+    // asserting nothing at all.
+    const values =
+      (JSON.parse(raw) as { state?: { values?: Record<string, unknown> } }).state
+        ?.values ?? {};
     const record = values["stack.layerRecord"];
     // Absent rather than empty is a real answer -- it is what "the flow has not
     // written a composition yet" looks like -- and it must compare equal to
@@ -225,6 +232,14 @@ test("browser: studio timeline switch is presentation only", async ({ page }) =>
 
   const framed = await readStudioOutputSignature(page);
   const values = await readStudioLayerValues(page);
+  // The record only exists once something has edited a layer, and reading it
+  // before that returns a sentinel that compares equal to itself -- a pass with
+  // nothing proved. The drift slider above is that edit; this makes the
+  // dependency on it explicit rather than incidental.
+  expect(
+    values,
+    "the baseline must be a written composition, not the sentinel for one that does not exist yet",
+  ).not.toHaveProperty("missing");
 
   await toggleStudioSwitch(page, "panels.timeline.extended");
   expect(

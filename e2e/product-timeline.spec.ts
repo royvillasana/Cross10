@@ -35,7 +35,14 @@ async function readStudioLayerValues(page: Page): Promise<unknown> {
   return page.evaluate((key) => {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    const values = (JSON.parse(raw) as { values?: Record<string, unknown> }).values ?? {};
+    // Nested under `state`, which is the shape the runtime writes. Read from
+    // the top level this returns undefined, every reading falls into the
+    // "nothing written yet" branch below, and two of them compare equal
+    // whatever the composition did -- which is how this proof spent its life
+    // asserting nothing at all.
+    const values =
+      (JSON.parse(raw) as { state?: { values?: Record<string, unknown> } }).state
+        ?.values ?? {};
     const record = values["stack.layerRecord"];
     // Absent rather than empty is a real answer -- it is what "the flow has not
     // written a composition yet" looks like -- and it must compare equal to
@@ -186,7 +193,6 @@ test("browser: studio timeline plays, scrubs, and loops the drift", async ({
 
   const { session } = await openStudioSingleLayer(page);
   const scrubber = await timelineScrubber(page);
-  const authoredValues = await readStudioLayerValues(page);
 
   // The still, taken before drift exists. Everything below is measured against
   // this: adding motion to a product must not change the work that had none.
@@ -229,6 +235,20 @@ test("browser: studio timeline plays, scrubs, and loops the drift", async ({
   ).toBe(midSignature);
   await setStudioSlider(page, "Offset", 0);
   await setStudioSlider(page, "Travel per loop", 1);
+
+  // Read *after* the composition has been written rather than at the top of the
+  // test, and that ordering is the whole assertion. The record does not exist
+  // until something edits a layer, so a baseline taken before the first edit is
+  // the "nothing written yet" sentinel -- and comparing that against a real
+  // record is a failure with nothing wrong, while comparing it against another
+  // sentinel is a pass with nothing proved. This proof did the second for its
+  // whole life, because the persisted values were being read one level too high
+  // and every reading came back empty.
+  const authoredValues = await readStudioLayerValues(page);
+  expect(
+    authoredValues,
+    "the baseline must be a written composition, not the sentinel for one that does not exist yet",
+  ).not.toHaveProperty("missing");
 
   // And from the other side: the values the author set are untouched. A drift
   // that wrote back into the composition would leave a different work behind
