@@ -82,6 +82,10 @@ describe("appSchema", () => {
       "Layer Motion",
       "Pointer",
       "Layer Treatment",
+      // After every layer section and before the export ones: a reroll is what
+      // an author reaches for once a composition exists and they want to see it
+      // differently, and it is not something delivery is downstream of.
+      "Randomize",
       "Image Export",
       // Directly after Image Export and directly above the sticky actions,
       // which is where `export-pipeline` requires it once video intent is

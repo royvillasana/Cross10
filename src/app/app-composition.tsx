@@ -21,6 +21,11 @@ import {
   writeStudioLayerEntry,
 } from "./studio-stack-state";
 import {
+  planStudioRandomization,
+  studioRandomizableControls,
+  STUDIO_RANDOMIZE_ACTION,
+} from "./studio-randomize";
+import {
   readStudioMediaRegistry,
   seekStudioMediaToLoop,
 } from "./studio-media-registry";
@@ -174,6 +179,28 @@ function handleStudioPanelAction({
             ? STUDIO_ONBOARDING_APPLY
             : STUDIO_ONBOARDING_CHOOSING,
     } as Parameters<typeof dispatch>[0]);
+    return;
+  }
+
+  if (action.value === STUDIO_RANDOMIZE_ACTION) {
+    // Every layer in the stack, not only the selected one. A reroll of one
+    // layer inside a composition of five is a smaller and less useful act than
+    // it sounds -- what an author is asking to see is a different composition,
+    // and four layers held still while one changes reads as a glitch rather
+    // than as a variation.
+    const layers = state.layers ?? [];
+    for (const command of planStudioRandomization({
+      // Read from the live schema rather than from a table beside the planner,
+      // so a range can never disagree with the slider the author is looking at.
+      controls: studioRandomizableControls(),
+      layerIds: layers.map((layer) => layer.id),
+      locks: state.values,
+      random: Math.random,
+      record: readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
+      selectedLayerId: state.selectedLayerId ?? null,
+    })) {
+      dispatch(command as Parameters<typeof dispatch>[0]);
+    }
     return;
   }
 

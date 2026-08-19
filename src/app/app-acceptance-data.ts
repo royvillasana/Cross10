@@ -257,6 +257,22 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       workflowStage: "confine",
     },
     {
+      entity: "Composition",
+      entityId: "randomize",
+      groupingReason:
+        "Being shown a corner of the space rather than typing one. Its own stage because a reroll and the locks that bound it are one decision -- reroll this, keep that -- and a lock rendered in the section it covers would be a switch whose label has to explain what it belongs to. It sits after the layer sections because it is what an author reaches for once a composition exists, not a way of starting one.",
+      id: "randomize",
+      targets: [
+        "randomize.actions",
+        "randomize.lockField",
+        "randomize.lockPalette",
+        "randomize.lockEngine",
+        "randomize.lockMotion",
+      ],
+      title: "Randomize",
+      workflowStage: "compose",
+    },
+    {
       entity: "Selected layer",
       entityId: "selected-layer-engine",
       groupingReason:

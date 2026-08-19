@@ -147,11 +147,45 @@ storage and the acceptance data reading that declaration.
 ### Requirement: Randomize with locks
 Randomize SHALL assign new values within declared schema ranges, and every randomizable group SHALL have a lock `switch` that excludes its targets.
 
-**Status: pending — not built.** There is no randomize command and no lock
-switch in the product. All three scenarios below are unmet. The design reasoning
-recorded here is still sound and worth keeping, because it is the part that
-would otherwise be re-derived; what is missing is the building. Carried as
-`outstanding` 1a.2.
+**Status: satisfied.** A `Randomize` section holds the press and four lock
+switches, and all three scenarios below hold. The design reasoning recorded
+below was kept and turned out to be right on both counts.
+
+**Groups, and what is outside them.** The four are the field, the palette, the
+engine and the motion — each a thing an author would want to keep *whole* while
+rerolling the rest, which is the only property that makes a lock worth having.
+Separating motion from the other two is the one that earns its place: a drift
+that survives a reroll is how a composition keeps its rhythm while changing its
+face. The old vocabulary here named an immersive field and translucent planes;
+those were mapped onto the layer kinds and engines this product actually has.
+
+Deliberately outside every group, each for a reason: the **layer kind**, because
+rerolling stripes into a gradient replaces a composition rather than varying it;
+**following the pointer**, because that is a relationship with the viewer rather
+than a property of the work; the **region and the treatments**, because a random
+region is the fastest way to make a reroll look broken — most of the frame
+simply empties; **opacity and blend**, which describe how a layer meets the
+stack and whose random values hide the work being looked at; and an imported
+source's **mapping**, which belongs to the picture.
+
+**Ranges come from the schema, not from a table.** Every value is drawn inside
+the `min`, `max`, `step` or option list of the control the panel renders, read
+from the assembled schema at press time. A local copy would agree with itself
+forever and drift from the panel the first time either moved, and the failure
+would look like a rendering fault rather than a stale constant.
+
+**Colour is drawn in HSL rather than RGB**, and that is a judgement about the
+subject. Three independent channels average to mud — most of the RGB cube is a
+desaturated brown — so a "random palette" from it gives the same dull
+composition every time with the hue slightly moved. This product is about what
+saturated inks do to one another at a band edge, so hue varies and saturation
+stays where the subject lives.
+
+One press is one undo, by writing the record once and projecting the selected
+layer's controls from it with `history: "skip"` — the same shape a targeted
+preset application uses, and for the same reason: a layer lives in two places,
+and writing only the record lasts until the next sync reads the untouched panel
+as an edit and puts everything back.
 
 The command and its locks live together in one Randomize section, as an `actions` control rather than a sticky `panelActions` one, because two framework rules make the original per-section sticky design unbuildable. A section holding a large compound control cannot also hold a lock: runtime splits the compound control into its own section, which duplicates section titles. And every acceptance row on a sticky `panelActions` control must cover every footer action, so adding Randomize to the footer would oblige the export proof and the randomize proof to each exercise both commands.
 

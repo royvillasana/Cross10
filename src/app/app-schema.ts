@@ -11,6 +11,7 @@ import {
   STUDIO_ONBOARDING_SETTLED_TARGET,
   STUDIO_ONBOARDING_TARGET,
 } from "./studio-onboarding";
+import { STUDIO_RANDOMIZE_SECTIONS } from "./studio-randomize-sections";
 import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
 import { STUDIO_SMALL_VIEWPORT_TARGET } from "./studio-small-viewport";
 import {
@@ -62,6 +63,10 @@ export const appSchema = defineToolcraft({
         ...STUDIO_REFERENCE_SECTIONS,
         ...STUDIO_BACKGROUND_SECTIONS,
         ...STUDIO_LAYER_SECTIONS,
+        // After the layer sections rather than before them: a reroll is
+        // something an author reaches for once a composition exists and they
+        // want to see it differently, not a way of starting one.
+        ...STUDIO_RANDOMIZE_SECTIONS,
         ...STUDIO_EXPORT_SECTIONS,
       ],
       title: "Controls",

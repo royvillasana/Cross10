@@ -12,7 +12,12 @@
         "export.image-format",
         "export.image-resolution",
         "export.video-resolution",
-        "persistence.reload"
+        "persistence.reload",
+        "randomize.actions",
+        "randomize.lockEngine",
+        "randomize.lockField",
+        "randomize.lockMotion",
+        "randomize.lockPalette"
       ],
       "kind": "functional",
       "path": "src/app/app-composition.tsx"
@@ -312,6 +317,28 @@
     },
     {
       "acceptanceIds": [
+        "randomize.actions",
+        "randomize.lockEngine",
+        "randomize.lockField",
+        "randomize.lockMotion",
+        "randomize.lockPalette"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-randomize-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "randomize.actions",
+        "randomize.lockEngine",
+        "randomize.lockField",
+        "randomize.lockMotion",
+        "randomize.lockPalette"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-randomize.ts"
+    },
+    {
+      "acceptanceIds": [
         "gallery.actions"
       ],
       "kind": "presentation",
@@ -458,6 +485,11 @@
         "layers.selection",
         "layers.visibility",
         "persistence.reload",
+        "randomize.actions",
+        "randomize.lockEngine",
+        "randomize.lockField",
+        "randomize.lockMotion",
+        "randomize.lockPalette",
         "selectedLayer.angle",
         "selectedLayer.colorA",
         "selectedLayer.colorB",
