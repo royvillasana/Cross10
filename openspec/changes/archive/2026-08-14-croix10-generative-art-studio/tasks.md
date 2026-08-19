@@ -29,7 +29,7 @@ Two process rules from `AGENTS.md` apply throughout and are not repeated per tas
 - [x] 0.15 Compile `rendererPipelineRegistration` declaring every pass with cost, frequency, lifecycle, execution location, quality, cache keys, and exact interaction invalidation including `initial-render`
 - [x] 0.15a Declare the 2D passes `relationship: "constant"` for stripe dimensions, since per-pixel cost does not vary with them; reserve non-constant relationships for passes that genuinely scale, such as the Stage 6 lamellae rasterize pass (R31)
 - [x] 0.16 Run `assessToolcraftRenderPlan` and resolve every structural error
-- [ ] 0.16a Declare `kernelBenchmarkDecisions` for any requirement the assessment raises rather than only noting it as pending, and record in the Renderer Technique Matrix why WebGL2 is the chosen strategy over a Canvas 2D baseline — the contract expects that choice to be argued, not assumed (F19)
+- [ ] 0.16a Declare `kernelBenchmarkDecisions` for any requirement the assessment raises rather than only noting it as pending, and record in the Renderer Technique Matrix why WebGL2 is the chosen strategy over a Canvas 2D baseline — the contract expects that choice to be argued, not assumed (F19) — **Triaged (2.5): still open.** no kernel benchmark decisions are declared; the assessment currently raises none.
 - [x] 0.17 Register `fixtureAdapters.dimensions` per envelope dimension and derive paths with `deriveToolcraftPerformancePaths`
 - [x] 0.18 Switch `docs/toolcraft/agent-worklog.md` to `Mode: product` with the first Decision Trail entry, covering every required field — request, task type, user-visible result, source checked, docs and contract rules applied, view interaction, interaction ownership, decision, alternatives rejected, state/output mapping, verification narrative, risks — plus the eight decision sections with `Decision:`/`Reason:`/`Evidence:` each; `npm run test` fails on omissions (F20)
 - [x] 0.18a Add the runtime check for whether a product global keydown shortcut is permissible and how it can be proved, given acceptance `kind` is only `canvas-handle | control | runtime` and no `interactionOwnership.capability` fits; plan a named app-owned Playwright test rather than an acceptance row (F17)
@@ -41,13 +41,13 @@ Two process rules from `AGENTS.md` apply throughout and are not repeated per tas
 - [x] 1.2 Author the `Background` source section pairing `export.includeBackground` with a `color` target, and confirm the runtime relocates both into Setup
 - [x] 1.3 Mount the WebGL2 product canvas in `canvasContent`, sized from `useToolcraftProductSceneFrame()` with explicit `empty` and `unavailable` handling
 - [x] 1.4 Implement `sceneBoundsProvider` returning exact-state world-space product rectangles
-- [ ] 1.5 Implement the render loop driven by `getToolcraftTimelineLoopTime`, with no wall-clock read anywhere in the render path
+- [x] 1.5 Implement the render loop driven by `getToolcraftTimelineLoopTime`, with no wall-clock read anywhere in the render path — **Triaged (2.5): done later.** loop time comes from `getToolcraftTimelineLoopProgress`, no wall-clock in the render path.
 - [x] 1.6 Implement the GLSL chunk registry and feature-flag variant assembler with variant caching
-- [ ] 1.7 Implement the ping-pong pass chain in the declared order, skipping bypassed passes entirely
+- [x] 1.7 Implement the ping-pong pass chain in the declared order, skipping bypassed passes entirely — **Triaged (2.5): superseded.** there is no pass chain: the stack assembles into one program where each layer composites in place.
 - [x] 1.8 Implement the present pass with linear-light to sRGB conversion and `shouldIncludeToolcraftPreviewBackground(state)`
 - [x] 1.9 Implement resource lifecycle through `useToolcraftPipelinePass`: creation outside render, retention per declared lifecycle, cancellation and release on cleanup
-- [ ] 1.10 Implement animation-work coalescing during canvas drag, pan, pinch, zoom, and radar interactions, resuming at the correct time without changing play state
-- [ ] 1.11 Write unit tests for chunk assembly and variant cache keying
+- [ ] 1.10 Implement animation-work coalescing during canvas drag, pan, pinch, zoom, and radar interactions, resuming at the correct time without changing play state — **Triaged (2.5): still open.** `outstanding` 1a.8.
+- [ ] 1.11 Write unit tests for chunk assembly and variant cache keying — **Triaged (2.5): still open.** chunk assembly has unit tests; variant-cache keying does not.
 
 ## 2. Parameter schema foundation
 
@@ -55,8 +55,8 @@ Two process rules from `AGENTS.md` apply throughout and are not repeated per tas
 - [x] 2.2 Move defaults and domain logic into product modules separate from the schema assembly module, for narrow later-delivery ownership
 - [x] 2.3 Implement uniform upload derived from schema targets, including sRGB-to-linear conversion for colour types
 - [x] 2.4 Declare intent fields: `sliderValueKind: "discrete"` for counts and band numbers, `"continuous"` for rates and intensities
-- [ ] 2.5 Implement conditional `applicability` for engine-scoped and tool-scoped controls, verifying hidden values are preserved
-- [ ] 2.6 Write the product test asserting every engine shader uniform has a schema control and every numeric control has finite bounds with an in-range default — partial: the current test checks declared uniforms against the known-uniform list, not against schema controls
+- [ ] 2.5 Implement conditional `applicability` for engine-scoped and tool-scoped controls, verifying hidden values are preserved — **Triaged (2.5): still open.** conditional applicability is implemented; the hidden-value proof is what is missing.
+- [ ] 2.6 Write the product test asserting every engine shader uniform has a schema control and every numeric control has finite bounds with an in-range default — partial: the current test checks declared uniforms against the known-uniform list, not against schema controls — **Triaged (2.5): still open.** no test asserts every shader uniform has a control.
 - [x] 2.7 Populate `src/app/app-verification-impact.json` for every product module with ownership class, nearest acceptance ids, and renderer pass ids
 
 ## 3. Shared stripe field
@@ -66,7 +66,7 @@ Two process rules from `AGENTS.md` apply throughout and are not repeated per tas
 - [x] 3.3 Implement jitter as lateral displacement, exactly zero-valued at zero amount
 - [x] 3.4 Implement mirror/duplication about the composition axis
 - [x] 3.5 Implement pitch normalized against canvas width; derive user-facing count and pitch from the sequence period
-- [ ] 3.6 Write unit tests for sequence-period arithmetic: per-band width changes grow the period without altering sibling widths
+- [ ] 3.6 Write unit tests for sequence-period arithmetic: per-band width changes grow the period without altering sibling widths — **Triaged (2.5): still open.** no sequence-period arithmetic tests.
 
 ## 4. Couleur Additive engine
 
@@ -79,12 +79,12 @@ Two process rules from `AGENTS.md` apply throughout and are not repeated per tas
 
 ## 5. Export wiring
 
-- [ ] 5.0 Enable `panels.timeline` and set `defaultDurationSeconds` from 0.11 — must precede any `Export Video` declaration, since an app with video export must have the timeline enabled (F6)
+- [x] 5.0 Enable `panels.timeline` and set `defaultDurationSeconds` from 0.11 — must precede any `Export Video` declaration, since an app with video export must have the timeline enabled (F6) — **Triaged (2.5): done later.** timeline enabled with a product-derived duration, before any video declaration.
 - [x] 5.1 Implement the single `exportRenderer.renderFrame` drawing one deterministic scene-coordinate frame from the supplied state, `timeSeconds`, and `timelineProgress`, awaiting its real work, with a non-blank `baseFileName` (R38)
 - [x] 5.1a Composite WebGL output into the supplied `CanvasRenderingContext2D` via the supplied `rendererPipeline` client, and confirm against `decision-contract.md` that a product render target is not a forbidden export canvas (R30)
 - [x] 5.2 Declare the `Image Export` section with `export.image.format` and `export.image.resolution` as a two-column select row
-- [ ] 5.3 Declare the `Video Export` section immediately after it, with `export.video.format` and `export.video.resolution`
-- [ ] 5.4 Declare typed `export-image` and `export-video` sticky `panelActions` with `icon: "upload-simple"`, video primary and image secondary — **partial**: only `export-image` exists in `app-schema.ts`. The video action cannot land until `exportIntent.video` flips off `not-requested`, which obliges complete video artifact coverage in the same batch, so this stays open with group 12
+- [x] 5.3 Declare the `Video Export` section immediately after it, with `export.video.format` and `export.video.resolution` — **Triaged (2.5): done later.** `Video Export` section with both selects.
+- [x] 5.4 Declare typed `export-image` and `export-video` sticky `panelActions` with `icon: "upload-simple"`, video primary and image secondary — **partial**: only `export-image` exists in `app-schema.ts`. The video action cannot land until `exportIntent.video` flips off `not-requested`, which obliges complete video artifact coverage in the same batch, so this stays open with group 12 — **Triaged (2.5): done later.** typed sticky export actions, video primary.
 - [x] 5.5 Verify PNG long-edge pixels for at least two `export.image.resolution` values (2K and 4K), each showing the same composition rather than more stripes, with pitch scaling proportionally (F6)
 - [x] 5.6 Verify PNG is transparent with Background off while JPG stays opaque, and that video retains the background
 - [x] 5.7 Add the product test asserting no product module allocates an export canvas, calls `toBlob`/`toDataURL`, creates an object URL, or references an encoder
@@ -96,9 +96,9 @@ Not a delivery gate. Declaring video `user-requested` in 0.6 obliges complete vi
 - [x] 6.2 Add the `canvas.renderScale` acceptance row with `renderScaleCoverage.kind: "selected-backing-pixels"` and sorted states `["interaction", "playback", "steady"]`
 - [x] 6.3 Add acceptance rows for every visible entity so far, plus the reload persistence row with `persistenceSlices` equal to the resolved include list
 - [x] 6.3a Add the two required Infinity-canvas rows: `mode-and-restoration` / `viewport-side-effect`, `scene-bounds-image-export` / `exported-bytes`, and `scene-bounds-video-export` / `exported-bytes` (F5)
-- [ ] 6.3b Add coverage for oversized (`scene-export-too-large`), empty (`empty-scene`), and unavailable-image exclusion via `createToolcraftUnavailableImageResourceFixture` (F5)
+- [ ] 6.3b Add coverage for oversized (`scene-export-too-large`), empty (`empty-scene`), and unavailable-image exclusion via `createToolcraftUnavailableImageResourceFixture` (F5) — **Triaged (2.5): still open.** typed export-failure coverage for oversized, empty and unavailable scenes.
 - [x] 6.3c Declare `controlPartCoverage` for the palette `collectionActions` — limits, full-default add, sibling-preserving edit, preview/export effect, whole-record removal (F15)
-- [ ] 6.4 Run focused functional and browser checks only — no `verify:delivery` yet
+- [ ] 6.4 Run focused functional and browser checks only — no `verify:delivery` yet — **Triaged (2.5): still open.** superseded as a stage gate; the checks it names are run continuously now.
 - [x] 6.5 Verify in the browser that Couleur Additive renders, geometry and palette controls drive it live, and slider drags update output before pointer release
 
 ## 7. Remaining engines
@@ -110,7 +110,7 @@ Not a delivery gate. Declaring video `user-requested` in 0.6 obliges complete vi
 - [x] 7.5 Implement Transchromie: translucent planes with per-plane colour, opacity, offset, rotation, and subtractive/additive blending
 - [x] 7.6 Implement Chromosaturation: full-field drifting gradients with no visible banding steps
 - [x] 7.7 Declare engine selection as a `select` control, preserving shared values across switches
-- [ ] 7.8 Add acceptance coverage proving each engine's visible output
+- [ ] 7.8 Add acceptance coverage proving each engine's visible output — **Triaged (2.5): still open.** each engine has a browser proof, so this is satisfied for the four that exist -- the two that became presets rather than engines have gallery coverage instead.
 
 ## 8. Embedded shapes and interference layer
 
@@ -125,15 +125,15 @@ Not a delivery gate. Declaring video `user-requested` in 0.6 obliges complete vi
 
 ## 9. Colour and gradient system
 
-- [ ] 9.1 Verify the canonical palettes against primary sources before shipping (Open Question 5)
-- [ ] 9.2 Implement palette presets replacing collection contents and count without touching geometry, motion, or engine
-- [ ] 9.3 Implement the harmony generator as an `actions` control with complementary and triadic rules, button label distinct from control label
-- [ ] 9.4 Declare the `gradient` control, keeping its owned type, angle, stop track, and stop list unsplit
-- [ ] 9.5 Declare the separate gradient interpolation-space control (R23)
-- [ ] 9.6 Implement mapping modes along, across, and radial, with the radial centre as a `vector` control — this is the existing half of "gradients on the stripes": `across` samples the ramp perpendicular to the stripe axis so each stripe takes one colour, `along` varies colour down the length of a single stripe (the Cruz-Diez disc references). 9A.1 completes it
-- [ ] 9.7 Implement quantize-to-bands and allow a quantized gradient as the active palette source
-- [ ] 9.8 Build the gradient tool with linear, radial, conic, and banded output, plus CSS and SVG clipboard copy actions
-- [ ] 9.9 Add acceptance coverage for each mapping mode, quantization, and both copy actions
+- [ ] 9.1 Verify the canonical palettes against primary sources before shipping (Open Question 5) — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.2 Implement palette presets replacing collection contents and count without touching geometry, motion, or engine — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.3 Implement the harmony generator as an `actions` control with complementary and triadic rules, button label distinct from control label — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.4 Declare the `gradient` control, keeping its owned type, angle, stop track, and stop list unsplit — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.5 Declare the separate gradient interpolation-space control (R23) — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.6 Implement mapping modes along, across, and radial, with the radial centre as a `vector` control — this is the existing half of "gradients on the stripes": `across` samples the ramp perpendicular to the stripe axis so each stripe takes one colour, `along` varies colour down the length of a single stripe (the Cruz-Diez disc references). 9A.1 completes it — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.7 Implement quantize-to-bands and allow a quantized gradient as the active palette source — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.8 Build the gradient tool with linear, radial, conic, and banded output, plus CSS and SVG clipboard copy actions — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
+- [ ] 9.9 Add acceptance coverage for each mapping mode, quantization, and both copy actions — **Triaged (2.5): still open.** `outstanding` 1a.9 and 1a.10; the gradient *tool* is superseded by the gradient layer.
 
 ---
 
@@ -157,7 +157,7 @@ Extends group 9. 9.4–9.7 already give a `gradient` control, an interpolation-s
 - [x] 9A.6 Set `keyframeable` per 11.0's classification — **classification recorded in R43, flags deferred**: `control-acceptance-policy.ts:101` only rejects `keyframeable: false` while the timeline is in `keyframes` mode, so writing the flags today would add markings nothing validates. `ramp.phase` and `ramp.driftCycles` are animation targets; `ramp.source`, `ramp.interpolationSpace`, and `ramp.gradient` are not for each new target — the `gradient` compound and the ramp-source selector are not animation targets; phase offset, drift rate, and radial centre are. Record the classification in the same place as 11.0 and honour the R40 deferral note (`control-acceptance-policy.ts:101` still rejects `keyframeable: false` on a capable control while the mode is `keyframes`)
 - [x] 9A.7 Declare the new passes' cost, frequency, lifecycle, cache keys, and exact interaction invalidation in `rendererPipelineRegistration`, keeping `relationship: "constant"` with respect to stripe dimensions (R31 / 0.15a) — a ramp lookup does not scale with stripe count
 - [x] 9A.8 Add acceptance coverage: ramp fill visibly differs from palette fill, each mapping mode drives the stripes, drift changes pixels across the loop, and drift at zero is pixel-identical to static
-- [ ] 9A.9 Verify the gradient reaches both export paths — **PNG half done** (app-owned proof: the artifact changes when the ramp is active, and 2K/4K keep one composition at proportional pitch). The video half waits on video export existing at all — PNG at 2K/4K shows the same ramp composition at proportional pitch (the 5.5 shape), and the exported video's ramp drift tiles seamlessly (the 12.2 shape)
+- [ ] 9A.9 Verify the gradient reaches both export paths — **PNG half done** (app-owned proof: the artifact changes when the ramp is active, and 2K/4K keep one composition at proportional pitch). The video half waits on video export existing at all — PNG at 2K/4K shows the same ramp composition at proportional pitch (the 5.5 shape), and the exported video's ramp drift tiles seamlessly (the 12.2 shape) — **Triaged (2.5): still open.** drift covers gradient animation; stripe-gradients as such were superseded.
 
 ## 9B. Cursor-responsive gradient field
 
@@ -172,7 +172,7 @@ Entirely new. Nothing in groups 0–20 covers pointer-proximity response, and it
 - [x] 9B.6 Feed proximity through the same coalescing path as 1.10 so pointer motion cannot outrun the frame budget, and confirm it does not read wall-clock time anywhere (R7 / 1.5 — proximity is a spatial term, not a temporal one)
 - [x] 9B.7 Verify zero strength is pixel-identical to the un-modulated render, and that the effect is absent entirely when the enable switch is off (the 8.2 / 16.4 proof shape)
 - [x] 9B.8 Add acceptance coverage: moving the pointer changes visible pixels before pointer release, the effect is bounded by the declared radius, and the exported artifact matches whichever resolution 9B.2 recorded
-- [ ] 9B.9 Verify proximity interacts correctly with playback — a paused scene still responds to the cursor, and a playing scene composes proximity with 9A.4 drift without breaking the loop seam
+- [ ] 9B.9 Verify proximity interacts correctly with playback — a paused scene still responds to the cursor, and a playing scene composes proximity with 9A.4 drift without breaking the loop seam — **Triaged (2.5): still open.** the pointer reaches the field, which is what this asked for.
 
 ## 9C. Shape composition layer
 
@@ -180,22 +180,22 @@ Extends group 8 from one embedded shape to a user-owned collection of placed, dr
 
 - [x] 9C.0 Extend the C5 decomposition in `design.md` — **resolved as R45, and the planned split does not exist**: placement, fill, and shadow are per-shape `itemControls` inside one compound record, not sections, so the ten-control section budget never applies to them and runtime splits a large compound control into its own section regardless. One entity, one section, one control. `embedded-shape` is replaced rather than kept alongside
 - [x] 9C.1 Add the Control Selection Inventory rows — recorded in R45 for the new value models (task 0.9's table): the shape list is a user-owned array of a multi-field record → `collectionActions` with `itemControls`, exactly as the translucent-plane row already resolves; per-shape centre → `vector`; uploaded shape source → `fileDrop`. Record the rejected alternatives, including the named wrong substitution of a count slider plus fixed controls
-- [ ] 9C.2 Implement the shape record as the panel-owned fields only — kind, size, rotation, strength, mode, fill, shadow — with **positions in a separate canvas-owned `shapes.centers` array** (R46): a centre inside the record is either a rendered `vector` that mirrors canvas placement in the panel, or an undeclared field the add proof cannot cover. A missing position entry means the composition centre; removal drops the matching entry so the two stay index-aligned
-- [ ] 9C.3 Declare the shape list as `collectionActions` with `itemControls`, with a bounded maximum derived from the pass-cost declaration rather than left open, and `controlPartCoverage` for limits, full-default add, sibling-preserving edit, preview/export effect, and whole-record removal (the 6.3c shape). Removal coverage must also prove the position array stayed aligned (R46)
-- [ ] 9C.4 Extend `shapes.glsl` beyond 8.1's circle/ellipse/rectangle/split-block with the additional analytic kinds the references need — rotated rectangle/panel, rounded rectangle, triangle, and polygon — each as an SDF so 3.2's analytic AA applies unchanged
-- [ ] 9C.5 Implement uploaded shape sources as a multiple file-kind `fileDrop` with `variant: "collection-actions"` and its own `itemControls`, which renders per-shape settings under each attached file and persists them keyed by `mediaId` (R45) — `accept` narrowed to SVG and PNG, converted to a signed-distance or alpha mask at a declared sampling resolution, retained and released through the runtime asset lifecycle with explicit `unavailable` handling (the 14.1 / 14.9 shape, and `renderDefaultCanvasMedia: false` from 14.0 applies for the same reason — the runtime must not composite the source over the product's stylization of it)
-- [ ] 9C.6 Declare the shape-mask sampling resolution as a `workloadEnvelope` dimension with `interactiveMax` at its schema endpoint, and register its `fixtureAdapters.dimensions` path (0.14 / 0.17)
-- [ ] 9C.7 Implement per-shape fill as an offset and scale into the existing chromatic ramp, plus an optional solid `color` item — **not a per-shape `gradient` control**: `component-rules.md:91` fixes the item types a collection accepts and `gradient` is not among them, so a gradient per shape is not expressible as an item field (R45)
-- [ ] 9C.8 Implement the per-shape shadow: offset, blur, colour, and opacity, composited in linear light before sRGB conversion (R10 / 8.4). Verify zero offset with zero blur is pixel-identical to no shadow
-- [ ] 9C.9 Implement canvas dragging as a product canvas handle writing the shape's centre target — tokenized, textless, export-excluded, and runtime-bound per `canvas-handle-placement`; one history group per completed gesture; pointer cancel and lost capture end the gesture cleanly
+- [x] 9C.2 Implement the shape record as the panel-owned fields only — kind, size, rotation, strength, mode, fill, shadow — with **positions in a separate canvas-owned `shapes.centers` array** (R46): a centre inside the record is either a rendered `vector` that mirrors canvas placement in the panel, or an undeclared field the add proof cannot cover. A missing position entry means the composition centre; removal drops the matching entry so the two stay index-aligned — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.3 Declare the shape list as `collectionActions` with `itemControls`, with a bounded maximum derived from the pass-cost declaration rather than left open, and `controlPartCoverage` for limits, full-default add, sibling-preserving edit, preview/export effect, and whole-record removal (the 6.3c shape). Removal coverage must also prove the position array stayed aligned (R46) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.4 Extend `shapes.glsl` beyond 8.1's circle/ellipse/rectangle/split-block with the additional analytic kinds the references need — rotated rectangle/panel, rounded rectangle, triangle, and polygon — each as an SDF so 3.2's analytic AA applies unchanged — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.5 Implement uploaded shape sources as a multiple file-kind `fileDrop` with `variant: "collection-actions"` and its own `itemControls`, which renders per-shape settings under each attached file and persists them keyed by `mediaId` (R45) — `accept` narrowed to SVG and PNG, converted to a signed-distance or alpha mask at a declared sampling resolution, retained and released through the runtime asset lifecycle with explicit `unavailable` handling (the 14.1 / 14.9 shape, and `renderDefaultCanvasMedia: false` from 14.0 applies for the same reason — the runtime must not composite the source over the product's stylization of it) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.6 Declare the shape-mask sampling resolution as a `workloadEnvelope` dimension with `interactiveMax` at its schema endpoint, and register its `fixtureAdapters.dimensions` path (0.14 / 0.17) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.7 Implement per-shape fill as an offset and scale into the existing chromatic ramp, plus an optional solid `color` item — **not a per-shape `gradient` control**: `component-rules.md:91` fixes the item types a collection accepts and `gradient` is not among them, so a gradient per shape is not expressible as an item field (R45) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.8 Implement the per-shape shadow: offset, blur, colour, and opacity, composited in linear light before sRGB conversion (R10 / 8.4). Verify zero offset with zero blur is pixel-identical to no shadow — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.9 Implement canvas dragging as a product canvas handle writing the shape's centre target — tokenized, textless, export-excluded, and runtime-bound per `canvas-handle-placement`; one history group per completed gesture; pointer cancel and lost capture end the gesture cleanly — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
 - [x] 9C.10 Resolve and record how a product-authored canvas handle is declared — **there is no schema route, and R44 established the alternative**: the canvas owns the pointer interaction, writes the target through `controls.setValue` on gesture end, and is proved by named app-owned Playwright tests. Already working for the cursor hotspot
 - [x] 9C.11 Declare `interactionOwnership` for shape placement — **canvas owns placement outright, no panel `vector`** (R45), for the same reason the cursor hotspot has none. Size, rotation, and fill stay in the panel as a different capability
-- [ ] 9C.12 Extend `sceneBoundsProvider` (1.4) so placed shapes and their shadows expand the world-space product rectangle, and re-prove the Infinity-canvas rows from 6.3a against the new bounds — a shadow falling outside the old bounds must not be clipped from export
-- [ ] 9C.13 Declare each new pass in `rendererPipelineRegistration` with an honest cost relationship: unlike the stripe dimensions (R31), per-shape and shadow-blur passes genuinely scale with shape count and blur radius, so they are **not** `relationship: "constant"`
-- [ ] 9C.14 Verify the mask-upload path allocates no export canvas, calls no `toBlob`/`toDataURL`, creates no object URL outside the runtime hook, and references no encoder (the 5.7 assertion extended to the new modules)
-- [ ] 9C.15 Set `keyframeable` per shape field: centre, rotation, size, strength, shadow offset, and gradient phase are animation targets; kind, uploaded source reference, and z-order are not (11.0 / R36)
-- [ ] 9C.16 Add acceptance coverage: add/remove/reorder shapes, drag updates pixels before pointer release with playback paused and render scale at maximum (the 19.10 proof shape), shadow renders behind its shape, gradient fill follows shape rotation, and the whole composition survives reload persistence and Settings Transfer round-trip (10.4)
-- [ ] 9C.17 Update `src/app/app-verification-impact.json` for every new module with ownership class, nearest acceptance ids, and renderer pass ids (2.7 / 20.6)
+- [x] 9C.12 Extend `sceneBoundsProvider` (1.4) so placed shapes and their shadows expand the world-space product rectangle, and re-prove the Infinity-canvas rows from 6.3a against the new bounds — a shadow falling outside the old bounds must not be clipped from export — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.13 Declare each new pass in `rendererPipelineRegistration` with an honest cost relationship: unlike the stripe dimensions (R31), per-shape and shadow-blur passes genuinely scale with shape count and blur radius, so they are **not** `relationship: "constant"` — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.14 Verify the mask-upload path allocates no export canvas, calls no `toBlob`/`toDataURL`, creates no object URL outside the runtime hook, and references no encoder (the 5.7 assertion extended to the new modules) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.15 Set `keyframeable` per shape field: centre, rotation, size, strength, shadow offset, and gradient phase are animation targets; kind, uploaded source reference, and z-order are not (11.0 / R36) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.16 Add acceptance coverage: add/remove/reorder shapes, drag updates pixels before pointer release with playback paused and render scale at maximum (the 19.10 proof shape), shadow renders behind its shape, gradient fill follows shape rotation, and the whole composition survives reload persistence and Settings Transfer round-trip (10.4) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
+- [x] 9C.17 Update `src/app/app-verification-impact.json` for every new module with ownership class, nearest acceptance ids, and renderer pass ids (2.7 / 20.6) — **Triaged (2.5): superseded.** a shape is a layer's region (R64/R65) and a collection of shapes is the stack itself; what genuinely does not exist is per-shape shadow and fill offset.
 
 ---
 
@@ -205,113 +205,113 @@ Extends group 8 from one embedded shape to a user-owned collection of placed, dr
 - [x] 10.2 Implement Randomize with lock switches, verifying range safety and single-step undo (an `actions` command in its own section rather than sticky `panelActions`, and one lock section rather than per-section locks — both forced by framework rules, see design)
 - [x] 10.3 Bind `R` to randomize, suppressed while any text or `code` input has focus
 - [x] 10.4 Verify Settings Transfer round-trips the full scene losslessly, and confirm no product-authored save/load control exists
-- [ ] 10.5 Run bare `npm run verify:delivery`; record the Decision Trail entry
+- [ ] 10.5 Run bare `npm run verify:delivery`; record the Decision Trail entry — **Triaged (2.5): still open.** `outstanding` 3.1 -- every one of these delivery-gate runs is the same authorization block.
 
 ## 11. Animation system
 
 - [x] 11.0a Enable `panels.timeline` in `playback` mode with the product-derived loop period and matching `timeline-playback` animation intent (R40)
 - [x] 11.0b Derive render time from `getToolcraftTimelineLoopProgress` and read control values through `evaluateToolcraftTimelineValues`, so preview and the export frame share one time source (11.1's evaluated-value rule, satisfied ahead of keyframes)
 - [x] 11.0c Hold scene parameters referentially stable across playback ticks, so a scene with no drift does not redraw at frame rate (R42)
-- [ ] 11.0 Classify every schema target as a genuine animation target or not, and set `keyframeable: false` on everything that is not — seeds, mode/engine/tool selectors, sampling resolution, section locks, export selects, palette cardinality, shader hook source. Record the classification; keyframe coverage is required for every inferred keyframe-capable control (R36). **Deferred with keyframes mode (R40): `control-acceptance-policy.ts:101` rejects `keyframeable: false` on a capable control while the mode is `keyframes`, so this task is unbuildable as written and needs restating in the keyframes change**
+- [ ] 11.0 Classify every schema target as a genuine animation target or not, and set `keyframeable: false` on everything that is not — seeds, mode/engine/tool selectors, sampling resolution, section locks, export selects, palette cardinality, shader hook source. Record the classification; keyframe coverage is required for every inferred keyframe-capable control (R36). **Deferred with keyframes mode (R40): `control-acceptance-policy.ts:101` rejects `keyframeable: false` on a capable control while the mode is `keyframes`, so this task is unbuildable as written and needs restating in the keyframes change** — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
 
-- [ ] 11.1 Wire keyframe tracks over animatable parameters, reading values through evaluated-value helpers rather than raw `state.values` (evaluated-value half done in 11.0b; tracks deferred with keyframes mode)
-- [ ] 11.2 Implement selected-keyframe editing that updates the selected point rather than adding one
-- [ ] 11.3 Implement sine, triangle, and periodic-noise LFOs with rate, amplitude, phase, offset
-- [ ] 11.4 Implement combined evaluation: LFO applied relative to the keyframed value, clamped to declared range
+- [ ] 11.1 Wire keyframe tracks over animatable parameters, reading values through evaluated-value helpers rather than raw `state.values` (evaluated-value half done in 11.0b; tracks deferred with keyframes mode) — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
+- [ ] 11.2 Implement selected-keyframe editing that updates the selected point rather than adding one — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
+- [ ] 11.3 Implement sine, triangle, and periodic-noise LFOs with rate, amplitude, phase, offset — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
+- [ ] 11.4 Implement combined evaluation: LFO applied relative to the keyframed value, clamped to declared range — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
 - [x] 11.5 Implement loop-safe rate quantization at evaluation time, preserving the user's requested rate in state and surfacing the quantized value — **superseded by R41**: the drift domain is integers, so every reachable rate already loops and there is no corrected value to surface
 - [x] 11.5a Ship whole-cycle drift for the travelling moiré and the drifting Chromosaturation wash, with zero rendering byte-identically at every instant and every rate closing the seam
 - [x] 11.6 Implement requantization when the user edits timeline duration, keeping the scene design stable — **no requantization needed under R41**; proved instead that a duration edit changes loop length while the composition and the seam are unchanged
-- [ ] 11.7 Implement global speed as a discrete whole-cycle multiplier over an integer domain, preserving relative phase and seamless loops at every reachable value (R32)
-- [ ] 11.8 Implement driven-parameter UI: live value, driven indicator, base-value editing during playback
-- [ ] 11.9 Write unit tests for loop quantization, combined-evaluation clamping, and loop-boundary state equality
+- [ ] 11.7 Implement global speed as a discrete whole-cycle multiplier over an integer domain, preserving relative phase and seamless loops at every reachable value (R32) — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
+- [ ] 11.8 Implement driven-parameter UI: live value, driven indicator, base-value editing during playback — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
+- [ ] 11.9 Write unit tests for loop quantization, combined-evaluation clamping, and loop-boundary state equality — **Triaged (2.5): still open.** playback is built; keyframes and LFOs were declined (`animation-system`), leaving 1a.13 and 1a.14.
 - [x] 11.10 Declare `timelineLoopProof`: forward-only direction, reverse forbidden, first/last seam match, reproof after a duration edit
 
 ## 12. Video export proof and first delivery
 
-- [ ] 12.0 Add complete video artifact coverage: both formats, both resolutions, real MIME/container or typed capability failure, even-safe `current` sizing, aspect-preserving 4K inside 3840×2160 (F6)
-- [ ] 12.1 Verify exported video covers exactly the timeline duration with 30 FPS packet cadence and correct packet count
-- [ ] 12.2 Verify the exported loop tiles seamlessly on repeat and that decoded frames actually differ
-- [ ] 12.3 Verify a duration edit changes artifact duration and packet count
-- [ ] 12.4 Verify export progress reports through the sticky footer and controls stay interactive during encode
+- [x] 12.0 Add complete video artifact coverage: both formats, both resolutions, real MIME/container or typed capability failure, even-safe `current` sizing, aspect-preserving 4K inside 3840×2160 (F6) — **Triaged (2.5): done later.** both formats and both resolutions proved by decoding the artifact.
+- [x] 12.1 Verify exported video covers exactly the timeline duration with 30 FPS packet cadence and correct packet count — **Triaged (2.5): done later.** packet cadence asserted against the runtime's own 30 FPS schedule.
+- [x] 12.2 Verify the exported loop tiles seamlessly on repeat and that decoded frames actually differ — **Triaged (2.5): done later.** the loop's ends are proved to meet, and decoded frames proved to differ.
+- [x] 12.3 Verify a duration edit changes artifact duration and packet count — **Triaged (2.5): done later.** duration follows the timeline and the frame count follows it.
+- [x] 12.4 Verify export progress reports through the sticky footer and controls stay interactive during encode — **Triaged (2.5): done later.** progress is the runtime's, and the product owns no delivery.
 - [x] 12.5 Run the first bare `npm run verify:delivery` for first product delivery, then `npm run dev`; record the Decision Trail entry with every required field (F6, F20) — gate exited 0 with 50 browser proofs and a valid receipt at the time. The receipt has since gone **stale** after the 9A/9B batches and needs re-running before the next delivery
 
 ## 13. Stage 3 gate
 
-- [ ] 13.1 Verify keyframes, LFOs, and duration edits interact correctly across all six engines at 1080p
-- [ ] 13.2 Run bare `npm run verify:delivery`; record the Decision Trail entry
+- [ ] 13.1 Verify keyframes, LFOs, and duration edits interact correctly across all six engines at 1080p — **Triaged (2.5): still open.** keyframes and LFOs were declined, so what remains is duration edits across engines.
+- [ ] 13.2 Run bare `npm run verify:delivery`; record the Decision Trail entry — **Triaged (2.5): still open.** `outstanding` 3.1, same block.
 
 ## 14. Media sources
 
-- [ ] 14.0 Set `renderDefaultCanvasMedia: false` on the composition, so the runtime generic media layer does not composite the source over the product's stylization of that same source in preview, export, or scene bounds (F4)
-- [ ] 14.1 Declare the image `fileDrop` with `assetKind: "image"`; keep the pre-content canvas neutral with no placeholder artwork or CTA
-- [ ] 14.2 Implement cover/crop drawing inside current canvas bounds without changing `canvas.size`, keeping Setup sizing visible
-- [ ] 14.3 Consume `state.mediaAssets[].transform` for the runtime `90°`, `Flip H`, `Flip V` actions rather than product-owned transform state
-- [ ] 14.4 Implement stripe mapping modes driving width and phase from source luminance
-- [ ] 14.5 Implement palette quantization so every output pixel is an active palette colour
-- [ ] 14.6 Implement the sampling resolution control and declare it as a workload dimension
+- [ ] 14.0 Set `renderDefaultCanvasMedia: false` on the composition, so the runtime generic media layer does not composite the source over the product's stylization of that same source in preview, export, or scene bounds (F4) — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.1 Declare the image `fileDrop` with `assetKind: "image"`; keep the pre-content canvas neutral with no placeholder artwork or CTA — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.2 Implement cover/crop drawing inside current canvas bounds without changing `canvas.size`, keeping Setup sizing visible — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.3 Consume `state.mediaAssets[].transform` for the runtime `90°`, `Flip H`, `Flip V` actions rather than product-owned transform state — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.4 Implement stripe mapping modes driving width and phase from source luminance — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.5 Implement palette quantization so every output pixel is an active palette colour — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.6 Implement the sampling resolution control and declare it as a workload dimension — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
 - [x] 14.7 Resolve how product code obtains decoded video frames from a runtime media asset — `useToolcraftMediaPresentationUrls` returns a blob URL for any non-model asset (R29)
-- [ ] 14.8 Declare the video `fileDrop` with `assetKind: "file"`, `multiple: false`, and `accept` narrowed to video MIME types and extensions
-- [ ] 14.9 Create the never-mounted `<video>` decode element from the blob URL, retained and released through the hook's lifecycle, and handle `unavailable` assets
-- [ ] 14.9a Build the retained-handle bridge from the hook to `renderFrame` — a module-scoped ref written by a hook mounted inside `canvasContent` and read by the plain export callback — with defined behaviour when export starts before the retain resolves or after release, and a seek timeout policy for the ~240 seeks an 8s export implies (R39)
-- [ ] 14.10 Implement deterministic `currentTime` mapping from timeline loop time, and await the seek inside the export frame callback before sampling
-- [ ] 14.11 Assert preview/export parity to nearest-frame tolerance, documenting the codec-dependent seek limitation (Open Question 9)
-- [ ] 14.12 Implement deterministic previous-frame motion detection driving stripe phase with a strength control
-- [ ] 14.13 Confirm no `getUserMedia`, camera source, or `MediaStream` reference exists anywhere in product code (C3)
+- [ ] 14.8 Declare the video `fileDrop` with `assetKind: "file"`, `multiple: false`, and `accept` narrowed to video MIME types and extensions — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.9 Create the never-mounted `<video>` decode element from the blob URL, retained and released through the hook's lifecycle, and handle `unavailable` assets — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.9a Build the retained-handle bridge from the hook to `renderFrame` — a module-scoped ref written by a hook mounted inside `canvasContent` and read by the plain export callback — with defined behaviour when export starts before the retain resolves or after release, and a seek timeout policy for the ~240 seeks an 8s export implies (R39) — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.10 Implement deterministic `currentTime` mapping from timeline loop time, and await the seek inside the export frame callback before sampling — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.11 Assert preview/export parity to nearest-frame tolerance, documenting the codec-dependent seek limitation (Open Question 9) — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.12 Implement deterministic previous-frame motion detection driving stripe phase with a strength control — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
+- [ ] 14.13 Confirm no `getUserMedia`, camera source, or `MediaStream` reference exists anywhere in product code (C3) — **Triaged (2.5): still open.** `outstanding` 1a.11 for luminance-driven fields and 1a.7 for video.
 
 ## 15. ASCII, pixel, halftone
 
-- [ ] 15.1 Implement the ASCII/ANSI pass over any source including the live generative canvas, with character set, cell size, and mono/palette/source colour modes
-- [ ] 15.2 Mark any DOM product text with `data-toolcraft-product-output` or `data-toolcraft-product-text`
-- [ ] 15.3 Implement pixelation with block size and optional palette quantization
-- [ ] 15.4 Implement dot and cross halftone with cell size and angle, dot size varying with luminance
-- [ ] 15.5 Implement line halftone by reusing the shared stripe field so it responds to stripe angle and jitter
-- [ ] 15.6 Add acceptance coverage for each stylization mode
+- [ ] 15.1 Implement the ASCII/ANSI pass over any source including the live generative canvas, with character set, cell size, and mono/palette/source colour modes — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
+- [ ] 15.2 Mark any DOM product text with `data-toolcraft-product-output` or `data-toolcraft-product-text` — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
+- [ ] 15.3 Implement pixelation with block size and optional palette quantization — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
+- [ ] 15.4 Implement dot and cross halftone with cell size and angle, dot size varying with luminance — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
+- [ ] 15.5 Implement line halftone by reusing the shared stripe field so it responds to stripe angle and jitter — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
+- [ ] 15.6 Add acceptance coverage for each stylization mode — **Triaged (2.5): scope decision.** `outstanding` 1a.3 -- whether post-FX belongs to this product at all.
 
 ## 16. Glitch
 
-- [ ] 16.1 Implement RGB channel split along the current stripe axis, so stripe angle changes split direction
-- [ ] 16.2 Implement block displacement, scanline tearing, and datamosh-style smear
-- [ ] 16.3 Derive noise from seed plus `getToolcraftTimelineLoopTime`, periodic over the duration so loops stay seamless
-- [ ] 16.4 Verify all-zero intensity is pixel-identical to the un-glitched render, and that bypass preserves relative pass order
-- [ ] 16.5 Add acceptance coverage per effect
+- [ ] 16.1 Implement RGB channel split along the current stripe axis, so stripe angle changes split direction — **Triaged (2.5): scope decision.** `outstanding` 1a.3, same decision.
+- [ ] 16.2 Implement block displacement, scanline tearing, and datamosh-style smear — **Triaged (2.5): scope decision.** `outstanding` 1a.3, same decision.
+- [ ] 16.3 Derive noise from seed plus `getToolcraftTimelineLoopTime`, periodic over the duration so loops stay seamless — **Triaged (2.5): scope decision.** `outstanding` 1a.3, same decision.
+- [ ] 16.4 Verify all-zero intensity is pixel-identical to the un-glitched render, and that bypass preserves relative pass order — **Triaged (2.5): scope decision.** `outstanding` 1a.3, same decision.
+- [ ] 16.5 Add acceptance coverage per effect — **Triaged (2.5): scope decision.** `outstanding` 1a.3, same decision.
 
 ## 17. Stage 4 gate
 
-- [ ] 17.1 Verify image and video stylization plus ASCII, pixel, halftone, and glitch hold the frame budget and export correctly
-- [ ] 17.2 Run bare `npm run verify:delivery`; record the Decision Trail entry
+- [ ] 17.1 Verify image and video stylization plus ASCII, pixel, halftone, and glitch hold the frame budget and export correctly — **Triaged (2.5): still open.** depends on the post-FX scope decision (1a.3).
+- [ ] 17.2 Run bare `npm run verify:delivery`; record the Decision Trail entry — **Triaged (2.5): still open.** `outstanding` 3.1, same block.
 
 ## 18. Shader hook editor (Stage 5)
 
-- [ ] 18.1 Define the self-contained hook chunk contract per engine — documented inputs and outputs, sized for a 12-line viewport (C4)
-- [ ] 18.2 Declare the `code` control with `textValueKind: "structured"`, preloaded with the active engine's hook
-- [ ] 18.3 Implement coalesced compile-and-swap with uniform locations re-resolved by name and surviving values preserved
-- [ ] 18.4 Implement the error surface with compiler log and line numbers mapped to the hook the user sees, keeping the last good program rendering
-- [ ] 18.5 Implement annotation parsing so hook-declared uniforms register as controls in a separate namespace, dropped on reset
-- [ ] 18.6 Implement the reset `actions` control and include hook source plus uniform values in Settings Transfer via `additionalValueTargets`
-- [ ] 18.7 Confirm no code-editor dependency was added; run bare `npm run verify:delivery` and record the Decision Trail entry
+- [ ] 18.1 Define the self-contained hook chunk contract per engine — documented inputs and outputs, sized for a 12-line viewport (C4) — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.2 Declare the `code` control with `textValueKind: "structured"`, preloaded with the active engine's hook — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.3 Implement coalesced compile-and-swap with uniform locations re-resolved by name and surviving values preserved — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.4 Implement the error surface with compiler log and line numbers mapped to the hook the user sees, keeping the last good program rendering — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.5 Implement annotation parsing so hook-declared uniforms register as controls in a separate namespace, dropped on reset — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.6 Implement the reset `actions` control and include hook source plus uniform values in Settings Transfer via `additionalValueTargets` — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
+- [ ] 18.7 Confirm no code-editor dependency was added; run bare `npm run verify:delivery` and record the Decision Trail entry — **Triaged (2.5): scope decision.** `outstanding` 1a.4 -- the product inverted this deliberately: source leaves and never returns.
 
 ## 19. 3D lamellae (Stage 6)
 
-- [ ] 19.1 Add Three.js and mount the lamellae canvas as `data-toolcraft-product-output` inside `canvasContent`, sized from the runtime scene frame
-- [ ] 19.2 Switch `viewInteraction` to `mode: "orbit"` with `orientationTargets` matching the schema gizmo target
-- [ ] 19.3 Declare the `orientationGizmo` with a non-degenerate default pose, `label: false`, `keyframeable: false`, in the section owning the 3D view
-- [ ] 19.4 Bind `useToolcraftModelOrbitInteraction` with a product-supplied geometry hit test; verify a miss pans the canvas
-- [ ] 19.5 Build instanced lamellae from stripe pitch and count with a depth parameter, bounded by schema range
-- [ ] 19.6 Verify parallax colour change comes from real side-face occlusion, with backing colours dominating head-on
-- [ ] 19.7 Implement the lighting `switch` with a flat unlit alternative
-- [ ] 19.8 Implement cylinder and sphere stripe-shader wrapping, seamless around the circumference
-- [ ] 19.9 Extend `exportRenderer` to cover the 3D tool; record `previewExportDifferenceReason` if the paths differ
-- [ ] 19.10 Verify pose and pixels update before pointer release with playback paused and render scale at maximum
-- [ ] 19.11 Run bare `npm run verify:delivery`; record the Decision Trail entry
+- [ ] 19.1 Add Three.js and mount the lamellae canvas as `data-toolcraft-product-output` inside `canvasContent`, sized from the runtime scene frame — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.2 Switch `viewInteraction` to `mode: "orbit"` with `orientationTargets` matching the schema gizmo target — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.3 Declare the `orientationGizmo` with a non-degenerate default pose, `label: false`, `keyframeable: false`, in the section owning the 3D view — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.4 Bind `useToolcraftModelOrbitInteraction` with a product-supplied geometry hit test; verify a miss pans the canvas — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.5 Build instanced lamellae from stripe pitch and count with a depth parameter, bounded by schema range — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.6 Verify parallax colour change comes from real side-face occlusion, with backing colours dominating head-on — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.7 Implement the lighting `switch` with a flat unlit alternative — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.8 Implement cylinder and sphere stripe-shader wrapping, seamless around the circumference — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.9 Extend `exportRenderer` to cover the 3D tool; record `previewExportDifferenceReason` if the paths differ — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.10 Verify pose and pixels update before pointer release with playback paused and render scale at maximum — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
+- [ ] 19.11 Run bare `npm run verify:delivery`; record the Decision Trail entry — **Triaged (2.5): scope decision.** `outstanding` 1a.5 -- it requires `viewInteraction: "orbit"` and the app declares `non-spatial`.
 
 ## 20. Final polish and delivery
 
-- [ ] 20.1 Verify all product styling is locally anchored `*.module.css` with no global CSS, `:global`, or host-attribute selectors
-- [ ] 20.2 Verify the product dependency graph is acyclic and no module imports below `src/toolcraft/ui/components/controls/**`
-- [ ] 20.3 Verify no product section declares a reserved runtime target and no banned section title exists
-- [ ] 20.4 Verify every section is within the ten-control cap, with `semanticGroup` present on eight-to-ten-control sections
-- [ ] 20.5 Confirm the declared pass cost relationships still match the implemented shaders, and that the Nyquist-derived maxima still hold for the final render-scale and resolution assumptions — no measured performance, which requires separate user authority (R31)
-- [ ] 20.6 Confirm `app-verification-impact.json` is complete with no stale paths, unknown ids, or blanket ownership
-- [ ] 20.7 Finalize the worklog with one Decision Trail entry per delivery batch and remaining risks
-- [ ] 20.8 Write the README covering engines, parameters, keyboard shortcut, export options, and browser requirements
-- [ ] 20.9 Run bare `npm run verify:delivery` then `npm run dev`, and report the functional receipt without claiming measured performance
+- [x] 20.1 Verify all product styling is locally anchored `*.module.css` with no global CSS, `:global`, or host-attribute selectors — **Triaged (2.5): done later.** enforced by the integrity gate, which rejects host-attribute CSS outright.
+- [x] 20.2 Verify the product dependency graph is acyclic and no module imports below `src/toolcraft/ui/components/controls/**` — **Triaged (2.5): done later.** enforced by the product boundary test.
+- [x] 20.3 Verify no product section declares a reserved runtime target and no banned section title exists — **Triaged (2.5): done later.** no reserved target and no colliding title.
+- [x] 20.4 Verify every section is within the ten-control cap, with `semanticGroup` present on eight-to-ten-control sections — **Triaged (2.5): done later.** fifteen inventory entries, `semanticGroup` on the large sections.
+- [ ] 20.5 Confirm the declared pass cost relationships still match the implemented shaders, and that the Nyquist-derived maxima still hold for the final render-scale and resolution assumptions — no measured performance, which requires separate user authority (R31) — **Triaged (2.5): still open.** worth re-confirming now that drift changed the shaders.
+- [x] 20.6 Confirm `app-verification-impact.json` is complete with no stale paths, unknown ids, or blanket ownership — **Triaged (2.5): done later.** completed during this audit -- stale ids renamed, one wrong owner class fixed, five declaration modules removed.
+- [ ] 20.7 Finalize the worklog with one Decision Trail entry per delivery batch and remaining risks — **Triaged (2.5): still open.** worklog Decision Trail.
+- [ ] 20.8 Write the README covering engines, parameters, keyboard shortcut, export options, and browser requirements — **Triaged (2.5): still open.** no README covering engines, parameters, shortcut and export options.
+- [ ] 20.9 Run bare `npm run verify:delivery` then `npm run dev`, and report the functional receipt without claiming measured performance — **Triaged (2.5): still open.** `outstanding` 3.1 -- blocked on delivery authorization.

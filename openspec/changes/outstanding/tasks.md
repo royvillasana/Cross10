@@ -50,7 +50,7 @@ here as they are found, so 1.1 produces work rather than only verdicts.
 - [ ] 2.2 **MCP delivery (SS group 9).** The primary delivery path: a package outside the signed app so it carries no integrity obligation, exposing the gallery and the assembled source for a named entry with parameter overrides
 - [ ] 2.3 **Preset corrections (SS group 10).** The palettes shipped in the gallery are Croix10's, recorded there as *plausible rather than verified*. Checking them against primary sources is its own task, and the library says so in its own comment
 - [ ] 2.4 **Final delivery gate (SS group 11)**, which depends on everything above and on 3.1
-- [ ] 2.5 **Croix10's own 109 open tasks** remain in `C10/tasks.md`. They were not reviewed when it was archived, and 1.1 is the prerequisite for judging which still matter
+- [x] 2.5 **Croix10's own 109 open tasks** remain in `C10/tasks.md`. *Triaged now that 1.1 is done, each task tagged in place in the archived change rather than summarised here. 109 open became 80: fourteen were built by later work and never ticked — the whole video export group among them — and fifteen were superseded, mostly by the region model, since a collection of placed shapes is what a stack of layers already is. Of the 80 that remain, 29 are not work at all but the three scope decisions (1a.3, 1a.4, 1a.5), and five are the same delivery-gate authorization (3.1). The genuinely open remainder is roughly forty-six, and every one of them now names where it lives*
 
 ## 3. Blocked on authorization, not on the product
 
