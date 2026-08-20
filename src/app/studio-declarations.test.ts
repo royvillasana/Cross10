@@ -126,6 +126,12 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     uniform: "colorH",
   },
   {
+    target: "selectedLayer.mixSpace",
+    test: "declares where two inks are mixed is an authored choice",
+    types: FIELD_TYPES,
+    uniform: "mixSpace",
+  },
+  {
     target: "selectedLayer.paletteSlots",
     test: "declares the colour slot count changes how many inks the layer cycles",
     types: FIELD_TYPES,

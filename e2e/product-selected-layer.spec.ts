@@ -3211,3 +3211,74 @@ test("browser: studio palette hides the inks a lowered count no longer uses", as
     (await page.getByLabel("Eighth colour hex").inputValue()).toLowerCase(),
   ).toBe("#00ff00");
 });
+
+/**
+ * Where two inks meet, which was a decision the product made without saying so.
+ *
+ * Everything composites in linear light, because that is what light does. It is
+ * not what paint does and it is not what an author predicts from the two
+ * swatches they picked: saturated opposites mixed as light pass through a pale
+ * middle, and the same two mixed the way a screen encodes them keep more of
+ * their chroma.
+ *
+ * The claim is about the *middle* of the walk, and deliberately also about the
+ * ends: a mixing space that changed the inks themselves would be a recolour
+ * wearing this control's name.
+ */
+test("browser: studio ink mixing space changes what falls between two colours", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioPaletteLayer(page);
+  // A gradient rather than bands: a walk between two inks is what this control
+  // acts on, and a band field spends most of its width on the ends of it.
+  await setStudioSelectValue(page, "selectedLayer.type", "Gradient");
+  await setStudioSlider(page, "Colour slots", 2);
+  await setStudioColorHex(page, "First colour", "#0000FF");
+  await setStudioColorHex(page, "Second colour", "#FFFF00");
+
+  /** The colour halfway along the sweep, and the two ends of it. */
+  const walk = async (): Promise<{ ends: string; middle: string }> =>
+    page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl || canvas.width === 0) return { ends: "nogl", middle: "nogl" };
+      const read = (fx: number): string => {
+        const pixel = new Uint8Array(4);
+        gl.readPixels(
+          Math.min(canvas.width - 1, Math.round(canvas.width * fx)),
+          Math.floor(canvas.height / 2),
+          1,
+          1,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          pixel,
+        );
+        return `${pixel[0]},${pixel[1]},${pixel[2]}`;
+      };
+      // Inside the shape rather than at the frame's edge, which is bare ground.
+      return { ends: `${read(0.34)}/${read(0.66)}`, middle: read(0.5) };
+    });
+
+  const seen = new Map<string, { ends: string; middle: string }>();
+  for (const option of ["Light", "Screen", "Even"]) {
+    await setStudioSelectValue(page, "selectedLayer.mixSpace", option);
+    await expect
+      .poll(async () => (await walk()).middle, { timeout: 15_000 })
+      .not.toBe("nogl");
+    seen.set(option, await walk());
+  }
+
+  // Three options, three different middles: each names a different walk rather
+  // than two of them being the same walk with different labels.
+  expect(
+    new Set([...seen.values()].map((entry) => entry.middle)).size,
+    "each mixing space must put something different between the inks",
+  ).toBe(3);
+
+  // And the inks themselves did not move. A space that changed the ends would
+  // be a recolour wearing this control's name.
+  const ends = [...seen.values()].map((entry) => entry.ends);
+  expect(new Set(ends).size, "the inks at the ends of the walk are the author's").toBe(1);
+});

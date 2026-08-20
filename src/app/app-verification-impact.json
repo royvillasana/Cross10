@@ -91,7 +91,8 @@
         "selectedLayer.colorE",
         "selectedLayer.colorF",
         "selectedLayer.colorG",
-        "selectedLayer.colorH"
+        "selectedLayer.colorH",
+        "selectedLayer.mixSpace"
       ],
       "kind": "performance",
       "passIds": [
@@ -107,7 +108,8 @@
         "selectedLayer.colorE",
         "selectedLayer.colorF",
         "selectedLayer.colorG",
-        "selectedLayer.colorH"
+        "selectedLayer.colorH",
+        "selectedLayer.mixSpace"
       ],
       "kind": "functional",
       "path": "src/app/studio-color.ts"
@@ -170,6 +172,7 @@
         "selectedLayer.maskShape",
         "selectedLayer.maskSides",
         "selectedLayer.mirror",
+        "selectedLayer.mixSpace",
         "selectedLayer.opacity",
         "selectedLayer.paletteSlots",
         "selectedLayer.phase",
@@ -201,6 +204,7 @@
         "selectedLayer.colorH",
         "selectedLayer.count",
         "selectedLayer.jitterVariation",
+        "selectedLayer.mixSpace",
         "selectedLayer.opacity",
         "selectedLayer.phase",
         "selectedLayer.rampType",
@@ -243,6 +247,7 @@
         "selectedLayer.maskShape",
         "selectedLayer.maskSides",
         "selectedLayer.mirror",
+        "selectedLayer.mixSpace",
         "selectedLayer.opacity",
         "selectedLayer.paletteSlots",
         "selectedLayer.phase",
@@ -536,6 +541,7 @@
         "selectedLayer.colorH",
         "selectedLayer.count",
         "selectedLayer.duplicate",
+        "selectedLayer.mixSpace",
         "selectedLayer.opacity",
         "selectedLayer.phase",
         "selectedLayer.rampType",

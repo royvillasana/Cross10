@@ -650,6 +650,29 @@ widthRatio: {
         variant: "discrete",
         type: "slider",
       },
+      mixSpace: {
+        semanticGroup: "colour",
+        applicability: { mode: "always" },
+        defaultValue: "linear",
+        // The decision this makes visible was always being made -- everything
+        // composites in linear light, and an author mixing two inks got a
+        // result that depended on a choice nobody had told them about.
+        //
+        // Beside the slots rather than in a section of its own, because it is
+        // the same question the slots ask from the other side: how many inks,
+        // and what happens between them.
+        label: "How inks meet",
+        options: [
+          { label: "Light", value: "linear" },
+          { label: "Screen", value: "srgb" },
+          { label: "Even", value: "perceptual" },
+        ],
+        performanceReason:
+          "Selects among three conversions of two colours already uploaded; the branch is per pixel and constant in every control.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.mixSpace",
+        type: "select",
+      },
       colorC: {
         semanticGroup: "colour",
         // Rendered only once the slot count reaches it.

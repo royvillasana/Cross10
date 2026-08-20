@@ -1135,6 +1135,23 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares where two inks are mixed is an authored choice",
+    browser: true,
+    browserTestName: "browser: studio ink mixing space changes what falls between two colours",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "How inks meet decides where the walk between two colours happens. Light mixes them as light does, so saturated opposites pass through a pale middle; Screen mixes them the way a display encodes them, keeping more chroma; Even mixes them perceptually, holding lightness steady across the walk. The ends of the walk are the inks the author chose in every case -- only what falls between them changes.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.mixSpace",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
+    target: "selectedLayer.mixSpace",
+    userAction: "Put two saturated opposite inks on a layer, then walk How inks meet through its three options.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the third and fourth colours recolour the extra slots",
     browser: true,
     browserTestName: "browser: studio third palette colour recolours its own slot",

@@ -159,11 +159,31 @@ converting one into the other.
 ### Requirement: Interpolation space is explicit
 Because mixing happens in linear light, gradient stop interpolation space SHALL be an explicit product control rather than a hidden choice. It SHALL be a separate schema control, since `gradient` does not own that field.
 
-**Status: pending, and the hidden choice this warns about is exactly what
-exists.** Compositing happens in linear light — `studioColorToLinear` converts at
-the scene boundary — and nothing exposes that or offers an alternative. The
-requirement's reasoning holds: an author mixing two inks gets a result that
-depends on a decision they cannot see.
+**Status: satisfied.** `How inks meet` is a per-layer control with three
+options, and the decision it exposes was being made all along: everything
+composites in linear light, so two inks walked through a middle nobody had
+chosen.
+
+Three rather than the two the scenario names, because there are three honest
+answers and each is right at a different moment. **Light** mixes as light does,
+which is what the product always did and what a beam of two colours actually
+produces -- saturated opposites pass through a pale middle. **Screen** mixes the
+way a display encodes, which is what an author predicts from two swatches and
+keeps more chroma between them. **Even** mixes in Oklab, holding lightness
+steady across the walk; Oklab rather than Lab or HSL because its lightness axis
+tracks what an eye reports and its hues stay put -- a blue-to-white ramp in HSL
+swings through violet.
+
+None of the three is correct in general, which is the reason this is a control
+rather than a better default. Which one an author wants depends on whether they
+are describing light, ink or an impression, and this product is about all three.
+
+It is a detour rather than a second pipeline: colours arrive and leave in linear
+light whichever space is chosen, so the composite, the engines and the export
+are untouched and only the walk between two inks changes. The proof asserts both
+halves -- that the middle differs across all three options, and that the *ends*
+are identical, since a space that moved the inks themselves would be a recolour
+wearing this control's name.
 
 #### Scenario: Switching interpolation space
 - **WHEN** the user switches gradient interpolation between linear-light and perceptual

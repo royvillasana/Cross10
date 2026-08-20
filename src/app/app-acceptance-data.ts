@@ -332,6 +332,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.colorA",
         "selectedLayer.colorB",
         "selectedLayer.paletteSlots",
+        "selectedLayer.mixSpace",
         "selectedLayer.colorC",
         "selectedLayer.colorD",
         "selectedLayer.colorE",

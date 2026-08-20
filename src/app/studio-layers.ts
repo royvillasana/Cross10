@@ -239,6 +239,77 @@ vec3 studioLinearToSrgb(vec3 linear) {
 }
 
 /**
+ * Where two inks are mixed, which used to be a decision nobody could see.
+ *
+ * Everything in this product is composited in linear light, because that is
+ * what light does: two beams add. But that is not what *paint* does, and it is
+ * not what an author predicts from the two swatches they chose -- a mix of
+ * saturated blue and yellow in linear light passes through a pale grey, where
+ * the same two inks mixed the way a screen encodes them keep more of their
+ * chroma, and mixed perceptually keep their lightness even.
+ *
+ * None of the three is correct in general. Which one is right depends on
+ * whether the author is describing light, ink, or an impression -- and this
+ * product is about all three at different moments, which is exactly why the
+ * choice belongs to the author rather than to whoever wrote the shader.
+ */
+vec3 studioSrgbToLinear(vec3 srgb) {
+  vec3 clamped = clamp(srgb, 0.0, 1.0);
+  vec3 low = clamped / 12.92;
+  vec3 high = pow((clamped + 0.055) / 1.055, vec3(2.4));
+  return mix(high, low, step(clamped, vec3(0.04045)));
+}
+
+/**
+ * Oklab, which is the perceptual space this offers.
+ *
+ * Chosen over Lab or HSL because it is the one whose lightness axis actually
+ * tracks what an eye reports and whose hues stay put across a mix -- a blue to
+ * white ramp in HSL swings through violet, and in Lab a saturated blue drifts.
+ * The matrices are Björn Ottosson's, applied to linear sRGB.
+ */
+vec3 studioLinearToOklab(vec3 linear) {
+  float l = 0.4122214708 * linear.r + 0.5363325363 * linear.g + 0.0514459929 * linear.b;
+  float m = 0.2119034982 * linear.r + 0.6806995451 * linear.g + 0.1073969566 * linear.b;
+  float s = 0.0883024619 * linear.r + 0.2817188376 * linear.g + 0.6299787005 * linear.b;
+  vec3 root = pow(max(vec3(l, m, s), vec3(0.0)), vec3(1.0 / 3.0));
+  return vec3(
+    0.2104542553 * root.x + 0.7936177850 * root.y - 0.0040720468 * root.z,
+    1.9779984951 * root.x - 2.4285922050 * root.y + 0.4505937099 * root.z,
+    0.0259040371 * root.x + 0.7827717662 * root.y - 0.8086757660 * root.z
+  );
+}
+
+vec3 studioOklabToLinear(vec3 lab) {
+  float l = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+  float m = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+  float s = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+  vec3 cubed = vec3(l * l * l, m * m * m, s * s * s);
+  return vec3(
+    4.0767416621 * cubed.x - 3.3077115913 * cubed.y + 0.2309699292 * cubed.z,
+    -1.2684380046 * cubed.x + 2.6097574011 * cubed.y - 0.3413193965 * cubed.z,
+    -0.0041960863 * cubed.x - 0.7034186147 * cubed.y + 1.7076147010 * cubed.z
+  );
+}
+
+/**
+ * Two inks mixed in the space the author asked for.
+ *
+ * Everything arrives and leaves in linear light whichever space is chosen, so
+ * this is a detour rather than a different pipeline: the composite, the
+ * engines and the export all keep working in the one space, and only the walk
+ * between two inks changes.
+ */
+vec3 studioMixInks(vec3 a, vec3 b, float t, float space) {
+  if (space < 0.5) return mix(a, b, t);
+  if (space < 1.5) {
+    return studioSrgbToLinear(mix(studioLinearToSrgb(a), studioLinearToSrgb(b), t));
+  }
+  return studioOklabToLinear(mix(studioLinearToOklab(a), studioLinearToOklab(b), t));
+}
+
+
+/**
  * One colour from the palette at position t, walking whichever slots are in use.
  *
  * Shared by both bodies so a banded stripe field and a gradient agree about what
@@ -250,13 +321,18 @@ vec3 studioLinearToSrgb(vec3 linear) {
  * four. As a walk over an array it is the same code for two inks and for eight,
  * so what the maximum is became a number rather than an argument.
  */
-vec3 studioPaletteRamp(float t, float slots, vec3 bank[PALETTE_MAX]) {
+vec3 studioPaletteRamp(float t, float slots, vec3 bank[PALETTE_MAX], float space) {
   float used = clamp(floor(slots + 0.5), 2.0, float(PALETTE_MAX));
   float scaled = clamp(t, 0.0, 1.0) * (used - 1.0);
   // The last slot is reached exactly at t = 1, so the floor has to stay one
   // short of it or the final mix reads past the end of the bank.
   int low = int(min(floor(scaled), used - 2.0));
-  return mix(bank[low], bank[low + 1], clamp(scaled - float(low), 0.0, 1.0));
+  return studioMixInks(
+    bank[low],
+    bank[low + 1],
+    clamp(scaled - float(low), 0.0, 1.0),
+    space
+  );
 }
 
 // The slot a band falls in, as flat colour rather than a ramp. This is the
@@ -411,6 +487,7 @@ vec4 studioStripesBody(
   float jitterAmount,
   float jitterVariation,
   float paletteSlots,
+  float mixSpace,
   float engine,
   float engineAmount,
   float engineCursor,
@@ -517,7 +594,9 @@ vec4 studioStripesBody(
   // three or four colour rhythm carries a wedge without losing either.
   vec3 near = studioPaletteSlot(bandIndex, paletteSlots, bank);
   vec3 far = studioPaletteSlot(bandIndex + 1.0, paletteSlots, bank);
-  vec3 pair = paletteSlots < 2.5 ? mix(bank[0], bank[1], band) : mix(near, far, band);
+  vec3 pair = paletteSlots < 2.5
+    ? studioMixInks(bank[0], bank[1], band, mixSpace)
+    : studioMixInks(near, far, band, mixSpace);
 
   // The chromatic engine, applied to the field this body has just resolved
   // rather than replacing it (R67). Each technique is a way of colouring a
@@ -601,6 +680,7 @@ vec4 studioGradientBody(
   float rampType,
   float phase,
   float paletteSlots,
+  float mixSpace,
   float engine,
   float engineAmount,
   float engineCursor,
@@ -680,7 +760,7 @@ vec4 studioGradientBody(
     step(0.0001, abs(driftPhase))
   );
 
-  vec3 colour = studioPaletteRamp(position, paletteSlots, bank);
+  vec3 colour = studioPaletteRamp(position, paletteSlots, bank, mixSpace);
 
   // The same three techniques the stripes body offers (R67), read against a
   // ramp instead of a band. A ramp has no edges of its own, so what stands in
@@ -704,14 +784,14 @@ vec4 studioGradientBody(
       // Zero is head-on and leaves the ramp where it is, as in the stripes body.
       vec3 shifted = studioPaletteRamp(
         clamp(position + engineStrength * 0.25, 0.0, 1.0),
-        paletteSlots, bank
+        paletteSlots, bank, mixSpace
       );
       colour = shifted * (1.0 - min(engineStrength * 0.35, 0.55));
     } else {
       // A second ramp at a different pitch, beating against the first.
       vec3 second = studioPaletteRamp(
         fract(position * max(enginePitch, 0.01)),
-        paletteSlots, bank
+        paletteSlots, bank, mixSpace
       );
       colour = mix(colour, abs(colour - second), engineStrength);
     }
@@ -753,6 +833,7 @@ vec4 studioImageBody(
   float sourceWidthRatio,
   float sourceStrength,
   float paletteSlots,
+  float mixSpace,
   vec3 bank[PALETTE_MAX],
   sampler2D image
 ) {
@@ -845,7 +926,8 @@ vec4 studioImageBody(
       vec3 banded = studioPaletteRamp(
         fract(slotPosition * max(paletteSlots, 2.0)),
         paletteSlots,
-        bank
+        bank,
+        mixSpace
       );
       return vec4(banded, sampled.a);
     }
@@ -859,7 +941,8 @@ vec4 studioImageBody(
     vec3 banded = studioPaletteRamp(
       fract(slotPosition * max(paletteSlots, 2.0)),
       paletteSlots,
-      bank
+      bank,
+      mixSpace
     );
     return vec4(banded, sampled.a);
   }
@@ -963,6 +1046,16 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
          */
         { defaultValue: 0, name: "phase", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        {
+          defaultValue: 0,
+          name: "mixSpace",
+          // The index into this list is the float the shader branches on, and
+          // a select whose values are not mapped here falls to zero -- the
+          // control moves, the record changes, and the frame does not. That is
+          // how the blend modes shipped inert once.
+          optionValues: ["linear", "srgb", "perceptual"],
+          type: "float",
+        },
         // Same three, in the same order as the stripes type and the control.
         {
           defaultValue: 0,
@@ -1046,6 +1139,16 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0.5, name: "sourceWidthRatio", type: "float" },
         { defaultValue: 1, name: "sourceStrength", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        {
+          defaultValue: 0,
+          name: "mixSpace",
+          // The index into this list is the float the shader branches on, and
+          // a select whose values are not mapped here falls to zero -- the
+          // control moves, the record changes, and the frame does not. That is
+          // how the blend modes shipped inert once.
+          optionValues: ["linear", "srgb", "perceptual"],
+          type: "float",
+        },
         { defaultValue: [0, 0, 0], name: "colorA", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorC", type: "vec3" },
@@ -1102,6 +1205,16 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
          */
         { defaultValue: 12, name: "jitterVariation", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        {
+          defaultValue: 0,
+          name: "mixSpace",
+          // The index into this list is the float the shader branches on, and
+          // a select whose values are not mapped here falls to zero -- the
+          // control moves, the record changes, and the frame does not. That is
+          // how the blend modes shipped inert once.
+          optionValues: ["linear", "srgb", "perceptual"],
+          type: "float",
+        },
         /**
          * The chromatic engine (R67), and the two values every technique reads.
          *
