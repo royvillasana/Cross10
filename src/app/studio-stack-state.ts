@@ -89,8 +89,79 @@ export const STUDIO_VERTEX_PATH_TARGET = "stack.vertexPaths";
  */
 export const STUDIO_PEN_TARGET = "stack.penLayerId";
 
-export type StudioVertexPoint = readonly [number, number];
+/**
+ * One node of a drawn path.
+ *
+ * Two numbers is a corner: the path arrives and leaves in a straight line. Six
+ * is a curve: the position, then the incoming and outgoing tangent handles as
+ * offsets *from* the node. Handles are stored relative rather than absolute so
+ * moving a node carries its curvature with it, which is what makes dragging a
+ * node feel like moving a piece of the curve rather than re-aiming two
+ * unrelated points.
+ *
+ * A flat tuple rather than an object, and that is a decision about scale: a
+ * path may now hold thousands of nodes, and `{"x":0.1,"y":0.2,...}` per node
+ * costs several times what `[0.1,0.2]` costs in the persisted document an
+ * author reloads. The two-number form is also exactly what every path written
+ * before this existed already is, so nothing has to be migrated.
+ */
+export type StudioVertexPoint =
+  | readonly [number, number]
+  | readonly [number, number, number, number, number, number];
 export type StudioVertexPaths = Readonly<Record<string, readonly StudioVertexPoint[]>>;
+
+/** Where a node sits, whether or not it carries handles. */
+export function studioNodePosition(node: StudioVertexPoint): readonly [number, number] {
+  return [node[0], node[1]];
+}
+
+/**
+ * The handle the curve arrives on, as an offset from the node.
+ *
+ * Zero for a corner, which is the same answer as "no handle" and is what makes
+ * the curved and straight cases one code path: a cubic whose handles are both
+ * zero-length *is* the straight line between its ends.
+ */
+export function studioNodeIncoming(node: StudioVertexPoint): readonly [number, number] {
+  return node.length === 6 ? [node[2], node[3]] : [0, 0];
+}
+
+/** The handle the curve leaves on, as an offset from the node. */
+export function studioNodeOutgoing(node: StudioVertexPoint): readonly [number, number] {
+  return node.length === 6 ? [node[4], node[5]] : [0, 0];
+}
+
+/** Whether any node in the path bends the line, which decides how it is drawn. */
+export function studioPathIsCurved(path: readonly StudioVertexPoint[]): boolean {
+  return path.some(
+    (node) =>
+      node.length === 6 && (node[2] !== 0 || node[3] !== 0 || node[4] !== 0 || node[5] !== 0),
+  );
+}
+
+/**
+ * A node with one of its handles moved, collapsing back to a corner when both
+ * are zero.
+ *
+ * The collapse matters beyond tidiness: a corner is two numbers and a curve is
+ * six, so a path that has had its handles zeroed goes back to costing what it
+ * cost before anyone touched it, and `studioPathIsCurved` goes back to false --
+ * which is what lets the straight-line renderer stay the common case.
+ */
+export function withStudioNodeHandle(
+  node: StudioVertexPoint,
+  which: "incoming" | "outgoing",
+  offset: readonly [number, number],
+): StudioVertexPoint {
+  const incoming = which === "incoming" ? offset : studioNodeIncoming(node);
+  const outgoing = which === "outgoing" ? offset : studioNodeOutgoing(node);
+
+  if (incoming[0] === 0 && incoming[1] === 0 && outgoing[0] === 0 && outgoing[1] === 0) {
+    return [node[0], node[1]];
+  }
+
+  return [node[0], node[1], incoming[0], incoming[1], outgoing[0], outgoing[1]];
+}
 
 /** Reads the paths out of raw state, discarding anything malformed. */
 export function readStudioVertexPaths(value: unknown): StudioVertexPaths {
@@ -102,7 +173,11 @@ export function readStudioVertexPaths(value: unknown): StudioVertexPaths {
     const points = entry.filter(
       (point): point is StudioVertexPoint =>
         Array.isArray(point) &&
-        point.length === 2 &&
+        // Two for a corner, six for a node carrying tangent handles. Anything
+        // else is not a node this understands, and a path is better short than
+        // wrong: a malformed entry silently coerced to a position would put a
+        // vertex somewhere the author never clicked.
+        (point.length === 2 || point.length === 6) &&
         point.every((axis) => typeof axis === "number" && Number.isFinite(axis)),
     );
     if (points.length > 0) paths[id] = points;
@@ -119,14 +194,27 @@ export function readStudioVertexPath(
 }
 
 /**
- * The most vertices one path may hold.
+ * The most nodes one path may hold.
  *
- * A cap rather than an open list because the path is compiled into the shader
- * (R69): every vertex is a literal and an unrolled iteration, so an unbounded
- * path is an unbounded program. Twenty-four is well past what the reference
- * works ask for and still a shader that compiles quickly.
+ * **This used to be twenty-four, and the reason was real rather than cautious.**
+ * The path was compiled into the shader as literals with an unrolled loop, so
+ * every node cost a line of program and an iteration *per pixel*: a few thousand
+ * nodes meant a program that took minutes to compile and a frame rate measured
+ * in seconds. The number was not a judgement about drawing, it was the largest
+ * one that architecture could carry.
+ *
+ * The architecture changed. A drawn region is now rasterized once into a mask
+ * and sampled, so per-pixel cost is one texture fetch whatever the node count
+ * is, and the cost of a node is paid at draw time on the CPU rather than at
+ * every pixel of every frame.
+ *
+ * So what is left is a backstop rather than a design limit -- a bound on how
+ * much a single held-in-memory, persisted-to-storage document can grow before
+ * something has gone wrong, such as a stroke handler that never stopped
+ * appending. Twenty thousand is far past deliberate drawing and far short of a
+ * document that will not reload.
  */
-export const STUDIO_PATH_VERTEX_MAX = 24;
+export const STUDIO_PATH_VERTEX_MAX = 20_000;
 
 /**
  * Appends one point to a layer's path, leaving every other path identical.

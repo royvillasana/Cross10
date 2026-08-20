@@ -235,7 +235,8 @@
         "selectedLayer.sourceWidthRatio",
         "selectedLayer.taper",
         "selectedLayer.type",
-        "selectedLayer.widthRatio"
+        "selectedLayer.widthRatio",
+        "stack.pathNodes"
       ],
       "kind": "performance",
       "passIds": [
@@ -284,6 +285,18 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-onboarding.ts"
+    },
+    {
+      "acceptanceIds": [
+        "selectedLayer.maskShape",
+        "stack.pathNodes",
+        "stack.pen"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "layer-stack"
+      ],
+      "path": "src/app/studio-path-mask.ts"
     },
     {
       "acceptanceIds": [
@@ -372,6 +385,7 @@
         "selectedLayer.regionHandle.move",
         "selectedLayer.regionHandle.rotate",
         "selectedLayer.regionHandle.side",
+        "stack.pathNodes",
         "stack.pen"
       ],
       "kind": "functional",
@@ -394,6 +408,7 @@
         "selectedLayer.regionHandle.move",
         "selectedLayer.regionHandle.rotate",
         "selectedLayer.regionHandle.side",
+        "stack.pathNodes",
         "stack.pen"
       ],
       "kind": "functional",
@@ -469,7 +484,8 @@
         "selectedLayer.phase",
         "selectedLayer.rampType",
         "selectedLayer.type",
-        "selectedLayer.widthRatio"
+        "selectedLayer.widthRatio",
+        "stack.pathNodes"
       ],
       "kind": "performance",
       "passIds": [
@@ -501,6 +517,7 @@
         "selectedLayer.rampType",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.pathNodes",
         "stack.pointerPush",
         "stack.pointerSubject"
       ],

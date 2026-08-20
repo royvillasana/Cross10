@@ -90,25 +90,17 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
           dimensionId: "band-count",
           observe: (value: number) => value,
         },
-        // The one dimension whose cost is not constant in it (R69): the
-        // crossing test walks the path once per pixel, so a longer path is
-        // more work rather than a different shape of the same work. Finite and
-        // author-built, so the domain is exhaustive like stack depth's.
-        "path-vertices": {
-          apply: (value: number) => value,
-          dimensionId: "path-vertices",
-          domain: {
-            attestation:
-              "A layer's path length is the number of vertices the pen placed before the path was closed. Zero is a layer with no path; three is the shortest closed path; the cap is STUDIO_PATH_VERTEX_MAX, past which the pen stops appending. Every value between is reachable by placing that many vertices, and no other value exists.",
-            kind: "runtime-state",
-            path: "values.stack.vertexPaths",
-          },
-          entries: PATH_VERTEX_ENTRIES,
-          kind: "exhaustive-discrete",
-          observe: (value: number) => value,
-        },
-        // A stepped slider over ten whole positions; the applied value is the
-        // value, as with the band count.
+        // **`path-vertices` was declared here and is gone**, which is a
+        // correction rather than a removal. It existed because the crossing
+        // test walked a layer's path once per pixel, so a longer path was more
+        // work rather than a different shape of the same work.
+        //
+        // A drawn region is rasterized into a mask now and the pass reads one
+        // texel, so per-pixel cost is constant in the node count. Keeping the
+        // dimension while the cap rose to twenty thousand would have claimed a
+        // growth the pass does not have and asked the benchmark machinery to
+        // enumerate three hundred thousand states to measure a number that
+        // never varies.
         "polygon-sides": {
           apply: (value: number) => value,
           dimensionId: "polygon-sides",
@@ -186,7 +178,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.initial-render",
         interaction: "initial-render",
         pathId:
-          "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22initial-render%22%2C%22initial-render%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
       {
@@ -203,7 +195,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.control-change",
         interaction: "control-change",
         pathId:
-          "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22interactive-discrete%22%2C%22control-change%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
       {
@@ -221,7 +213,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.control-drag",
         interaction: "control-drag",
         pathId:
-          "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22interactive-continuous%22%2C%22control-drag%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         target: "selectedLayer.count",
         uiSelector: "[data-toolcraft-product-output]",
       },
@@ -276,7 +268,7 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
         id: "perf.export-image",
         interaction: "export",
         pathId:
-          "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22path-vertices%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
+          "performance-path:%5B%22batch-responsive%22%2C%22export%22%2C%5B%22layer-stack%22%5D%2C%5B%22gpu%22%5D%2C%5B%22band-count%22%2C%22polygon-sides%22%2C%22stack-depth%22%5D%5D",
         uiSelector: "[data-toolcraft-product-output]",
       },
     ],
@@ -328,24 +320,6 @@ export const appPerformance: ToolcraftEnvelopePerformanceConfig =
             workloadBoundary: "maximum",
           },
           unit: "sides",
-        },
-        {
-          // Unlike every other dimension here, cost is *not* constant in this
-          // one. The path is compiled into the program (R69) and walked once
-          // per pixel, so its length multiplies the layer's own work. The
-          // growth class is unchanged -- still linear in stack depth -- but the
-          // per-layer constant is author-controlled, and that is what a
-          // dimension exists to say.
-          batchMax: STUDIO_PATH_VERTEX_MAX,
-          defaultValue: 0,
-          id: "path-vertices",
-          interactiveMax: STUDIO_PATH_VERTEX_MAX,
-          mapping: "direct",
-          source: {
-            kind: "runtime-state",
-            path: "values.stack.vertexPaths",
-          },
-          unit: "vertices",
         },
       ],
     },

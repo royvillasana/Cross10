@@ -566,3 +566,57 @@ export function studioMoveRegion({
     ),
   };
 }
+
+/**
+ * The least a pointer must travel before a stroke lays down another node, in
+ * screen pixels.
+ *
+ * Three rather than one: a pointer reports moves faster than a display can show
+ * them, so one node per event records the hand rather than the line. Three is
+ * below what an author can see as a corner and still bounds a long drawing to
+ * something a document can hold.
+ */
+export const STUDIO_STROKE_SPACING = 3;
+
+/**
+ * How many nodes of a finished path are drawn as targets at once.
+ *
+ * Not a limit on the path -- a path may hold thousands, and every one of them
+ * stays editable. It is a limit on how many are *on screen* as grabbable dots
+ * at the same time, because a few hundred absolutely positioned elements is
+ * where a browser starts to feel the layout and a few thousand is where an
+ * author cannot tell one node from another anyway.
+ *
+ * Past it, the node being worked on and its immediate neighbours are shown, and
+ * a click near the path selects the nearest node -- so the whole path is still
+ * reachable, one region of it at a time, which is how one edits a long path in
+ * any tool that has them.
+ */
+export const STUDIO_PATH_NODES_SHOWN = 240;
+
+/**
+ * The node of a path nearest a point in the shape's own frame.
+ *
+ * A linear scan, which is the right algorithm here: it runs once per click, and
+ * a structure that made it faster would have to be kept in step with an array
+ * that changes on every point of a stroke.
+ */
+export function studioNearestPathNode(
+  path: readonly (readonly number[])[],
+  point: readonly [number, number],
+): number | null {
+  let best: number | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  path.forEach((node, index) => {
+    const dx = (node[0] ?? 0) - point[0];
+    const dy = (node[1] ?? 0) - point[1];
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = index;
+    }
+  });
+
+  return best;
+}

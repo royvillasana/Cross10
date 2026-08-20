@@ -32,6 +32,7 @@ import {
   readStudioRenderScale,
 } from "./studio-scene";
 import { setStudioMediaRegistry } from "./studio-media-registry";
+import { studioPathAtlasSignature } from "./studio-path-mask";
 import {
   readStudioViewportPose,
   useStudioViewportGesture,
@@ -60,7 +61,29 @@ import {
 function useStableStudioSceneParameters(
   parameters: StudioStackSceneParameters,
 ): StudioStackSceneParameters {
-  const signature = JSON.stringify(parameters);
+  /**
+   * Everything except the drawn paths, which are hashed instead.
+   *
+   * A path may hold thousands of nodes, and serialising all of them to answer
+   * "is this the same scene" is the kind of cost that arrives disguised as
+   * something else: every unrelated control edit got slower in proportion to
+   * how much someone had drawn. The hash folds in every coordinate, so this is
+   * not a sample -- a moved node still misses the memo.
+   */
+  const signature = `${JSON.stringify({
+    ...parameters,
+    // Stripped by rebuilding the layers rather than by a `JSON.stringify`
+    // replacer: a replacer is called for every key of every object in the tree
+    // and made the common case -- a stack with no drawing at all -- measurably
+    // slower to answer a question about paths that are not there.
+    layers: parameters.layers.map(({ vertices: _vertices, ...rest }) => rest),
+  })}#${studioPathAtlasSignature(
+    new Map(
+      parameters.layers.flatMap((layer, index) =>
+        layer.vertices?.length ? [[index, layer.vertices] as const] : [],
+      ),
+    ),
+  )}`;
   const held = React.useRef({ parameters, signature });
   if (held.current.signature !== signature) {
     held.current = { parameters, signature };

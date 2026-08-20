@@ -569,13 +569,37 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
     // half of 14.4 and brings its own rendered-pixels claim with it.
     evidence: "command-side-effect",
     expectedObservable:
-      "Pressing Draw hands the canvas to the pen: each click places a vertex, the path so far is drawn between them, and the layer's own extent handles stand aside so every click is the pen's. Clicking the first vertex again closes the path and gives the canvas back, leaving the vertices in place.",
+      "Pressing Draw hands the canvas to the pen: each click places a node, holding and dragging lays down a continuous run of them, the path so far is drawn between them, and the layer's own extent handles stand aside so every press is the pen's. One held stroke can place far more nodes than a click could, and takes one Undo to remove rather than one per node. Clicking the first node again closes the path and gives the canvas back, leaving the nodes in place.",
     fixture: SELECTED_LAYER_FIXTURE,
     id: "stack.pen",
     kind: "control",
     target: "stack.pen",
     userAction:
-      "Press Draw, click three points on the canvas, then click the first point again.",
+      "Press Draw, click a point, then hold and drag a stroke, then click the first node again.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares a node carries the tangents that bend the path through it",
+    browser: true,
+    browserTestName: "browser: studio path nodes bend the region through their handles",
+    canvasHandle: {
+      exportCleanTestName: "browser: studio region handles stay out of the exported artifact",
+      outputObservable:
+        "The region's edge bends between the node and its neighbour, so the field reaches into ground it did not cover and leaves ground it did.",
+      testId: "studio-path-handle-0-outgoing",
+      writesTarget: "controls.setValue",
+    },
+    componentType: "canvas-handle",
+    evidence: "product-output",
+    expectedObservable:
+      "A closed path shows its nodes on the canvas. Selecting one reveals the two tangent handles that decide how the curve arrives at and leaves that node, drawn hollow while the node is still a corner. Dragging a handle bends the region between that node and its neighbour, and the rendered composite follows; dragging the node itself moves it and carries its curvature with it.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.pathNodes",
+    interactionId: "shape-shaping",
+    kind: "canvas-handle",
+    target: "stack.vertexPaths",
+    userAction:
+      "Draw and close a path, click one of its nodes, then drag the handle that appears.",
   },
   {
     automated: true,

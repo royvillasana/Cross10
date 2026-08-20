@@ -156,25 +156,30 @@ export const studioPipelineRegistration =
           // per-layer constant, which is a matter for the pending benchmark
           // rather than for the growth class.
           //
-          // **A drawn path is the one that will need a dimension** (14.4). It
-          // is not like the others: the crossing test walks the path once per
-          // pixel, so the work varies with a length the author chooses, up to
-          // `STUDIO_PATH_VERTEX_MAX`. It is bounded and it is per layer, so the
-          // growth class is still linear in stack depth -- but the per-layer
-          // constant is now author-controlled rather than fixed, which is what
-          // a workload dimension exists to declare.
+          // **A drawn path used to be the exception, and no longer is.** It
+          // was declared as `path-vertices` because the crossing test walked
+          // every node of the path at every pixel: the per-layer constant was
+          // author-controlled, which is exactly what a workload dimension
+          // exists to say.
           //
-          // `path-vertices` is therefore declared, and it is the only dimension
-          // in this list whose cost is not constant in it. The relationship
-          // stays `linear`: the pass is linear in stack depth and linear in the
-          // path length each layer carries, which is what `linear` over a list
-          // of dimensions means.
+          // The path is rasterized into a mask now and this pass reads one
+          // texel of it, so per-pixel cost is constant in the node count --
+          // a hundred nodes and ten thousand cost this pass the same. The
+          // dimension is therefore *removed* rather than raised: leaving it
+          // declared while lifting the node cap to twenty thousand would claim
+          // a growth this pass does not have, and would ask the benchmark
+          // machinery to enumerate a combination space of three hundred
+          // thousand states to measure a number that does not vary.
+          //
+          // What the node count now costs is a rasterization when the drawing
+          // *changes*, which is off this pass entirely: it happens once per
+          // edit on the CPU, not once per pixel per frame.
           //
           // A non-constant `composite` pass at frame frequency raises a kernel
           // benchmark requirement. That requirement is correct rather than
           // unfortunate, and functional delivery leaves it pending: resolving it
           // needs an authorized performance run, not an authored timing value.
-          dimensions: ["stack-depth", "band-count", "polygon-sides", "path-vertices"],
+          dimensions: ["stack-depth", "band-count", "polygon-sides"],
           frequency: "frame",
           relationship: "linear",
         },

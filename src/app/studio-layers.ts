@@ -1,3 +1,4 @@
+import { type StudioVertexPoint } from "./studio-stack-state";
 /**
  * Layer-type registry.
  *
@@ -1134,7 +1135,7 @@ export interface StudioStackEntry {
    * trade R52 already took for name-mangling and for the same reason: the
    * variant cache keys on the stack signature, and the path is part of it.
    */
-  readonly vertices?: readonly (readonly [number, number])[];
+  readonly vertices?: readonly StudioVertexPoint[];
 }
 
 /** Mangled uniform name for a layer's parameter. R52. */
@@ -1159,13 +1160,18 @@ export function studioStackSignature(stack: readonly StudioStackEntry[]): string
   return (
     stack
       .map((entry) => {
-        // A drawn path is compiled into the program, so two stacks with the
-        // same types and different paths are different programs. Leaving it out
-        // would serve a cached shader for the shape the author just changed.
-        const path = entry.vertices?.length
-          ? `#${entry.vertices.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`).join(";")}`
-          : "";
-        return `${entry.typeId}${path}`;
+        // *Whether* a layer has a drawn region, never what it is.
+        //
+        // The path used to be compiled in as literals, so every edit was a
+        // different program and the key had to carry the whole shape. It is a
+        // texture now, so a moved node changes a uniform and nothing else --
+        // and keying on the contents would recompile the entire stack on every
+        // point of a stroke, which at a few thousand points is a program
+        // rebuilt a few thousand times to draw one line.
+        //
+        // What still changes the program is the region existing at all, since
+        // that is what decides whether the sampling function is emitted.
+        return `${entry.typeId}${(entry.vertices?.length ?? 0) >= 2 ? "#path" : ""}`;
       })
       .join(">") || "empty"
   );
@@ -1204,40 +1210,53 @@ function declareLayerUniforms(stack: readonly StudioStackEntry[]): string {
 }
 
 /**
- * The point-in-polygon test for one drawn path, emitted as its own function.
+ * Where one drawn region reads from its mask.
  *
- * Per layer rather than shared, because each path has its own length and a
- * shared function would need a size it cannot have. The vertices are literals
- * (R69), so the loop bound is a compile-time constant, the loop unrolls, and
- * there is no dynamic indexing.
+ * **This was a point-in-polygon test over baked literals**, walking every edge
+ * of the path at every pixel to count ray crossings. It was correct and it was
+ * the reason a path could hold only two dozen nodes: each node cost a line of
+ * program and an iteration of an unrolled loop *per pixel*, so the cost of
+ * drawing was paid again on every pixel of every frame, and curves -- several
+ * cubic evaluations per segment on top -- were out of the question entirely.
  *
- * The crossing-number rule: walk the edges, count how many cross a ray cast
- * from the point, odd means inside. It holds for any simple polygon rather than
- * only convex ones, which a pen draws plenty of.
+ * Now the path is rasterized once into a mask and this reads one texel. Per
+ * pixel cost is constant in the node count, which is what lets a path hold
+ * thousands of nodes and a bézier at each of them, and the rasterizer's own
+ * antialiasing replaces an edge that used to come back as a hard staircase.
+ *
+ * One function per layer still, because each reads its own box and its own tile
+ * of the shared atlas -- one texture unit for the whole stack, which is what
+ * WebGL2's sixteen-unit guarantee leaves room for once each layer has spent one
+ * on its picture.
  */
 function pathFunction(entry: StudioStackEntry, index: number): string {
   const vertices = entry.vertices ?? [];
-  if (vertices.length < 3) return "";
-
-  const literals = vertices
-    .map(([x, y]) => `vec2(${x.toFixed(5)}, ${y.toFixed(5)})`)
-    .join(", ");
+  if (vertices.length < 2) return "";
 
   return `
+/**
+ * Where this layer's mask sits, and what it covers.
+ *
+ * Declared beside the function rather than in the layer uniform registry,
+ * because these are not parameters -- nobody sets them and no control writes
+ * them. They are the rasterizer describing what it produced, which is why they
+ * are derived from the path on every upload rather than carried in the record.
+ */
+uniform vec2 ${studioLayerUniformName(index, "pathOrigin")};
+uniform vec2 ${studioLayerUniformName(index, "pathExtent")};
+uniform vec4 ${studioLayerUniformName(index, "pathTile")};
+
 float studioPathInside${index}(vec2 point) {
-  vec2 path[${vertices.length}] = vec2[${vertices.length}](${literals});
-  bool inside = false;
-  for (int index = 0; index < ${vertices.length}; index += 1) {
-    vec2 a = path[index];
-    vec2 b = path[index == 0 ? ${vertices.length - 1} : index - 1];
-    if (
-      (a.y > point.y) != (b.y > point.y) &&
-      point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside ? 1.0 : 0.0;
+  vec2 uv = (point - ${studioLayerUniformName(index, "pathOrigin")}) /
+    max(${studioLayerUniformName(index, "pathExtent")}, vec2(0.0001));
+  // Outside the box the mask was rasterized over there is nothing drawn, and
+  // saying so explicitly rather than relying on clamped sampling is what stops
+  // the tile's edge pixels from smearing across the rest of the frame.
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
+  vec4 tile = ${studioLayerUniformName(index, "pathTile")};
+  // The raster's y runs down and the shape frame's runs up.
+  vec2 atlas = tile.xy + vec2(uv.x, 1.0 - uv.y) * tile.zw;
+  return texture(uStudioPathMask, atlas).r;
 }
 `;
 }
@@ -1392,6 +1411,24 @@ uniform vec2 uCursor;
  * seam invisible without the shader knowing anything about seams.
  */
 uniform float uLoop;
+${
+  stack.some((entry) => (entry.vertices?.length ?? 0) >= 2)
+    ? `
+/**
+ * Every drawn region in this stack, rasterized into one texture.
+ *
+ * One sampler for the whole stack rather than one per layer: WebGL2 guarantees
+ * a fragment shader only sixteen texture units, and each layer already spends
+ * one on its picture at a declared depth of sixteen. Each region reads its own
+ * tile, named by that layer's own uniforms.
+ *
+ * This is where a drawn region parts company with the rest of the delivered
+ * source. Everything else in this program is self-contained; a mask is an
+ * image, so a host that wants the region has to supply it.
+ */
+uniform sampler2D uStudioPathMask;`
+    : ""
+}
 
 ${declareLayerUniforms(stack)}
 

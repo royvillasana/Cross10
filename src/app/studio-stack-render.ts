@@ -21,6 +21,12 @@ import {
   type StudioLayerTypeId,
   type StudioStackEntry,
 } from "./studio-layers";
+import {
+  rasterizeStudioPathAtlas,
+  studioPathAtlasSignature,
+  type StudioPathAtlas,
+} from "./studio-path-mask";
+import { type StudioVertexPoint } from "./studio-stack-state";
 
 /** One layer's uniform values, keyed by the type's own uniform names. */
 export type StudioLayerValues = Readonly<{
@@ -33,7 +39,7 @@ export type StudioLayerValues = Readonly<{
    */
   image?: TexImageSource | null;
   /** A drawn path, baked into the assembled program (R69). */
-  vertices?: readonly (readonly [number, number])[];
+  vertices?: readonly StudioVertexPoint[];
   values: Readonly<Record<string, number | readonly [number, number, number]>>;
 }>;
 
@@ -153,6 +159,52 @@ export function createStudioStackRenderer(
   const textures = new Map<number, WebGLTexture>();
   let blankTexture: WebGLTexture | null = null;
 
+  /**
+   * The rasterized regions, rebuilt only when a drawing changes.
+   *
+   * Held with the renderer rather than rebuilt per frame, because rasterizing
+   * thousands of nodes sixty times a second would cost more than the per-pixel
+   * test this replaced. The signature is the cheap question -- is this the same
+   * drawing -- asked before the expensive answer.
+   */
+  let pathAtlas: StudioPathAtlas | null = null;
+  let pathAtlasSignature = "";
+  let pathTexture: WebGLTexture | null = null;
+
+  const resolvePathAtlas = (
+    paths: ReadonlyMap<number, readonly StudioVertexPoint[]>,
+  ): StudioPathAtlas | null => {
+    const signature = studioPathAtlasSignature(paths);
+    if (signature === pathAtlasSignature) return pathAtlas;
+
+    pathAtlasSignature = signature;
+    pathAtlas = rasterizeStudioPathAtlas(paths);
+
+    if (!pathAtlas) return null;
+    if (!pathTexture) pathTexture = gl.createTexture();
+    if (!pathTexture) return pathAtlas;
+
+    gl.bindTexture(gl.TEXTURE_2D, pathTexture);
+    // Clamped, so a region cannot repeat across the frame, and linear, which is
+    // what carries the rasterizer's antialiased edge through to the composite
+    // instead of re-quantising it at the sampler.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pathAtlas.image,
+    );
+
+    return pathAtlas;
+  };
+
   const resolveTexture = (
     index: number,
     source: TexImageSource | null | undefined,
@@ -206,6 +258,10 @@ export function createStudioStackRenderer(
       textures.clear();
       if (blankTexture) gl.deleteTexture(blankTexture);
       blankTexture = null;
+      if (pathTexture) gl.deleteTexture(pathTexture);
+      pathTexture = null;
+      pathAtlas = null;
+      pathAtlasSignature = "";
     },
     gl,
     render(parameters, width, height) {
@@ -269,6 +325,39 @@ export function createStudioStackRenderer(
           }
         }
       });
+
+      /**
+       * The drawn regions, bound once for the whole stack.
+       *
+       * On the unit above the last layer's, because each layer's picture holds
+       * the unit at its own index. One unit for every region in the stack is
+       * what keeps this inside WebGL2's sixteen-unit guarantee rather than
+       * asking for one per layer and failing on conforming hardware.
+       */
+      const paths = new Map<number, readonly StudioVertexPoint[]>();
+      parameters.layers.forEach((layer, index) => {
+        if ((layer.vertices?.length ?? 0) >= 2) {
+          paths.set(index, layer.vertices ?? []);
+        }
+      });
+
+      const atlas = resolvePathAtlas(paths);
+      const maskLocation = location("uStudioPathMask");
+      if (atlas && pathTexture && maskLocation) {
+        const unit = parameters.layers.length;
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, pathTexture);
+        gl.uniform1i(maskLocation, unit);
+
+        for (const [index, tile] of atlas.tiles) {
+          const origin = location(studioLayerUniformName(index, "pathOrigin"));
+          if (origin) gl.uniform2f(origin, tile.origin[0], tile.origin[1]);
+          const extent = location(studioLayerUniformName(index, "pathExtent"));
+          if (extent) gl.uniform2f(extent, tile.extent[0], tile.extent[1]);
+          const rect = location(studioLayerUniformName(index, "pathTile"));
+          if (rect) gl.uniform4f(rect, tile.rect[0], tile.rect[1], tile.rect[2], tile.rect[3]);
+        }
+      }
 
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);

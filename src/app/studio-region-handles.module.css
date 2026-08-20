@@ -119,3 +119,74 @@
   position: absolute;
   width: 12px;
 }
+
+/*
+ * A node of a finished path, which is a target rather than a mark: while the
+ * pen is drawing these only report where the line went, and afterwards they are
+ * what an author grabs to move a point or bend the curve through it.
+ */
+.pathNode {
+  background: rgb(120 180 255);
+  /*
+   * Above the move-region hit area, which covers the whole shape and would
+   * otherwise swallow every press meant for a node -- the body is the target
+   * for moving the region as a whole, and a node is the more specific target
+   * inside it, so the more specific one has to win.
+   */
+  z-index: 2;
+  border: 1px solid rgb(10 20 40);
+  border-radius: 50%;
+  cursor: grab;
+  height: 11px;
+  margin: -6px 0 0 -6px;
+  padding: 0;
+  /*
+   * The overlay passes pointer events through so the canvas underneath stays
+   * usable, so anything meant to be grabbed has to opt back in. Without this
+   * the node is drawn, is on top, and is not there as far as a press is
+   * concerned -- the move-region hit area behind it takes every click.
+   */
+  pointer-events: auto;
+  position: absolute;
+  touch-action: none;
+  width: 11px;
+}
+
+.pathNodeSelected {
+  background: rgb(255 255 255);
+  height: 13px;
+  margin: -7px 0 0 -7px;
+  width: 13px;
+}
+
+/*
+ * A tangent handle. Hollow while the node is still a corner, because a filled
+ * knob sitting off a straight line would be claiming a curvature the path does
+ * not have -- it says "grab me to bend this", not "this is bent".
+ */
+.pathHandle {
+  background: rgb(255 210 120);
+  /* Above the nodes as well: a knob may sit directly over a neighbouring one. */
+  z-index: 3;
+  border: 1px solid rgb(10 20 40);
+  border-radius: 50%;
+  cursor: grab;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  touch-action: none;
+  width: 9px;
+}
+
+.pathHandleUnset {
+  background: transparent;
+  border-color: rgb(255 210 120);
+}
+
+.pathHandleArm {
+  stroke: rgb(255 210 120);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}

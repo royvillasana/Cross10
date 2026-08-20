@@ -117,6 +117,18 @@ describe("studio delivery boundary", () => {
       source.includes('createElement("canvas")') ? [path] : [],
     );
 
-    expect(allocations).toEqual(["app-composition.tsx"]);
+    // Two now, and the second is the same kind of thing as the first: a surface
+    // the product draws *into* on its way to pixels, never an artifact.
+    //
+    // `studio-path-mask.ts` rasterizes a drawn region into a mask that the
+    // shader samples. Its canvas is uploaded as a texture and never encoded,
+    // never named, and never handed to anyone -- the same argument the export
+    // frame's GL surface makes, and it is the reason this test names the files
+    // rather than counting them. A third would be a product building its own
+    // artifact, which is what this exists to catch.
+    expect(allocations.sort()).toEqual([
+      "app-composition.tsx",
+      "studio-path-mask.ts",
+    ]);
   });
 });

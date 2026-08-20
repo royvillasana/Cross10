@@ -7,6 +7,11 @@ import { useToolcraftDispatch, useToolcraftSelector } from "@/toolcraft/runtime/
 import styles from "./studio-region-handles.module.css";
 import {
   appendStudioVertex,
+  studioNodeIncoming,
+  studioNodeOutgoing,
+  studioNodePosition,
+  withStudioNodeHandle,
+  type StudioVertexPoint,
   readStudioVertexPath,
   readStudioVertexPaths,
   STUDIO_PEN_TARGET,
@@ -26,6 +31,9 @@ import {
   studioRotationHandlePoint,
   studioShapeFrameToPoint,
   studioVertexToScreen,
+  studioNearestPathNode,
+  STUDIO_PATH_NODES_SHOWN,
+  STUDIO_STROKE_SPACING,
   studioResizeRegion,
   type StudioCanvasRect,
   type StudioRegionHandleId,
@@ -227,6 +235,29 @@ export function StudioRegionHandles({
     size: readNumber(values, REGION_TARGETS.size),
   };
 
+  /**
+   * The stroke in progress, held in a ref rather than in state.
+   *
+   * Re-rendering on every pointer move would make the drawing depend on React
+   * catching up with the hand, and at a few thousand points a drawing that
+   * waits for a render is a drawing that drops points.
+   */
+  const strokeRef = React.useRef<{
+    last: { x: number; y: number };
+    pointerId: number;
+    stroke: number;
+  } | null>(null);
+  /**
+   * Which stroke this is, so each press gets its own history entry.
+   *
+   * One group for the whole drawing would merge every press *and* every stroke
+   * into a single entry, so one Undo would erase the drawing rather than the
+   * last thing done to it -- three clicks and a stroke would be four decisions
+   * with one way back. Per press: a click is one entry, and a stroke is one
+   * entry however many nodes it laid down.
+   */
+  const strokeCountRef = React.useRef(0);
+
   const penLayerId =
     typeof values[STUDIO_PEN_TARGET] === "string"
       ? (values[STUDIO_PEN_TARGET] as string)
@@ -264,7 +295,7 @@ export function StudioRegionHandles({
 
       if (first && existing.length >= 3) {
         const screen = studioVertexToScreen(
-          studioShapeFrameToPoint(first, current),
+          studioShapeFrameToPoint(studioNodePosition(first), current),
           canvasRect,
         );
         const near =
@@ -286,7 +317,31 @@ export function StudioRegionHandles({
         }
       }
 
+      /**
+       * A press begins a stroke *and* places a point, which is what lets one
+       * gesture serve both ways of drawing.
+       *
+       * Press and release without moving and exactly one node is placed, which
+       * is the click-per-node pen this always had. Press and drag and the moves
+       * below keep appending, which is the only realistic way to lay down a
+       * path of any length -- a few thousand nodes is a few seconds of drawing
+       * and would be a few thousand clicks.
+       */
+      strokeCountRef.current += 1;
+      strokeRef.current = {
+        last: { x: event.clientX, y: event.clientY },
+        pointerId: event.pointerId,
+        stroke: strokeCountRef.current,
+      };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+
       dispatch({
+        // One stroke is one undo. Without the group every point of a drag is
+        // its own history entry, so taking back a line drawn in a second would
+        // be a few thousand presses of Undo.
+        history: "merge",
+        historyGroup: `studio-pen-${penLayerId}-${strokeCountRef.current}`,
+        label: "Draw",
         target: STUDIO_VERTEX_PATH_TARGET,
         type: "controls.setValue",
         // Stored in the shape's own frame, which is the frame the mask tests
@@ -296,10 +351,174 @@ export function StudioRegionHandles({
           penLayerId,
           studioPointToShapeFrame(point, current),
         ),
-      });
+      } as Parameters<typeof dispatch>[0]);
     },
     [canvasRect, current, dispatch, penLayerId, values],
   );
+
+  /**
+   * Points laid down while the pointer is held, spaced rather than sampled.
+   *
+   * A pointer reports moves as fast as the display refreshes and faster on a
+   * trackpad, so appending one node per event gives a path whose density
+   * depends on how quickly someone moved their hand -- hundreds of nodes in a
+   * slow curve and a dozen in a fast one. A minimum spacing makes the path a
+   * description of the line instead of a recording of the gesture, and bounds
+   * what a long drawing can cost.
+   *
+   * Measured in screen pixels rather than field units on purpose: what an
+   * author is drawing is a line they can see, and at a zoomed-out canvas a
+   * field-unit spacing would put nodes closer together than the pixels that
+   * could show them.
+   */
+  const extendStroke = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>): void => {
+      const stroke = strokeRef.current;
+      if (!stroke || !canvasRect || stroke.pointerId !== event.pointerId) return;
+
+      const travelled = Math.hypot(
+        event.clientX - stroke.last.x,
+        event.clientY - stroke.last.y,
+      );
+      if (travelled < STUDIO_STROKE_SPACING) return;
+
+      event.preventDefault();
+      stroke.last = { x: event.clientX, y: event.clientY };
+
+      const paths = readStudioVertexPaths(values[STUDIO_VERTEX_PATH_TARGET]);
+      const point = studioPointerToRegionUnits(
+        { x: event.clientX, y: event.clientY },
+        canvasRect,
+      );
+
+      dispatch({
+        history: "merge",
+        historyGroup: `studio-pen-${penLayerId}-${stroke.stroke}`,
+        label: "Draw",
+        target: STUDIO_VERTEX_PATH_TARGET,
+        type: "controls.setValue",
+        value: appendStudioVertex(
+          paths,
+          penLayerId,
+          studioPointToShapeFrame(point, current),
+        ),
+      } as Parameters<typeof dispatch>[0]);
+    },
+    [canvasRect, current, dispatch, penLayerId, values],
+  );
+
+  const endStroke = React.useCallback((): void => {
+    strokeRef.current = null;
+  }, []);
+
+  /**
+   * Which node is being edited, and what is being dragged on it.
+   *
+   * A selection rather than everything at once, which is how every pen tool
+   * behaves and here is also what makes a long path editable at all: a path may
+   * hold thousands of nodes, and thousands of pairs of tangent knobs on screen
+   * would be unreadable before it was slow.
+   */
+  const [selectedNode, setSelectedNode] = React.useState<number | null>(null);
+  const nodeDragRef = React.useRef<
+    | {
+        index: number;
+        kind: "node" | "incoming" | "outgoing";
+        pointerId: number;
+      }
+    | null
+  >(null);
+
+  const writeNode = React.useCallback(
+    (index: number, node: StudioVertexPoint): void => {
+      const paths = readStudioVertexPaths(values[STUDIO_VERTEX_PATH_TARGET]);
+      const path = readStudioVertexPath(paths, selectedLayerId ?? "");
+      if (index < 0 || index >= path.length) return;
+
+      const next = [...path];
+      next[index] = node;
+      dispatch({
+        // One drag is one undo, the same rule a stroke follows: a bend arrived
+        // at over fifty pointer moves is one decision.
+        history: "merge",
+        historyGroup: `studio-node-${selectedLayerId}-${index}`,
+        label: "Shape the path",
+        target: STUDIO_VERTEX_PATH_TARGET,
+        type: "controls.setValue",
+        value: { ...paths, [selectedLayerId ?? ""]: next },
+      } as Parameters<typeof dispatch>[0]);
+    },
+    [dispatch, selectedLayerId, values],
+  );
+
+  const beginNodeDrag = React.useCallback(
+    (index: number, kind: "node" | "incoming" | "outgoing") =>
+      (event: React.PointerEvent<HTMLElement>): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectedNode(index);
+        nodeDragRef.current = { index, kind, pointerId: event.pointerId };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      },
+    [],
+  );
+
+  const moveNodeDrag = React.useCallback(
+    (event: React.PointerEvent<HTMLElement>): void => {
+      const drag = nodeDragRef.current;
+      if (!drag || !canvasRect || drag.pointerId !== event.pointerId) return;
+      event.preventDefault();
+
+      const paths = readStudioVertexPaths(values[STUDIO_VERTEX_PATH_TARGET]);
+      const path = readStudioVertexPath(paths, selectedLayerId ?? "");
+      const node = path[drag.index];
+      if (!node) return;
+
+      const pointer = studioPointToShapeFrame(
+        studioPointerToRegionUnits(
+          { x: event.clientX, y: event.clientY },
+          canvasRect,
+        ),
+        current,
+      );
+
+      if (drag.kind === "node") {
+        // The handles are stored relative to the node, so moving it carries its
+        // curvature along -- which is what makes this feel like moving a piece
+        // of the curve rather than re-aiming two unrelated points.
+        const incoming = studioNodeIncoming(node);
+        const outgoing = studioNodeOutgoing(node);
+        writeNode(
+          drag.index,
+          incoming[0] === 0 && incoming[1] === 0 && outgoing[0] === 0 && outgoing[1] === 0
+            ? [pointer[0], pointer[1]]
+            : [
+                pointer[0],
+                pointer[1],
+                incoming[0],
+                incoming[1],
+                outgoing[0],
+                outgoing[1],
+              ],
+        );
+        return;
+      }
+
+      const position = studioNodePosition(node);
+      writeNode(
+        drag.index,
+        withStudioNodeHandle(node, drag.kind, [
+          pointer[0] - position[0],
+          pointer[1] - position[1],
+        ]),
+      );
+    },
+    [canvasRect, current, selectedLayerId, values, writeNode],
+  );
+
+  const endNodeDrag = React.useCallback((): void => {
+    nodeDragRef.current = null;
+  }, []);
 
   const write = React.useCallback(
     (target: string, value: number, label: string): void => {
@@ -422,8 +641,36 @@ export function StudioRegionHandles({
     x: (point.x - overlayFrame.left) / scale,
     y: (point.y - overlayFrame.top) / scale,
   });
+  /**
+   * Whether the finished path is editable on canvas, and how much of it shows.
+   *
+   * Every node is a target once the drawing is closed, but a path may hold
+   * thousands of them and thousands of DOM nodes is unusable before it is slow.
+   * Past the limit only the selected node and its neighbours are drawn, and a
+   * click anywhere near the path selects the nearest node instead -- so a long
+   * path stays fully editable while only the part being worked on is on screen.
+   */
+  const editingPath =
+    !drawing && current.shape === "free" && vertexPath.length >= 2;
+  // A plain function rather than a memo: it is defined after the early return
+  // above, and a hook after a conditional return is a hook that sometimes does
+  // not run.
+  const nodeScreen = (point: readonly [number, number]): { x: number; y: number } =>
+    toLocal(studioVertexToScreen(studioShapeFrameToPoint(point, shown), canvasRect));
+  const visibleNodes = editingPath
+    ? vertexPath.length <= STUDIO_PATH_NODES_SHOWN
+      ? vertexPath.map((_node, index) => index)
+      : [selectedNode ?? 0, (selectedNode ?? 0) - 1, (selectedNode ?? 0) + 1]
+          .filter((index) => index >= 0 && index < vertexPath.length)
+    : [];
+
   const penPoints = vertexPath.map((point) =>
-    toLocal(studioVertexToScreen(studioShapeFrameToPoint(point, shown), canvasRect)),
+    toLocal(
+      studioVertexToScreen(
+        studioShapeFrameToPoint(studioNodePosition(point), shown),
+        canvasRect,
+      ),
+    ),
   );
   const outline = studioRegionOutlinePoints(shown, canvasRect)
     .map(
@@ -475,6 +722,7 @@ export function StudioRegionHandles({
       ? { height: live.height, left: live.left, top: live.top, width: live.width }
       : canvasRect;
     if (!rectNow) return;
+
     gestureRef.current += 1;
     const origin = studioRegionDisplayValues(current, rectNow);
     dragRef.current = {
@@ -505,6 +753,33 @@ export function StudioRegionHandles({
       ? { height: live.height, left: live.left, top: live.top, width: live.width }
       : canvasRect;
     if (!rectNow) return;
+
+    /**
+     * A press inside a drawn region also picks the node nearest to it.
+     *
+     * This is what keeps a long path editable. Past the display limit only the
+     * node being worked on and its neighbours are drawn, so without a way to
+     * reach the others the rest of a thousand-node path would be visible and
+     * untouchable. Pressing near the part you want selects it, and the handles
+     * appear there.
+     *
+     * A linear scan, which is the right algorithm: it runs once per press, and
+     * an index that made it faster would have to be kept in step with an array
+     * that changes on every point of a stroke.
+     */
+    if (editingPath) {
+      const nearest = studioNearestPathNode(
+        vertexPath,
+        studioPointToShapeFrame(
+          studioPointerToRegionUnits(
+            { x: event.clientX, y: event.clientY },
+            rectNow,
+          ),
+          current,
+        ),
+      );
+      if (nearest !== null) setSelectedNode(nearest);
+    }
     gestureRef.current += 1;
     const origin = studioRegionDisplayValues(current, rectNow);
     const here = studioPointerToRegionUnits(
@@ -528,6 +803,9 @@ export function StudioRegionHandles({
       data-studio-pen={drawing ? "" : undefined}
       data-studio-region-handles=""
       onPointerDown={drawing ? placeVertex : undefined}
+      onPointerMove={drawing ? extendStroke : undefined}
+      onPointerUp={drawing ? endStroke : undefined}
+      onPointerCancel={drawing ? endStroke : undefined}
       ref={overlayRef}
     >
       {/*
@@ -548,7 +826,22 @@ export function StudioRegionHandles({
           />
         ) : null}
       </svg>
-      {penPoints.map((point, index) => (
+      {/*
+       * The trail of what has been placed so far, as dots -- but only while a
+       * path is short enough for dots to mean anything.
+       *
+       * One absolutely positioned element per node is fine at a dozen and is
+       * the single most expensive thing in this component at a few thousand: it
+       * was costing about a third of a millisecond per node on *every* render,
+       * so a long path made every unrelated control edit slow. The line between
+       * the nodes is drawn by the polyline above and does not depend on this,
+       * and the first node keeps its dot at any length because it is the target
+       * that closes the path -- an affordance, not a mark.
+       */}
+      {(penPoints.length <= STUDIO_PATH_NODES_SHOWN
+        ? penPoints
+        : penPoints.slice(0, 1)
+      ).map((point, index) => (
         <span
           aria-hidden="true"
           // The first vertex is the one that closes the path, so it is the one
@@ -559,6 +852,96 @@ export function StudioRegionHandles({
           style={{ left: `${point.x}px`, top: `${point.y}px` }}
         />
       ))}
+      {visibleNodes.map((index) => {
+        const node = vertexPath[index];
+        if (!node) return null;
+        const position = studioNodePosition(node);
+        const at = nodeScreen(position);
+        const selected = index === selectedNode;
+
+        /**
+         * A tangent knob for a node that has no curvature yet.
+         *
+         * Offered rather than hidden, because a handle that only exists once
+         * the curve exists is a handle nobody finds -- there is no gesture that
+         * would create it. Placed a fixed distance along the line to the
+         * neighbour it belongs to, and drawn hollow, so it reads as "grab me to
+         * bend this" rather than as a curvature the path does not have.
+         */
+        const fallback = (towards: readonly [number, number]): readonly [number, number] => {
+          const dx = towards[0] - position[0];
+          const dy = towards[1] - position[1];
+          const length = Math.hypot(dx, dy) || 1;
+          const reach = Math.min(length * 0.3, 0.18);
+          return [(dx / length) * reach, (dy / length) * reach];
+        };
+
+        const previous = vertexPath[(index - 1 + vertexPath.length) % vertexPath.length];
+        const next = vertexPath[(index + 1) % vertexPath.length];
+        const incoming = studioNodeIncoming(node);
+        const outgoing = studioNodeOutgoing(node);
+        const incomingSet = incoming[0] !== 0 || incoming[1] !== 0;
+        const outgoingSet = outgoing[0] !== 0 || outgoing[1] !== 0;
+        const incomingOffset = incomingSet
+          ? incoming
+          : fallback(studioNodePosition(previous ?? node));
+        const outgoingOffset = outgoingSet
+          ? outgoing
+          : fallback(studioNodePosition(next ?? node));
+
+        return (
+          <React.Fragment key={`node-${index}`}>
+            <button
+              aria-label={`Path node ${index + 1}`}
+              className={
+                selected
+                  ? `${styles.pathNode} ${styles.pathNodeSelected}`
+                  : styles.pathNode
+              }
+              data-testid={`studio-path-node-${index}`}
+              data-toolcraft-canvas-handle=""
+              onPointerDown={beginNodeDrag(index, "node")}
+              onPointerMove={moveNodeDrag}
+              onPointerUp={endNodeDrag}
+              onPointerCancel={endNodeDrag}
+              style={{ left: `${at.x}px`, top: `${at.y}px` }}
+              type="button"
+            />
+            {selected
+              ? (
+                  [
+                    { kind: "incoming" as const, offset: incomingOffset, set: incomingSet },
+                    { kind: "outgoing" as const, offset: outgoingOffset, set: outgoingSet },
+                  ]
+                ).map((handle) => {
+                  const knob = nodeScreen([
+                    position[0] + handle.offset[0],
+                    position[1] + handle.offset[1],
+                  ]);
+                  return (
+                    <button
+                      aria-label={`Path node ${index + 1} ${handle.kind} handle`}
+                      className={
+                        handle.set
+                          ? styles.pathHandle
+                          : `${styles.pathHandle} ${styles.pathHandleUnset}`
+                      }
+                      data-testid={`studio-path-handle-${index}-${handle.kind}`}
+                      data-toolcraft-canvas-handle=""
+                      key={handle.kind}
+                      onPointerDown={beginNodeDrag(index, handle.kind)}
+                      onPointerMove={moveNodeDrag}
+                      onPointerUp={endNodeDrag}
+                      onPointerCancel={endNodeDrag}
+                      style={{ left: `${knob.x}px`, top: `${knob.y}px` }}
+                      type="button"
+                    />
+                  );
+                })
+              : null}
+          </React.Fragment>
+        );
+      })}
       {drawing ? null : (
       <button
         aria-label="Move region"

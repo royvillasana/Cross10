@@ -117,6 +117,43 @@ test("browser: studio pen draws a free path on the canvas", async ({ page }) => 
   // a click that reached a resize node would have resized instead of drawing.
   expect(drawn).toEqual({ handlesShown: false, vertices: 3 });
 
+  /**
+   * And a held stroke, which is the other way of drawing and the only one that
+   * reaches a path of any length.
+   *
+   * Forty moves rather than three clicks, and the claim is that they arrive as
+   * many nodes rather than as one: a pen that only listened to presses would
+   * finish this drag with the single node the press placed. The count is
+   * asserted as a range because nodes are spaced by distance travelled rather
+   * than one per event -- a browser is free to coalesce pointer moves, and a
+   * proof that demanded exactly forty would be asserting the event rate of the
+   * machine it happens to run on.
+   */
+  const before = await vertices.count();
+  const arc = (step: number) => at(0.35 + step * 0.0075, 0.7 - step * 0.004);
+  await page.mouse.move(arc(0).x, arc(0).y);
+  await page.mouse.down();
+  for (let step = 1; step <= 40; step += 1) {
+    await page.mouse.move(arc(step).x, arc(step).y);
+  }
+  await page.mouse.up();
+
+  const stroked = await vertices.count();
+  expect(
+    stroked,
+    "a held stroke must lay down a run of nodes rather than the one its press placed",
+  ).toBeGreaterThan(before + 5);
+  // Far past the two dozen a compiled-in path could carry, which is the ceiling
+  // this replaced rather than raised.
+  expect(stroked).toBeLessThanOrEqual(200);
+
+  // One stroke is one undo. Per-node history would need as many presses as the
+  // stroke laid down nodes, which for a real drawing is thousands.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect
+    .poll(async () => vertices.count(), { timeout: 10_000 })
+    .toBe(before);
+
   // Closing on the first vertex gives the canvas back and keeps the path.
   await page.mouse.click(corners[0]?.x ?? 0, corners[0]?.y ?? 0);
   await expect(moveHandle).toBeVisible();
@@ -415,4 +452,93 @@ test("browser: studio pointer push displaces the field", async ({ page }) => {
     exportedWithPointer,
     "an export must not depend on where the pointer was left",
   ).toBe(exportedAtRest);
+});
+
+/**
+ * A node is a handle, and its handles are what bend the path through it.
+ *
+ * The claim that matters is the second half. A path made only of corners can be
+ * drawn by placing points, and that is what the pen always did; what a bézier
+ * adds is a curve between two nodes that no third node describes. So this drags
+ * a tangent and asserts the *region* changed -- ground that was covered is not,
+ * or ground that was bare is covered -- rather than asserting that a number in
+ * the path moved, which would be true of a handle wired to nothing.
+ *
+ * The knobs are offered on a corner rather than appearing once curvature
+ * exists, and that is deliberate: a handle that only exists after the curve
+ * would be a handle with no gesture that creates it. Hollow says "grab me to
+ * bend this" instead of claiming a curvature the path does not have.
+ */
+test("browser: studio path nodes bend the region through their handles", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  const output = page.locator(STUDIO_PRODUCT_OUTPUT);
+  const box = await output.boundingBox();
+  if (!box) throw new Error("The canvas needs a bounding box to draw on.");
+
+  const at = (fx: number, fy: number) => ({
+    x: box.x + box.width * fx,
+    y: box.y + box.height * fy,
+  });
+  const corners = [at(0.35, 0.3), at(0.65, 0.3), at(0.5, 0.7)];
+
+  await page
+    .locator('[data-toolcraft-control-target="stack.pen"]')
+    .getByRole("button", { name: "Draw" })
+    .first()
+    .click();
+  for (const corner of corners) await page.mouse.click(corner.x, corner.y);
+  await page.mouse.click(corners[0]?.x ?? 0, corners[0]?.y ?? 0);
+
+  // Closed, so the nodes are targets rather than marks. While the pen is
+  // drawing they only report where the line went.
+  const nodes = page.locator('[data-testid^="studio-path-node-"]');
+  await expect(nodes).toHaveCount(3);
+
+  // Selecting a node reveals exactly the two tangents that decide how the curve
+  // arrives at it and leaves it -- not one, and not a handle per neighbour.
+  await page.getByTestId("studio-path-node-0").click();
+  await expect(page.getByTestId("studio-path-handle-0-incoming")).toBeVisible();
+  const knob = page.getByTestId("studio-path-handle-0-outgoing");
+  await expect(knob).toBeVisible();
+
+  const edge = async (): Promise<string> =>
+    output.evaluate((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return "nogl";
+      // Just outside the straight edge between the first two nodes. A curve
+      // bowed outwards reaches this point; the straight line does not.
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        Math.round(canvas.width * 0.5),
+        Math.round(canvas.height * (1 - 0.24)),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      return `${pixel[0]},${pixel[1]},${pixel[2]},${pixel[3]}`;
+    });
+
+  const before = await edge();
+
+  const knobBox = await knob.boundingBox();
+  if (!knobBox) throw new Error("the tangent handle needs a box to drag");
+  await page.mouse.move(
+    knobBox.x + knobBox.width / 2,
+    knobBox.y + knobBox.height / 2,
+  );
+  await page.mouse.down();
+  // Away from the shape, which bows the edge outwards over the sample above.
+  await page.mouse.move(knobBox.x + 40, knobBox.y - 160, { steps: 10 });
+  await page.mouse.up();
+
+  await expect
+    .poll(async () => edge(), { timeout: 15_000 })
+    .not.toBe(before);
 });
