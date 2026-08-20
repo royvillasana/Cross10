@@ -300,6 +300,37 @@ vec3 studioOklabToLinear(vec3 lab) {
  * engines and the export all keep working in the one space, and only the walk
  * between two inks changes.
  */
+/**
+ * How the loop is walked, which is the shape of the travel rather than a second
+ * source of motion.
+ *
+ * The spec this answers asked for sine, triangle and noise LFOs. Most of what
+ * an LFO is *for* is already guaranteed better here by construction: drift is
+ * counted in whole cycles per loop, so periodic motion cannot break the seam
+ * however fast it runs. What that construction does not give is *shape* -- a
+ * viewer who passes at one constant speed and never eases.
+ *
+ * So this shapes the position rather than adding an oscillator. Every shape
+ * below returns 0 at the start of the loop and lands exactly on a whole number
+ * of cycles at the end, which is what keeps the seam closed by construction
+ * rather than by an author choosing a rate that happens to divide.
+ *
+ * - Steady is the walk this always had: constant speed, and a velocity that
+ *   jumps at the seam the way a loop of a pan does.
+ * - Eased starts and ends at rest. Its velocity is zero at both ends, so the
+ *   seam is smooth in speed as well as in position -- the one place a looping
+ *   camera move usually gives itself away.
+ * - Swing goes out and comes back inside one loop. It ends where it began by
+ *   shape rather than by counting, which is what makes it the honest reading of
+ *   the sine the spec asked for.
+ */
+float studioLoopShape(float loop, float shape) {
+  float t = clamp(loop, 0.0, 1.0);
+  if (shape < 0.5) return t;
+  if (shape < 1.5) return t * t * (3.0 - 2.0 * t);
+  return (1.0 - cos(t * 6.283185307179586)) * 0.5;
+}
+
 vec3 studioMixInks(vec3 a, vec3 b, float t, float space) {
   if (space < 0.5) return mix(a, b, t);
   if (space < 1.5) {
@@ -475,6 +506,7 @@ vec4 studioStripesBody(
   float angle,
   float driftAngle,
   float driftPhase,
+  float driftShape,
   float count,
   float widthRatio,
   float phase,
@@ -523,8 +555,9 @@ vec4 studioStripesBody(
   // from what direction it is read. The inks, the count and the separators do
   // not move, because a field whose colours change is a different field rather
   // than the same one seen from somewhere else.
-  float driftedAngle = angle + driftAngle * 360.0 * loop;
-  float driftedPhase = phase + driftPhase * loop;
+  float walked = studioLoopShape(loop, driftShape);
+  float driftedAngle = angle + driftAngle * 360.0 * walked;
+  float driftedPhase = phase + driftPhase * walked;
   float radians = driftedAngle * 0.017453292519943295;
   float coordinate = centered.x * cos(radians) + centered.y * sin(radians);
   // Folded in the layer's own axes, which is why it is applied to the rotated
@@ -674,6 +707,7 @@ vec4 studioGradientBody(
   float angle,
   float driftAngle,
   float driftPhase,
+  float driftShape,
   float flipX,
   float flipY,
   float pointerPush,
@@ -721,7 +755,8 @@ vec4 studioGradientBody(
   // from what direction it is read. The inks, the count and the separators do
   // not move, because a field whose colours change is a different field rather
   // than the same one seen from somewhere else.
-  float driftedAngle = angle + driftAngle * 360.0 * loop;
+  float walked = studioLoopShape(loop, driftShape);
+  float driftedAngle = angle + driftAngle * 360.0 * walked;
   // The gradient composes these separately below: the author's offset
   // translates, the drift wraps.
 
@@ -756,7 +791,7 @@ vec4 studioGradientBody(
   // closes it.)
   position = mix(
     position,
-    fract(position + driftPhase * loop),
+    fract(position + driftPhase * studioLoopShape(loop, driftShape)),
     step(0.0001, abs(driftPhase))
   );
 
@@ -1013,6 +1048,15 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "angle", type: "float" },
         { defaultValue: 0, name: "driftAngle", type: "float" },
         { defaultValue: 0, name: "driftPhase", type: "float" },
+        {
+          defaultValue: 0,
+          name: "driftShape",
+          // The index into this list is the float the shader branches on. A
+          // select whose values are not mapped here falls to zero and the
+          // control moves nothing.
+          optionValues: ["steady", "eased", "swing"],
+          type: "float",
+        },
         { booleanControl: true, defaultValue: 0, name: "flipX", type: "float" },
         { booleanControl: true, defaultValue: 0, name: "flipY", type: "float" },
         { defaultValue: 0, name: "pointerPush", type: "float" },
@@ -1169,6 +1213,15 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0, name: "angle", type: "float" },
         { defaultValue: 0, name: "driftAngle", type: "float" },
         { defaultValue: 0, name: "driftPhase", type: "float" },
+        {
+          defaultValue: 0,
+          name: "driftShape",
+          // The index into this list is the float the shader branches on. A
+          // select whose values are not mapped here falls to zero and the
+          // control moves nothing.
+          optionValues: ["steady", "eased", "swing"],
+          type: "float",
+        },
         { defaultValue: 24, name: "count", type: "float" },
         { defaultValue: 0.5, name: "widthRatio", type: "float" },
         { defaultValue: 0, name: "phase", type: "float" },

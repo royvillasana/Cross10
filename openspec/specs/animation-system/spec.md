@@ -93,10 +93,21 @@ Playback renderers SHALL derive time from `getToolcraftTimelineLoopTime` or `get
 version existed briefly and was replaced for the reason the contract gives —
 hand-rolled phase is how reverse and yoyo playback get invented by accident.
 
-The noise clause is unmet in letter and moot in practice: jitter is seeded from
-its own variation control rather than from the loop, because jitter does not
-drift. If it ever does, the seed has to include loop time or the field will
-re-scatter every frame.
+**The noise clause is unmet in letter and satisfied in substance, and taken
+literally it would produce the failure it exists to prevent.** A seed containing
+the loop position is a seed that changes every frame, and a field re-randomised
+sixty times a second is static in the way television static is. What has to be
+true is that the scatter belongs to the work and the viewer moves past it.
+
+That is what happens, by construction rather than by care: the noise is seeded
+from the band index and the author's declared variation, so each band carries
+its own displacement and drift advances which band is where. There is no time
+term to reseed from, which is why there is nothing here that could re-scatter.
+
+Proved rather than asserted, and proved the way everything else about drift is:
+a jittered field drifted half a cycle is compared against the same field with
+the offset set there by hand. They are identical, so the field translated. If it
+were reseeded from loop time they would differ everywhere.
 
 #### Scenario: No wall clock in the render path
 - **WHEN** the renderer computes a frame
@@ -175,9 +186,23 @@ quantizing at evaluation time and reporting a different number back to the
 author. The requirement above says a rate must not work that way; this one
 describes a mechanism that does.
 
-Sine and triangle *shapes* are genuinely absent: drift is linear, so a viewer
-passes at constant speed rather than easing. That is the part worth building if
-anyone wants it. Carried as `outstanding` 1a.13.
+The *shapes* were genuinely absent and are now built, as `How it travels`
+rather than as an oscillator: **Steady** is the constant walk drift always had,
+**Eased** starts and ends at rest so the seam is smooth in speed as well as in
+position, and **Swing** goes out and comes back inside one loop -- which is the
+honest reading of the sine this scenario describes, because it returns by shape
+rather than by quantizing a rate behind the author.
+
+The mechanism stays unbuilt and that is the decision, not an omission. Every
+shape lands on a whole number of cycles at the end of the loop, so none of them
+can open a seam; an assignable oscillator with a rate of its own is exactly the
+thing that can, and the requirement above forbids the quantize-and-report-back
+fix it would then need.
+
+So the scenarios below that describe assignment, rate quantization, keyframe
+combination and requantization remain unmet by choice. What a slow sine on the
+viewing angle produces -- a composition sweeping through its colour states --
+is reachable through drift on the angle with Swing selected.
 
 #### Scenario: Sine LFO on viewing angle
 - **WHEN** a slow sine LFO is assigned to the viewing angle

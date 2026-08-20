@@ -206,6 +206,14 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     uniform: "enginePitch",
   },
   {
+    target: "selectedLayer.driftShape",
+    test: "declares the travel shape walks the loop without opening the seam",
+    types: FIELD_TYPES,
+    // Read through the shaping function rather than by name at the drift site.
+    reads: "studioLoopShape",
+    uniform: "driftShape",
+  },
+  {
     target: "selectedLayer.driftPhase",
     test: "declares travel drifts the field and returns it",
     types: FIELD_TYPES,

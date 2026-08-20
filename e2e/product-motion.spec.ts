@@ -363,3 +363,145 @@ test("browser: studio turns drift the reading angle and return", async ({ page }
  * broke. A frozen frame and a dead renderer look identical for the length of
  * one gesture.
  */
+
+/**
+ * How the loop is walked, as distinct from how far it goes.
+ *
+ * The spec this answers asked for sine, triangle and noise oscillators. Most of
+ * what an oscillator is *for* is already guaranteed better here by
+ * construction: drift is counted in whole cycles per loop, so periodic motion
+ * cannot break the seam however fast it runs. What that construction does not
+ * give is shape -- a viewer who passes at one constant speed and never eases.
+ *
+ * So the claim has two halves and the second is the one that matters. The shape
+ * must change what the middle of the loop looks like, or it is a control that
+ * does nothing. And it must leave the seam exactly closed, or it is an
+ * oscillator wearing a shape's name -- which is the thing this product spent a
+ * whole change making impossible.
+ */
+/**
+ * A row of the composite, finely enough sampled to tell two walks apart.
+ *
+ * `readStudioOutputSignature` reads nine points, which is the right resolution
+ * for "did the composite change at all" and the wrong one here: a quarter-cycle
+ * shift and a sixth-of-a-cycle shift can put all nine samples inside the same
+ * bands, so two genuinely different walks report as one. This reads sixty-four
+ * points across the shape, in a single `readPixels`.
+ */
+async function readStudioFieldRow(page: Page): Promise<string> {
+  return page.locator("[data-toolcraft-product-output]").evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl || canvas.width === 0) return "nogl";
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
+    gl.readPixels(
+      Math.floor((canvas.width - span) / 2),
+      Math.floor(canvas.height / 2),
+      span,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    const samples: string[] = [];
+    const stride = Math.max(1, Math.floor(span / 64));
+    for (let index = 0; index < span; index += stride) {
+      const offset = index * 4;
+      samples.push(`${pixels[offset]},${pixels[offset + 1]},${pixels[offset + 2]}`);
+    }
+    return samples.join("|");
+  });
+}
+
+test("browser: studio travel shape changes the walk and keeps the seam closed", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  // Declared travel, or every shape walks the same distance of zero and the
+  // comparison below holds for the wrong reason.
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  const middles = new Map<string, string>();
+
+  for (const shape of ["Steady", "Eased", "Swing"]) {
+    await setStudioSelectValue(page, "selectedLayer.driftShape", shape);
+
+    await scrubber.press("Home");
+    const start = await readStudioFieldRow(page);
+
+    // A quarter of the way through rather than halfway, and that is not
+    // arbitrary. An easing curve is symmetric about the midpoint, so
+    // smoothstep(0.5) is exactly 0.5 -- Steady and Eased agree there by
+    // construction, and a proof sampling the middle would report that two of
+    // the three shapes are the same walk. A quarter is where they differ.
+    await scrubStudioTimelineTo(page, scrubber, 0.25);
+    middles.set(shape, await readStudioFieldRow(page));
+
+    // The seam, for this shape: the last frame of the loop is the first frame
+    // of the next one. Asserted per shape rather than once, because a shape
+    // that landed short of a whole cycle would close for Steady and open for
+    // the others -- which is exactly the failure an oscillator introduces.
+    await scrubber.press("End");
+    expect(
+      await readStudioFieldRow(page),
+      `${shape} must land on a whole cycle, so the loop closes`,
+    ).toBe(start);
+  }
+
+  // Three shapes, three different middles: each names a different walk rather
+  // than two of them being the same walk relabelled.
+  expect(
+    new Set(middles.values()).size,
+    "each travel shape must put the viewer somewhere different a quarter in",
+  ).toBe(3);
+});
+
+/**
+ * A jittered field travels rather than re-scattering, which is what the
+ * "seed the noise from loop time" requirement is really asking for.
+ *
+ * Taken literally that requirement would produce the failure it exists to
+ * prevent: a seed that includes the loop position is a seed that changes every
+ * frame, and a field re-randomised sixty times a second is static in the way
+ * television static is. What has to be true is that the scatter belongs to the
+ * *work* and the viewer moves past it.
+ *
+ * That is what the shader does, and by construction rather than by care: the
+ * noise is seeded from the band index and the author's declared variation, so
+ * a band carries its own displacement and drift advances which band is where.
+ * There is no time term to reseed from.
+ *
+ * Proved the way the drift proofs prove everything else here -- by producing
+ * the same frame the other way. If the field translated, the frame half a cycle
+ * into the loop is the frame an author would get by setting the offset there
+ * themselves. If it re-scattered, the two would differ everywhere.
+ */
+test("browser: studio jittered field travels with the loop rather than re-scattering", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  const scrubber = await timelineScrubber(page);
+  // Enough jitter that a re-scatter would be unmistakable, and a whole cycle of
+  // travel so half the loop is exactly half a cycle.
+  await setStudioSlider(page, "Jitter", 0.6);
+  await setStudioSlider(page, "Travel per loop", 1);
+
+  await scrubStudioTimelineTo(page, scrubber, 0.5);
+  const drifted = await readStudioFieldRow(page);
+
+  // The same position, set by hand, with nothing drifting.
+  await scrubber.press("Home");
+  await setStudioSlider(page, "Travel per loop", 0);
+  await setStudioSlider(page, "Offset", 0.5);
+
+  expect(
+    await readStudioFieldRow(page),
+    "a jittered field must travel, so drifting to a position matches setting it",
+  ).toBe(drifted);
+});

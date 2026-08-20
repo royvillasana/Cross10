@@ -238,6 +238,23 @@ export const studioSourceAcceptanceRows: readonly ToolcraftComponentAcceptance[]
 export const studioMotionAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
+    automatedTestName: "declares the travel shape walks the loop without opening the seam",
+    browser: true,
+    browserTestName: "browser: studio travel shape changes the walk and keeps the seam closed",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "How it travels changes the way a drifting layer gets where it is going without changing where that is. Steady moves at one speed; Eased starts and ends at rest, so the loop no longer gives itself away at the seam; Swing goes out and comes back inside one loop. Whichever is chosen, the first frame of the loop and the last are identical -- the shape cannot open a seam.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.driftShape",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    optionCoverage: "each-visible-item",
+    target: "selectedLayer.driftShape",
+    userAction: "Set Travel per loop, then walk How it travels through its three options.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares travel drifts the field and returns it",
     browser: true,
     browserTestName:

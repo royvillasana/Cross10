@@ -308,7 +308,11 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       groupingReason:
         "How a viewer passes this layer over one loop, which is a different question from what the layer looks like. Its own section because the work holds still and only the looking moves -- putting a rate beside a colour would invite drifting the colour, which would make every frame a different work rather than the same one seen from somewhere else.",
       id: "selected-layer-motion",
-      targets: ["selectedLayer.driftPhase", "selectedLayer.driftAngle"],
+      targets: [
+        "selectedLayer.driftShape",
+        "selectedLayer.driftPhase",
+        "selectedLayer.driftAngle",
+      ],
       title: "Layer Motion",
       workflowStage: "move",
     },

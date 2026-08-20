@@ -900,6 +900,38 @@ widthRatio: {
       // Phase is the viewer moving along the work: which part of each lamella is
       // presented as you pass it. It is the drift these techniques were built
       // for, and the one to reach for first.
+      driftShape: {
+        semanticGroup: "motion",
+        applicability: { mode: "always" },
+        defaultValue: "steady",
+        /*
+         * How the loop is walked, which is the shape of the travel rather than
+         * a second source of it.
+         *
+         * The rates below say how far the viewer goes; this says how they get
+         * there. Steady is the walk this always had -- one constant speed, and
+         * a velocity that jumps at the seam the way a looping pan gives itself
+         * away. Eased starts and ends at rest, so the seam is smooth in speed
+         * as well as in position. Swing goes out and comes back inside one
+         * loop, which is the honest reading of the oscillator the spec asked
+         * for: it returns by shape rather than by counting cycles.
+         *
+         * Every shape lands on a whole number of cycles at the end of the loop,
+         * so none of them can break the seam -- which is why this is a shape
+         * control and not an LFO with a rate of its own.
+         */
+        label: "How it travels",
+        options: [
+          { label: "Steady", value: "steady" },
+          { label: "Eased", value: "eased" },
+          { label: "Swing", value: "swing" },
+        ],
+        performanceReason:
+          "One branch and at most one cosine on the shared loop position; constant in every control.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.driftShape",
+        type: "select",
+      },
       driftPhase: {
         semanticGroup: "motion",
         applicability: { mode: "always" },

@@ -135,7 +135,12 @@ describe("per-layer uniform mangling", () => {
     // seam that is no longer there.
     const engineAt = gradientBody.indexOf("if (engine >= 0.5)");
     const offsetAt = gradientBody.indexOf("position += phase;");
-    const driftAt = gradientBody.indexOf("fract(position + driftPhase * loop)");
+    // The loop reaches drift through the shaping function now, so the text to
+    // look for is the shaped walk rather than the raw position. The claim is
+    // unchanged: drift lands before the engine block reads the coordinate.
+    const driftAt = gradientBody.indexOf(
+      "fract(position + driftPhase * studioLoopShape(loop, driftShape))",
+    );
 
     expect(offsetAt).toBeGreaterThan(-1);
     expect(driftAt).toBeGreaterThan(offsetAt);

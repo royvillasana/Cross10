@@ -126,15 +126,20 @@ describe("the assembled shader", () => {
     ]);
 
     expect(
-      source.match(/float driftedPhase = phase \+ driftPhase \* loop;/g),
+      // The loop reaches drift through the shaping function now, so what to
+      // match is the shaped walk. The claim is unchanged: the band field adds
+      // drift into the coordinate it already wraps.
+      source.match(/float driftedPhase = phase \+ driftPhase \* walked;/g),
       "the band field folds the drift into the coordinate it already wraps",
     ).toHaveLength(1);
     expect(
-      source.match(/fract\(position \+ driftPhase \* loop\)/g),
+      source.match(
+        /fract\(position \+ driftPhase \* studioLoopShape\(loop, driftShape\)\)/g,
+      ),
       "the ramp wraps its drift, because a ramp has an end to walk off",
     ).toHaveLength(1);
     expect(
-      source.match(/float driftedAngle = angle \+ driftAngle \* 360\.0 \* loop;/g),
+      source.match(/float driftedAngle = angle \+ driftAngle \* 360\.0 \* walked;/g),
       "the angle drifts the same way in both, because a turn is periodic already",
     ).toHaveLength(2);
     expect(STUDIO_DRIFT_TURN_DEGREES).toBe(360);
