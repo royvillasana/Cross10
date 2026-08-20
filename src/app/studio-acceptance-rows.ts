@@ -138,6 +138,27 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * -- a permanent row has to be present and inert most of the time, while an
  * offer that appears exactly when it can be taken is an offer.
  */
+/** Vector delivery, which exists only where the state genuinely is geometry. */
+export const studioSvgAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    actionCoverage: ["copy-svg"],
+    automated: true,
+    automatedTestName: "declares vector delivery only for the states that are vector geometry",
+    browser: true,
+    browserTestName: "browser: studio copies a band field as vector geometry and hides the action otherwise",
+    componentType: "actions",
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Copy SVG is offered only while the selected layer is geometry: a band field with no chromatic engine, no fold, and a rectangular or elliptical region. Choosing an engine or another layer kind removes the action rather than degrading it. When it is offered, pressing it puts SVG markup on the clipboard describing that layer's bands in its own inks, including jitter as displaced rectangles and taper as quadrilaterals. Nothing is downloaded and the recorded image-and-video artifact intent is unchanged.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "export.svg",
+    kind: "control",
+    target: "export.svg",
+    userAction:
+      "With a band field selected, press Copy SVG; then choose a chromatic engine and look for the action again.",
+  },
+];
+
 export const studioRestoreAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,

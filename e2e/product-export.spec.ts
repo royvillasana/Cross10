@@ -154,3 +154,53 @@ test("browser: studio image export resolution changes decoded pixel dimensions",
     );
   }
 });
+
+/**
+ * Vector delivery, which is mostly a claim about when it is *not* offered.
+ *
+ * Almost nothing in this product is vector geometry: a chromatic engine, an
+ * induced fringe and a beating interference are defined by what a shader
+ * computes per pixel, and the nearest SVG could come is a picture of the
+ * result. An action that quietly omitted what it could not draw would hand an
+ * author a file that looked like their work and was not, so the action
+ * disappears rather than degrading -- and that disappearance is the half worth
+ * proving, because a copy action that merely works proves nothing about the
+ * states it should have refused.
+ */
+test("browser: studio copies a band field as vector geometry and hides the action otherwise", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioSingleLayer(page);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  const action = page
+    .locator('[data-toolcraft-control-target="export.svg"]')
+    .getByRole("button", { name: "Copy SVG" });
+
+  // A band field with no engine is geometry, so the action is there.
+  await expect(action).toBeVisible();
+  await action.click();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied.startsWith("<svg xmlns=")).toBe(true);
+  expect(copied).toContain("</svg>");
+  // Bands, in the layer's own inks, at the artifact's own size.
+  expect((copied.match(/<rect /gu) ?? []).length).toBeGreaterThan(4);
+  expect(copied).toMatch(/fill="#[0-9a-f]{6}"/u);
+  expect(copied).toContain('width="1920"');
+  // And nothing of the studio travels with it, the same rule the shader copy
+  // is held to.
+  expect(copied).not.toContain("Croix10");
+  expect(copied).not.toContain("Toolcraft");
+
+  // An engine makes the layer something a shader computes, so the action goes.
+  await setStudioSelectValue(page, "selectedLayer.engine", "Interference");
+  await expect(action).toHaveCount(0);
+
+  // And comes back when the state is geometry again, rather than staying gone
+  // until a reload -- a gate that only ever closes is a gate nobody trusts.
+  await setStudioSelectValue(page, "selectedLayer.engine", "None");
+  await expect(action).toBeVisible();
+});

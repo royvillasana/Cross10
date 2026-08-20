@@ -183,22 +183,43 @@ which would hitch once per cycle.
 ### Requirement: SVG delivered by clipboard copy
 For engine states expressible as vector geometry, an SVG copy action SHALL place SVG markup on the clipboard. It SHALL be an additional product action that does not alter the recorded artifact intent. A product-written SVG file download MUST NOT exist.
 
-**Status: pending — not built.** There is no SVG copy. What the clipboard
-carries is assembled GLSL, which is the delivery this product actually made
-(`shader-delivery` R55).
+**Status: satisfied, with two deviations stated below.** `Copy SVG` places
+markup on the clipboard, writes no file, and carries no `role`, so the recorded
+image-and-video artifact intent is untouched. It appears only while the selected
+layer is geometry and disappears when it stops being so, which is the scenario
+below rather than a nicety: the alternative is a file that looks like an
+author's work and is not.
 
-Worth noting the shape it would take if built: a stripes layer with no jitter,
-no taper and no engine is expressible as rectangles, and almost nothing else in
-the product is. An SVG action that silently omitted the parts it could not draw
-would be worse than none. Carried as `outstanding` 1a.12.
+**It delivers the selected layer, not the composition.** An applicability
+predicate reads rendered controls, so a gate can see whether *this* layer is
+expressible and knows nothing about the others in a stack. Scoping the output to
+what the gate can see keeps presence and capability the same thing; scoping it
+to the composition would mean an action that is offered and then refuses, which
+is the pattern this product has been removing everywhere else.
+
+**Jitter and taper are drawn rather than gated**, which is the opposite of what
+this file expected and is forced by the same limit. A predicate can only read a
+discrete control, and both are continuous sliders — so refusing them in the
+generator would produce exactly the offered-then-fails shape. Both turn out to
+be geometry anyway: jitter displaces a band, so it is a rectangle somewhere
+else, and taper drifts the split along the band's length, so it is a
+quadrilateral. What is gated is the layer kind, the chromatic engine, the fold,
+and region shapes that have no clip equivalent.
+
+One fidelity note, stated rather than hidden: a jittered band's displacement is
+the same expression the shader uses, evaluated in double precision where a
+shader has single. The two are not bit-identical, and `sin` of a large argument
+is where they diverge; the difference is sub-pixel at the counts and variations
+the controls offer.
 
 #### Scenario: Copying Couleur Additive as SVG
 - **WHEN** the Couleur Additive engine is active with jitter at zero and no post FX enabled, and the user copies SVG
 - **THEN** valid SVG markup with vector bands and separator lines matching the composition is placed on the clipboard with a confirmation
 
 #### Scenario: SVG copy absent when not expressible
-- **WHEN** jitter is non-zero, a post effect is active, or a shader-dependent engine is selected
+- **WHEN** a shader-dependent engine is selected, the field is folded, or the region has no clip equivalent
 - **THEN** the SVG copy action is absent through conditional applicability and the reason is stated in its section
+- **NOTE** jitter and taper do not remove the action; they are drawn as displaced rectangles and quadrilaterals, because a continuous slider cannot be read by a predicate
 
 ### Requirement: GIF export is not provided
 GIF SHALL NOT be offered, because the runtime encoder provides MP4 and WebM and product-owned encoders are forbidden. Seamless-loop delivery is covered by WebM.

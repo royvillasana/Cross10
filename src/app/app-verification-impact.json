@@ -11,6 +11,7 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
+        "export.svg",
         "export.video-resolution",
         "persistence.reload",
         "randomize.actions",
@@ -120,6 +121,7 @@
         "export.image-action",
         "export.image-format",
         "export.image-resolution",
+        "export.svg",
         "export.video-resolution"
       ],
       "kind": "functional",
@@ -559,6 +561,13 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-stack-state.ts"
+    },
+    {
+      "acceptanceIds": [
+        "export.svg"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-svg.ts"
     },
     {
       "acceptanceIds": [

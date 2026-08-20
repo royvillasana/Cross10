@@ -15,6 +15,7 @@ import {
   studioMotionAcceptanceRows,
   studioSourceAcceptanceRows,
   studioRestoreAcceptanceRows,
+  studioSvgAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
   studioReferenceAcceptanceRows,
@@ -160,6 +161,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioMotionAcceptanceRows,
   ...studioSourceAcceptanceRows,
   ...studioRestoreAcceptanceRows,
+  ...studioSvgAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
   ...studioExportAcceptanceRows,
@@ -255,6 +257,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["media.image", "media.video"],
       title: "Layer Media",
       workflowStage: "confine",
+    },
+    {
+      entity: "Delivery",
+      entityId: "delivery-svg",
+      groupingReason:
+        "Copying the selected layer as vector geometry, which is a different delivery from the artifacts the footer writes: it encodes nothing, downloads nothing, and exists only for the states that genuinely are geometry. Its own stage because it appears and disappears with the layer's expressibility, and a section that comes and goes cannot share a title with one that does not.",
+      id: "delivery-svg",
+      targets: ["export.svg"],
+      title: "Vector Copy",
+      workflowStage: "deliver",
     },
     {
       entity: "Composition",

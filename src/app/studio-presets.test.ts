@@ -197,6 +197,29 @@ describe("what the library covers", () => {
     }
   });
 
+  it("keeps every palette the studio's own rather than the artist's", () => {
+    /**
+     * The task this closes asked for the palettes to be *checked against
+     * primary sources*, and doing that would put back the thing the palettes
+     * were rewritten to remove.
+     *
+     * These entries deliberately do not claim to reproduce individual
+     * catalogued works: they are constructions in the manner of a technique,
+     * with inks chosen for the relationships that technique needs. A palette
+     * verified against a source is a claim of correspondence to a particular
+     * work, so "verified" here would be asserting exactly what the library is
+     * built not to assert -- and `plausible` is worse, because it is a guess
+     * wearing the authority of a citation.
+     *
+     * So the correct end state is every palette `studio`, and this is the guard
+     * that keeps it that way. A future entry that wants another pedigree has to
+     * come past this test and its reasoning.
+     */
+    for (const preset of STUDIO_PRESETS) {
+      expect(preset.palette, `${preset.id} palette pedigree`).toBe("studio");
+    }
+  });
+
   it("claims a verified palette only where one is declared", () => {
     // All of these are the studio's own and claim nothing. The assertion exists
     // for the entry that is one day checked against a primary source: that is

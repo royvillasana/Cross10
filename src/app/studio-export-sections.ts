@@ -19,6 +19,62 @@
 export const STUDIO_EXPORT_SECTIONS = [
   {
     controls: {
+      svg: {
+        semanticGroup: "delivery",
+        /**
+         * Offered only when the selected layer genuinely is vector geometry.
+         *
+         * A band field with no engine, no jitter, no taper and no fold is a
+         * set of rectangles. Almost nothing else in this product is: a
+         * chromointerference, an induced fringe and a tapered band are defined
+         * by what a shader computes per pixel, and the nearest SVG could come
+         * is a picture of the result. An action that quietly omitted what it
+         * could not draw would hand an author a file that looked like their
+         * work and was not, so this disappears instead of degrading.
+         *
+         * The gate names the layer kind, the engine, the fold and the region
+         * shape, and *not* jitter or taper -- not because those do not matter
+         * but because a predicate can only read a discrete control, and both
+         * are continuous sliders. So they are drawn rather than gated: a
+         * jittered band is a rectangle somewhere else and a tapered one is a
+         * quadrilateral, which means there is no state where this is offered
+         * and cannot draw.
+         *
+         * Every predicate reads a rendered control, which is all applicability
+         * can see -- and is also why the output is scoped to the selected layer
+         * rather than the whole composition. A gate that cannot see the other
+         * layers must not promise anything about them.
+         */
+        applicability: {
+          all: [
+            { equals: "stripes", target: "selectedLayer.type" },
+            { equals: "none", target: "selectedLayer.engine" },
+            { equals: false, target: "selectedLayer.mirror" },
+            {
+              oneOf: ["rectangle", "ellipse"],
+              target: "selectedLayer.maskShape",
+            },
+          ],
+          mode: "conditional",
+        },
+        actions: [{ label: "Copy SVG", value: "copy-svg" }],
+        // No `role`, for the same reason the shader copy has none: it writes no
+        // artifact and downloads nothing, so the recorded image-and-video
+        // intent stands.
+        label: "The selected layer as vector geometry",
+        performanceReason:
+          "Builds markup from values already in state; nothing is rendered and no artifact is encoded.",
+        performanceRole: "responsiveness",
+        target: "export.svg",
+        type: "actions",
+      },
+    },
+    id: "delivery-svg",
+    title: "Vector Copy",
+  },
+
+  {
+    controls: {
       format: {
         applicability: { mode: "always" },
         defaultValue: "png",

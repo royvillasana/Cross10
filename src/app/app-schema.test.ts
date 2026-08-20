@@ -87,6 +87,10 @@ describe("appSchema", () => {
       // an author reaches for once a composition exists and they want to see it
       // differently, and it is not something delivery is downstream of.
       "Randomize",
+      // Offered only while the selected layer is geometry, which is why it
+      // sits before the artifact settings rather than among them: it delivers
+      // a description of one layer, not the frame those settings describe.
+      "Vector Copy",
       "Image Export",
       // Directly after Image Export and directly above the sticky actions,
       // which is where `export-pipeline` requires it once video intent is

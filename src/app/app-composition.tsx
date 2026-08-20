@@ -20,6 +20,7 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
+import { studioLayerToSvg } from "./studio-svg";
 import {
   planStudioRandomization,
   studioRandomizableControls,
@@ -257,6 +258,26 @@ function handleStudioPanelAction({
   if (action.value === "duplicate-layer") {
     duplicateStudioSelectedLayer({ dispatch, state });
     return;
+  }
+
+  if (action.value === "copy-svg") {
+    // The selected layer, because that is exactly what the gate can see: an
+    // applicability predicate reads rendered controls, so it knows whether
+    // *this* layer is geometry and nothing about the others. Promising the
+    // composition would be promising something the gate cannot check.
+    const entry = readStudioLayerEntry(
+      readStudioLayerRecord(state.values[STUDIO_LAYER_RECORD_TARGET]),
+      state.selectedLayerId ?? "",
+    );
+    return navigator.clipboard.writeText(
+      studioLayerToSvg({
+        // The artifact's own dimensions, because an SVG is delivered to
+        // something that will place it and every one of those wants real sizes.
+        height: Math.max(1, Math.round(state.canvas.size.height)),
+        layer: entry,
+        width: Math.max(1, Math.round(state.canvas.size.width)),
+      }),
+    );
   }
 
   if (action.value !== "copy-source") return;
