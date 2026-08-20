@@ -1,0 +1,19 @@
+{
+  "name": "croix10-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Serves the Croix10 gallery and its assembled shader source to an agent.",
+  "bin": { "croix10-mcp": "./src/server.ts" },
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6",
+    "vitest": "^3.2.7"
+  }
+}
