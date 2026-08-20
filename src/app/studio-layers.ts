@@ -212,7 +212,25 @@ export const STUDIO_LAYER_COMMON_UNIFORMS: readonly StudioLayerUniform[] = [
   },
 ];
 
+/**
+ * How many inks a layer's palette can hold.
+ *
+ * Declared once, in TypeScript, and interpolated into the GLSL as a
+ * preprocessor constant so the array size, the slot control's ceiling and the
+ * uniform list cannot disagree. Three places that all have to say eight is
+ * three places that can end up saying different numbers, and the failure would
+ * be a colour an author can set and the shader cannot read.
+ *
+ * The macro is named `PALETTE_MAX` in the emitted source rather than carrying
+ * this file's prefix, and that is not cosmetic: a delivered shader must contain
+ * no identifier naming the studio that produced it, and a proof asserts exactly
+ * that. Prefixing it would have branded every delivered source with the tool.
+ */
+export const STUDIO_PALETTE_MAX = 8;
+
 const CHUNK_LAYER_SUPPORT = `
+#define PALETTE_MAX ${STUDIO_PALETTE_MAX}
+
 vec3 studioLinearToSrgb(vec3 linear) {
   vec3 clamped = clamp(linear, 0.0, 1.0);
   vec3 low = clamped * 12.92;
@@ -220,31 +238,45 @@ vec3 studioLinearToSrgb(vec3 linear) {
   return mix(high, low, step(clamped, vec3(0.0031308)));
 }
 
-// One colour from the palette at position t, walking whichever slots are in use.
-// Shared by both bodies so a four-colour stripe field and a four-stop gradient
-// agree about what the slots mean.
-vec3 studioPaletteRamp(float t, float slots, vec3 a, vec3 b, vec3 c, vec3 d) {
-  float clamped = clamp(t, 0.0, 1.0);
-  if (slots < 2.5) return mix(a, b, clamped);
-  if (slots < 3.5) {
-    float scaled = clamped * 2.0;
-    return scaled < 1.0 ? mix(a, b, scaled) : mix(b, c, scaled - 1.0);
-  }
-  float scaled = clamped * 3.0;
-  if (scaled < 1.0) return mix(a, b, scaled);
-  if (scaled < 2.0) return mix(b, c, scaled - 1.0);
-  return mix(c, d, scaled - 2.0);
+/**
+ * One colour from the palette at position t, walking whichever slots are in use.
+ *
+ * Shared by both bodies so a banded stripe field and a gradient agree about what
+ * the slots mean.
+ *
+ * This was a ladder of cases, one branch per slot count, written out for two
+ * three and four inks. Every additional ink would have been another branch and
+ * another line of mixes, which is the shape that quietly decides a palette holds
+ * four. As a walk over an array it is the same code for two inks and for eight,
+ * so what the maximum is became a number rather than an argument.
+ */
+vec3 studioPaletteRamp(float t, float slots, vec3 bank[PALETTE_MAX]) {
+  float used = clamp(floor(slots + 0.5), 2.0, float(PALETTE_MAX));
+  float scaled = clamp(t, 0.0, 1.0) * (used - 1.0);
+  // The last slot is reached exactly at t = 1, so the floor has to stay one
+  // short of it or the final mix reads past the end of the bank.
+  int low = int(min(floor(scaled), used - 2.0));
+  return mix(bank[low], bank[low + 1], clamp(scaled - float(low), 0.0, 1.0));
 }
 
 // The slot a band falls in, as flat colour rather than a ramp. This is the
 // stripe reading of a palette: consecutive bands take consecutive inks, which is
 // what makes a three or four ink rhythm rather than a gradient.
-vec3 studioPaletteSlot(float index, float slots, vec3 a, vec3 b, vec3 c, vec3 d) {
-  float slot = mod(floor(index), max(slots, 1.0));
-  if (slot < 0.5) return a;
-  if (slot < 1.5) return b;
-  if (slot < 2.5) return c;
-  return d;
+/**
+ * One ink of the bank, by position in the cycle.
+ *
+ * The bank is an array rather than four named colours, and that is what made
+ * eight slots a change to one function instead of to thirty call sites. It also
+ * removed the shape that was quietly limiting: a chain of "if" returns has to
+ * be written out per slot, so every new ink was another branch in a function
+ * every body calls.
+ *
+ * Indexed dynamically, which GLSL ES 3.0 allows for a local array and is what
+ * keeps this a lookup rather than a ladder.
+ */
+vec3 studioPaletteSlot(float index, float slots, vec3 bank[PALETTE_MAX]) {
+  int slot = int(mod(floor(index), clamp(slots, 1.0, float(PALETTE_MAX))));
+  return bank[slot];
 }
 
 // Whether a point falls inside a regular polygon centred on the origin.
@@ -383,10 +415,7 @@ vec4 studioStripesBody(
   float engineAmount,
   float engineCursor,
   float enginePitch,
-  vec3 colorA,
-  vec3 colorB,
-  vec3 colorC,
-  vec3 colorD
+  vec3 bank[PALETTE_MAX]
 ) {
   // Normalised against height so the field does not stretch with aspect ratio.
   vec2 centered = (fragmentPosition - resolution * 0.5) / max(resolution.y, 1.0);
@@ -486,9 +515,9 @@ vec4 studioStripesBody(
   // split. Beyond two, consecutive bands take consecutive inks and the split
   // divides each band between its own ink and the one after it, which is how a
   // three or four colour rhythm carries a wedge without losing either.
-  vec3 near = studioPaletteSlot(bandIndex, paletteSlots, colorA, colorB, colorC, colorD);
-  vec3 far = studioPaletteSlot(bandIndex + 1.0, paletteSlots, colorA, colorB, colorC, colorD);
-  vec3 pair = paletteSlots < 2.5 ? mix(colorA, colorB, band) : mix(near, far, band);
+  vec3 near = studioPaletteSlot(bandIndex, paletteSlots, bank);
+  vec3 far = studioPaletteSlot(bandIndex + 1.0, paletteSlots, bank);
+  vec3 pair = paletteSlots < 2.5 ? mix(bank[0], bank[1], band) : mix(near, far, band);
 
   // The chromatic engine, applied to the field this body has just resolved
   // rather than replacing it (R67). Each technique is a way of colouring a
@@ -545,7 +574,7 @@ vec4 studioStripesBody(
       float secondEdge = max(fwidth(secondBand) * 1.5, 1e-5);
       float secondMask = smoothstep(0.5 - secondEdge, 0.5 + secondEdge, secondBand);
       vec3 secondInk = studioPaletteSlot(
-        floor(secondScaled), paletteSlots, colorA, colorB, colorC, colorD
+        floor(secondScaled), paletteSlots, bank
       );
       // Difference rather than a mix: it is black exactly where the two prints
       // agree, which is what makes the beat itself the thing that is seen.
@@ -576,10 +605,7 @@ vec4 studioGradientBody(
   float engineAmount,
   float engineCursor,
   float enginePitch,
-  vec3 colorA,
-  vec3 colorB,
-  vec3 colorC,
-  vec3 colorD
+  vec3 bank[PALETTE_MAX]
 ) {
   vec2 uv = fragmentPosition / max(resolution, vec2(1.0));
   vec2 centered = uv - 0.5;
@@ -654,7 +680,7 @@ vec4 studioGradientBody(
     step(0.0001, abs(driftPhase))
   );
 
-  vec3 colour = studioPaletteRamp(position, paletteSlots, colorA, colorB, colorC, colorD);
+  vec3 colour = studioPaletteRamp(position, paletteSlots, bank);
 
   // The same three techniques the stripes body offers (R67), read against a
   // ramp instead of a band. A ramp has no edges of its own, so what stands in
@@ -678,14 +704,14 @@ vec4 studioGradientBody(
       // Zero is head-on and leaves the ramp where it is, as in the stripes body.
       vec3 shifted = studioPaletteRamp(
         clamp(position + engineStrength * 0.25, 0.0, 1.0),
-        paletteSlots, colorA, colorB, colorC, colorD
+        paletteSlots, bank
       );
       colour = shifted * (1.0 - min(engineStrength * 0.35, 0.55));
     } else {
       // A second ramp at a different pitch, beating against the first.
       vec3 second = studioPaletteRamp(
         fract(position * max(enginePitch, 0.01)),
-        paletteSlots, colorA, colorB, colorC, colorD
+        paletteSlots, bank
       );
       colour = mix(colour, abs(colour - second), engineStrength);
     }
@@ -727,10 +753,7 @@ vec4 studioImageBody(
   float sourceWidthRatio,
   float sourceStrength,
   float paletteSlots,
-  vec3 colorA,
-  vec3 colorB,
-  vec3 colorC,
-  vec3 colorD,
+  vec3 bank[PALETTE_MAX],
   sampler2D image
 ) {
   // The picture lives in the *layer's* frame, not the canvas's.
@@ -822,10 +845,7 @@ vec4 studioImageBody(
       vec3 banded = studioPaletteRamp(
         fract(slotPosition * max(paletteSlots, 2.0)),
         paletteSlots,
-        colorA,
-        colorB,
-        colorC,
-        colorD
+        bank
       );
       return vec4(banded, sampled.a);
     }
@@ -839,10 +859,7 @@ vec4 studioImageBody(
     vec3 banded = studioPaletteRamp(
       fract(slotPosition * max(paletteSlots, 2.0)),
       paletteSlots,
-      colorA,
-      colorB,
-      colorC,
-      colorD
+      bank
     );
     return vec4(banded, sampled.a);
   }
@@ -970,6 +987,10 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
         { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
         { defaultValue: [0, 0, 1], name: "colorD", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorE", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorF", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorG", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorH", type: "vec3" },
       ],
     },
     image: {
@@ -1029,6 +1050,10 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: [1, 1, 1], name: "colorB", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorC", type: "vec3" },
         { defaultValue: [1, 1, 1], name: "colorD", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorE", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorF", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorG", type: "vec3" },
+        { defaultValue: [1, 1, 1], name: "colorH", type: "vec3" },
         { defaultValue: 0, name: "image", type: "sampler2D" },
       ],
     },
@@ -1108,6 +1133,10 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: [0, 0, 0], name: "colorB", type: "vec3" },
         { defaultValue: [1, 0, 0], name: "colorC", type: "vec3" },
         { defaultValue: [0, 0, 1], name: "colorD", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorE", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorF", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorG", type: "vec3" },
+        { defaultValue: [0, 0, 1], name: "colorH", type: "vec3" },
       ],
     },
   };
@@ -1261,10 +1290,31 @@ float studioPathInside${index}(vec2 point) {
 `;
 }
 
+/** The ink uniforms, in cycle order. Also the order the bank is built in. */
+export const STUDIO_PALETTE_UNIFORMS = Array.from(
+  { length: STUDIO_PALETTE_MAX },
+  (_slot, index) => `color${String.fromCharCode(65 + index)}`,
+);
+
 function compositeLayer(entry: StudioStackEntry, index: number): string {
   const type = STUDIO_LAYER_TYPES[entry.typeId];
+  const palette = new Set(STUDIO_PALETTE_UNIFORMS);
+  /**
+   * The inks, gathered into one array argument.
+   *
+   * The wrapper passes uniforms positionally, so the bank takes the place of
+   * the first ink and the rest drop out of the list -- which is what lets a
+   * body's signature say "the palette" once instead of naming every slot and
+   * growing by one parameter per ink.
+   */
   const args = type.uniforms
-    .map((uniform) => studioLayerUniformName(index, uniform.name))
+    .flatMap((uniform) =>
+      palette.has(uniform.name)
+        ? uniform.name === STUDIO_PALETTE_UNIFORMS[0]
+          ? ["bank"]
+          : []
+        : [studioLayerUniformName(index, uniform.name)],
+    )
     .join(", ");
   const name = (suffix: string): string => studioLayerUniformName(index, suffix);
   const reach = `${name("visible")} * maskCoverage`;
@@ -1361,6 +1411,13 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       composite.a
     );
 
+    ${
+      type.uniforms.some((uniform) => palette.has(uniform.name))
+        ? `vec3 bank[PALETTE_MAX] = vec3[PALETTE_MAX](${STUDIO_PALETTE_UNIFORMS.map(
+            (slot) => studioLayerUniformName(index, slot),
+          ).join(", ")});`
+        : ""
+    }
     vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor, uLoop${
       // Only the image type takes the shape's frame. The procedural bodies are
       // fields over the whole canvas that the mask then confines, which is the

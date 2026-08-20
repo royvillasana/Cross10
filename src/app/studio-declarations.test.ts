@@ -75,6 +75,12 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     target: "selectedLayer.colorA",
     test: "declares the first layer colour recolours only that layer",
     types: FIELD_TYPES,
+    // Read through the bank the wrapper builds rather than by name inside a
+    // body: the palette is passed as one array so a body's signature says "the
+    // inks" once instead of growing a parameter per slot. The identifier that
+    // proves the uniform is reached is therefore the mangled name in the
+    // wrapper's own array literal.
+    reads: "uLayer0_colorA",
     uniform: "colorA",
   },
   {
@@ -94,6 +100,30 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     test: "declares the fourth colour occupies the last slot",
     types: FIELD_TYPES,
     uniform: "colorD",
+  },
+  {
+    target: "selectedLayer.colorE",
+    test: "declares the fifth colour appears only once the slots reach it",
+    types: FIELD_TYPES,
+    uniform: "colorE",
+  },
+  {
+    target: "selectedLayer.colorF",
+    test: "declares the sixth colour appears only once the slots reach it",
+    types: FIELD_TYPES,
+    uniform: "colorF",
+  },
+  {
+    target: "selectedLayer.colorG",
+    test: "declares the seventh colour appears only once the slots reach it",
+    types: FIELD_TYPES,
+    uniform: "colorG",
+  },
+  {
+    target: "selectedLayer.colorH",
+    test: "declares the eighth colour appears only once the slots reach it",
+    types: FIELD_TYPES,
+    uniform: "colorH",
   },
   {
     target: "selectedLayer.paletteSlots",

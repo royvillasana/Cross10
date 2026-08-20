@@ -3047,3 +3047,167 @@ test("browser: studio source strength decides how much picture reaches the field
     .poll(async () => readStudioCentreSignature(page), { timeout: 15_000 })
     .not.toBe(regular);
 });
+
+/**
+ * The inks past the fourth, which used to have no way of existing.
+ *
+ * The palette held four because the shader's ramp was a ladder of cases -- one
+ * branch per slot count, written out for two, three and four -- so a fifth ink
+ * was another branch rather than another value. The bank is an array now, which
+ * is the same code for two inks and for eight.
+ *
+ * Four rows, four claims, deliberately not four copies of one. Gating, cycle
+ * length, the gradient reading, and what happens on the way back down are
+ * different things to get wrong.
+ */
+const INK_LABELS: Record<number, string> = {
+  5: "Fifth colour",
+  6: "Sixth colour",
+  7: "Seventh colour",
+  8: "Eighth colour",
+};
+
+/** The colours holding a real share of the sampled row, as a sorted list. */
+async function readStudioInks(page: Page): Promise<string[]> {
+  return page.locator(STUDIO_PRODUCT_OUTPUT).evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
+    if (!gl || canvas.width === 0) return [];
+    const span = Math.floor(canvas.height * 0.4);
+    const pixels = new Uint8Array(span * 4);
+    gl.readPixels(
+      Math.floor((canvas.width - span) / 2),
+      Math.floor(canvas.height / 2),
+      span,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    const counts = new Map<string, number>();
+    for (let index = 0; index < pixels.length; index += 4) {
+      if ((pixels[index + 3] ?? 0) < 250) continue;
+      const hex = `#${[pixels[index], pixels[index + 1], pixels[index + 2]]
+        .map((channel) => (channel ?? 0).toString(16).padStart(2, "0"))
+        .join("")}`;
+      counts.set(hex, (counts.get(hex) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .filter(([, count]) => count / span > 0.04)
+      .map(([hex]) => hex)
+      .sort();
+  });
+}
+
+test("browser: studio palette grows past four inks", async ({ page }) => {
+  test.setTimeout(180_000);
+
+  await openStudioPaletteLayer(page);
+
+  // Not offered while the count cannot reach it, which is the whole of the
+  // gate: a control on screen is a control that does something, and before
+  // this every ink was present whatever the count said.
+  await setStudioSlider(page, "Colour slots", 4);
+  await expect(page.getByLabel("Fifth colour hex")).toHaveCount(0);
+
+  await setStudioSlider(page, "Colour slots", 5);
+  await expect(page.getByLabel("Fifth colour hex")).toHaveCount(1);
+
+  const before = await readStudioInks(page);
+  await setStudioColorHex(page, "Fifth colour", "#00FF00");
+  await expect
+    .poll(async () => readStudioInks(page), { timeout: 15_000 })
+    .toContain("#00ff00");
+
+  // The other inks stayed. A fifth colour that recoloured the layer would show
+  // up as the rest of the palette leaving with it.
+  const after = await readStudioInks(page);
+  expect(after.filter((ink) => before.includes(ink)).length).toBeGreaterThan(1);
+});
+
+test("browser: studio palette cycle lengthens with every added ink", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioPaletteLayer(page);
+  // Enough bands that a six-ink rhythm completes inside the sampled row; too
+  // few and the sixth ink is missing because the row ended, not because the
+  // palette does not hold it.
+  await setStudioSlider(page, "Band count", 24);
+
+  await setStudioSlider(page, "Colour slots", 5);
+  await setStudioColorHex(page, "Fifth colour", "#00FF00");
+  const five = await readStudioInks(page);
+
+  await setStudioSlider(page, "Colour slots", 6);
+  await setStudioColorHex(page, "Sixth colour", "#FF00FF");
+  await expect
+    .poll(async () => (await readStudioInks(page)).length, { timeout: 15_000 })
+    .toBeGreaterThan(five.length);
+});
+
+test("browser: studio seventh ink takes its own turn in the cycle", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioPaletteLayer(page);
+  // Enough bands that a seven-ink rhythm completes inside the sampled row.
+  await setStudioSlider(page, "Band count", 28);
+  await setStudioSlider(page, "Colour slots", 7);
+
+  /**
+   * A stripe reading rather than a gradient one, and the difference is worth
+   * recording because the first attempt here was the gradient and it could not
+   * be made honest.
+   *
+   * A gradient walks its stops across the *frame* while a layer is a shape
+   * showing a slice of it, so with seven stops the visible slice covered only
+   * the third and fourth -- changing the seventh colour left the sweep
+   * identical, correctly. The proof would have had to either assert something
+   * that was not true or contrive a shape big enough to expose the end of the
+   * ramp. A cycling field shows every slot in the same row by construction.
+   */
+  const before = await readStudioInks(page);
+  await setStudioColorHex(page, "Seventh colour", "#00FF00");
+
+  await expect
+    .poll(async () => readStudioInks(page), { timeout: 15_000 })
+    .toContain("#00ff00");
+
+  // Its own turn, not everyone's: the inks that were there are still there.
+  const after = await readStudioInks(page);
+  expect(after.filter((ink) => before.includes(ink)).length).toBeGreaterThan(1);
+});
+
+test("browser: studio palette hides the inks a lowered count no longer uses", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  await openStudioPaletteLayer(page);
+  await setStudioSlider(page, "Colour slots", 8);
+  await expect(page.getByLabel("Eighth colour hex")).toHaveCount(1);
+  await setStudioColorHex(page, "Eighth colour", "#00FF00");
+  await expect
+    .poll(async () => readStudioInks(page), { timeout: 15_000 })
+    .toContain("#00ff00");
+
+  // Lowering the count takes the ink out of the cycle *and* takes its control
+  // off the panel, so the two always agree about how many inks the layer has.
+  await setStudioSlider(page, "Colour slots", 4);
+  await expect(page.getByLabel("Eighth colour hex")).toHaveCount(0);
+  await expect
+    .poll(async () => readStudioInks(page), { timeout: 15_000 })
+    .not.toContain("#00ff00");
+
+  // And the value is not lost: raising the count again brings back the ink that
+  // was set rather than a default.
+  await setStudioSlider(page, "Colour slots", 8);
+  // Compared case-insensitively: the field keeps the case it was given, and
+  // what matters is the value rather than how it is spelled.
+  expect(
+    (await page.getByLabel("Eighth colour hex").inputValue()).toLowerCase(),
+  ).toBe("#00ff00");
+});

@@ -11,15 +11,30 @@ gradient layer, not a gradient tool.
 ### Requirement: Palette slots as a user-owned collection
 The palette SHALL be a `collectionActions` control with a `color` `itemControl`, holding between 2 and 8 slots, since the user owns cardinality. Per-item labels SHALL be omitted because the colors form one shared palette bank. Engines SHALL adapt their band sequences to the current slot count.
 
-**Status: satisfied differently, and narrower than asked.** The palette is four
-`color` controls plus a `Colour slots` count, not a `collectionActions`
-collection, and the range is **2 to 4 rather than 2 to 8**. Engines do adapt
-their sequence to the slot count, which is the part that mattered.
+**Status: satisfied in substance; one scenario deliberately still unmet.**
 
-The narrowing is not principled, it is unbuilt: nothing needed five inks yet.
-A collection would express cardinality better than four fixed slots and a
-counter, and would remove the oddity that colours C and D exist as controls even
-when the count says two.
+**The range is 2 to 8**, as asked. What was holding it at four was not a
+judgement about palettes: the shader's ramp was a ladder of cases, one branch
+per slot count written out for two, three and four, so a fifth ink meant another
+branch in a function every body calls. The bank is an array now and the walk is
+the same code for two inks and for eight, which turned "how many inks" from an
+argument into a number. Engines adapt their sequence to the count as they always
+did, and a reroll covers every slot rather than the first four.
+
+**The oddity is gone.** An ink appears only once the count reaches it, so a
+two-ink layer offers two colours rather than four, two of which changed nothing.
+Lowering the count takes the control off the panel and the ink out of the cycle
+together, and the value is kept rather than reset -- raising the count again
+brings back the colour that was set.
+
+**What is still unmet is the shape**, and only that. The palette is eight
+`color` controls plus a `Colour slots` slider rather than a `collectionActions`
+collection, so the *Cardinality has one owner* scenario below is false: the
+count is a control beside the colours rather than the collection's own `+` and
+`−`. That is a refactor of every preset in the library, which lists inks by
+name, and it buys expression an author cannot see -- the same eight inks, added
+a different way. It is recorded here rather than done, and the two scenarios
+above it hold under the slider exactly as they would under a collection.
 
 #### Scenario: Adding a slot extends the sequence
 - **WHEN** the user presses the collection `+` and sets the new color
@@ -32,6 +47,7 @@ when the count says two.
 #### Scenario: Cardinality has one owner
 - **WHEN** the palette control is inspected
 - **THEN** no separate slot-count slider exists alongside it
+- **NOTE** unmet: cardinality is owned by a `Colour slots` slider rather than by the collection
 
 ### Requirement: Cruz-Diez palette presets
 Named palette presets SHALL be shipped, one per engine series, each verified against primary sources before delivery with the specific colour values recorded in the worklog. The working candidates — cadmium red / green / blue / black, orange / pink / crimson, blue / black horizontal bars, yellow / blue / ochre fine stripes — are drawn from description and are not yet confirmed. Applying a preset SHALL replace the palette collection contents and slot count only.

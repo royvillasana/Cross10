@@ -639,7 +639,7 @@ widthRatio: {
         applicability: { mode: "always" },
         defaultValue: 2,
         label: "Colour slots",
-        max: 4,
+        max: 8,
         min: 2,
         performanceReason:
           "Selects among colours already uploaded; the work per pixel does not change with the count.",
@@ -652,7 +652,17 @@ widthRatio: {
       },
       colorC: {
         semanticGroup: "colour",
-        applicability: { mode: "always" },
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 3, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
         defaultValue: "#FF0000",
         label: "Third colour",
         performanceReason: "A colour uploads as one vec3 read once per pixel.",
@@ -662,12 +672,102 @@ widthRatio: {
       },
       colorD: {
         semanticGroup: "colour",
-        applicability: { mode: "always" },
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 4, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
         defaultValue: "#0000FF",
         label: "Fourth colour",
         performanceReason: "A colour uploads as one vec3 read once per pixel.",
         performanceRole: "responsiveness",
         target: "selectedLayer.colorD",
+        type: "color",
+      },
+      colorE: {
+        semanticGroup: "colour",
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 5, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
+        defaultValue: "#FFD400",
+        label: "Fifth colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorE",
+        type: "color",
+      },
+      colorF: {
+        semanticGroup: "colour",
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 6, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
+        defaultValue: "#00A0A0",
+        label: "Sixth colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorF",
+        type: "color",
+      },
+      colorG: {
+        semanticGroup: "colour",
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 7, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
+        defaultValue: "#FF7A00",
+        label: "Seventh colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorG",
+        type: "color",
+      },
+      colorH: {
+        semanticGroup: "colour",
+        // Rendered only once the slot count reaches it.
+        //
+        // Every ink used to be present whatever the count said, so a two-ink
+        // layer offered four colours and two of them changed nothing. That is
+        // the specific confusion this gate removes: a control on screen is a
+        // control that does something, and the count is what decides how many
+        // of these do.
+        applicability: {
+          all: [{ greaterThanOrEqual: 8, target: "selectedLayer.paletteSlots" }],
+          mode: "conditional",
+        },
+        defaultValue: "#8000FF",
+        label: "Eighth colour",
+        performanceReason: "A colour uploads as one vec3 read once per pixel.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.colorH",
         type: "color",
       },
     },

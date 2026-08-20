@@ -87,7 +87,20 @@ export const STUDIO_RANDOMIZE_GROUPS: readonly StudioRandomizeGroup[] = [
     id: "palette",
     label: "Lock the palette",
     lockTarget: "randomize.lockPalette",
-    uniforms: ["colorA", "colorB", "colorC", "colorD", "paletteSlots"],
+    // Every ink the bank can hold, not only the four it used to. A reroll that
+    // knew about four would leave a layer's fifth through eighth colours at
+    // whatever they were, which reads as a palette that half-rerolled.
+    uniforms: [
+      "colorA",
+      "colorB",
+      "colorC",
+      "colorD",
+      "colorE",
+      "colorF",
+      "colorG",
+      "colorH",
+      "paletteSlots",
+    ],
   },
   {
     id: "engine",
