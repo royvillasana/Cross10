@@ -37,10 +37,13 @@ import {
   STUDIO_OUTPUT_SHAPES,
 } from "./studio-onboarding";
 import {
+  planStudioStackRestoration,
   readStudioLayerRecord,
+  readStudioStackSnapshot,
   studioApplicationLayerIds,
   studioApplyTargetFromSelection,
   STUDIO_LAYER_RECORD_TARGET,
+  STUDIO_SNAPSHOT_TARGET,
 } from "./studio-stack-state";
 import {
   findStudioPreset,
@@ -85,6 +88,10 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
   const step = readStudioOnboardingStep(values["stack.onboardingStep"]);
   const choice = readStudioOnboardingChoice(values[STUDIO_ONBOARDING_CHOICE_TARGET]);
   const layers = state.layers ?? [];
+  // The stack the last replacement overwrote, if one is held. Read here rather
+  // than asked for at press time so the offer can render only when there is
+  // something to take back.
+  const snapshot = readStudioStackSnapshot(values[STUDIO_SNAPSHOT_TARGET]);
   const selectedLayerId = state.selectedLayerId ?? null;
 
   const [shapeValue, setShapeValue] = React.useState("square");
@@ -250,7 +257,45 @@ export function StudioOnboardingDialog(): React.JSX.Element | null {
                   </button>
                 ))}
               </div>
-            
+              {snapshot ? (
+                /**
+                 * Taking back the last replacement, in the surface that made it.
+                 *
+                 * This was a panel row until now, and the row said what it was
+                 * doing there: restore was meant to move with everything else
+                 * that decides something, and did not, because the snapshot was
+                 * believed not to reach a selector inside the dialog. It does --
+                 * the dialog reads the same whole state the canvas does, and the
+                 * value is there. What the note recorded was a conclusion drawn
+                 * from an instrumented run rather than a property of the
+                 * runtime, and it outlived whatever made it true.
+                 *
+                 * Rendered only when a replacement is actually held, which is
+                 * the reverse of what a panel row can do: a permanent row has to
+                 * be present and inert most of the time, while an offer that
+                 * appears exactly when it can be taken is an offer.
+                 */
+                <div className={styles.field}>
+                  <span className={styles.fieldLabel}>
+                    You replaced a stack with {snapshot.appliedLabel}
+                  </span>
+                  <button
+                    className={styles.shape}
+                    data-studio-onboarding-restore=""
+                    onClick={() =>
+                      run(
+                        planStudioStackRestoration({
+                          currentLayerIds: layers.map((layer) => layer.id),
+                          snapshot,
+                        }),
+                      )
+                    }
+                    type="button"
+                  >
+                    Restore what was there
+                  </button>
+                </div>
+              ) : null}
             </DialogBody>
           </>
         ) : step === STUDIO_ONBOARDING_REPLACING ? (

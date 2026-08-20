@@ -43,33 +43,4 @@ export const STUDIO_GALLERY_SECTIONS = [
     id: "composition",
     title: "Composition",
   },
-  {
-    controls: {
-      /*
-       * Still here, and not because it was overlooked.
-       *
-       * Restore was meant to move into the flow with everything else that
-       * decides something. It could not: the dialog reads runtime state through
-       * a selector and the snapshot does not reach it, while `onPanelAction`
-       * sees the same value perfectly well. Until that is understood, a restore
-       * rendered in the dialog would be a button that is invisible exactly when
-       * an author needs it, which is worse than a row in the wrong place.
-       *
-       * Recorded as `outstanding` 1a.6.
-       */
-      restore: {
-        semanticGroup: "composition",
-        applicability: { mode: "always" },
-        actions: [{ label: "Restore previous", value: "restore-stack" }],
-        label: "Undoing the last replacement",
-        performanceReason:
-          "Rewrites the layer list and one record from a held snapshot; the frame is redrawn by the pass any edit uses.",
-        performanceRole: "responsiveness",
-        target: "gallery.restore",
-        type: "actions",
-      },
-    },
-    id: "composition-restore",
-    title: "Previous Stack",
-  },
 ] as const;

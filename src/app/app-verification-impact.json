@@ -271,7 +271,8 @@
     {
       "acceptanceIds": [
         "background.color",
-        "canvas.render-scale"
+        "canvas.render-scale",
+        "gallery.restore"
       ],
       "kind": "functional",
       "path": "src/app/studio-onboarding-dialog.tsx"

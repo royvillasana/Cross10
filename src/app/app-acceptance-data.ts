@@ -288,16 +288,6 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       workflowStage: "colour",
     },
     {
-      entity: "Previous stack",
-      entityId: "composition-restore",
-      groupingReason:
-        "Taking back a replacement is its own decision, and the only one in the panel that acts on state no control holds. It stayed in the panel because the flow cannot read the snapshot it would act on (1a.6).",
-      id: "composition-restore",
-      targets: ["gallery.restore"],
-      title: "Previous Stack",
-      workflowStage: "revise",
-    },
-    {
       entity: "Layer source",
       entityId: "selected-layer-source",
       groupingReason:

@@ -157,12 +157,32 @@ function studioTechniqueButton(page: Page, name: string): Locator {
  * trouble. A restore rendered in the dialog would be invisible exactly when an
  * author needs it. Recorded as `outstanding` 1a.6.
  */
+/**
+ * Taking back a replacement, from inside the flow that made it.
+ *
+ * It was a panel row until the offer moved in here, and the move changed the
+ * claim rather than only the location: the offer is rendered only while a
+ * replacement is held, so "press it again and nothing happens" became "there is
+ * nothing to press", which is the better behaviour and the one this now proves.
+ */
+async function openStudioRestoreOffer(page: Page): Promise<Locator> {
+  // Only opened if it is not already open. The flow is modal, so pressing the
+  // panel door while the flow is showing waits on a button the backdrop is
+  // covering -- which reads as "the restore offer never appeared" and is
+  // actually "the click never landed".
+  if ((await page.locator("[data-studio-onboarding]").count()) === 0) {
+    await page
+      .locator('[data-toolcraft-control-target="gallery.actions"]')
+      .getByRole("button", { name: "Change the technique" })
+      .first()
+      .click();
+  }
+  return page.locator("[data-studio-onboarding-restore]");
+}
+
 async function studioRestore(page: Page): Promise<void> {
-  await page
-    .locator('[data-toolcraft-control-target="gallery.restore"]')
-    .getByRole("button", { name: "Restore previous" })
-    .first()
-    .click();
+  const offer = await openStudioRestoreOffer(page);
+  await offer.first().click();
 }
 
 /**
@@ -325,10 +345,12 @@ test("browser: studio gallery restores the stack an application replaced", async
     .poll(async () => readStudioColourVariety(page), { timeout: 15_000 })
     .toBeGreaterThan(1);
 
-  // No intermediate resting state: restoring again does nothing, because the
-  // snapshot was cleared by the restore that used it. Offering it twice would
-  // let a second press rebuild a stack the author had already come back from.
-  await studioRestore(page);
+  // And the offer is gone, because the snapshot it acted on was spent. A second
+  // restore would rebuild a stack the author had already come back from, and
+  // the strongest way to prevent that is to stop offering rather than to accept
+  // a press and ignore it.
+  const spent = await openStudioRestoreOffer(page);
+  await expect(spent).toHaveCount(0);
 
   expect(
     await readStudioLayerIds(page),

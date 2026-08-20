@@ -43,10 +43,11 @@ describe("appSchema", () => {
       // One section where four used to be. Choosing a technique and choosing a
       // study both moved into the onboarding flow, because they decide what the
       // canvas *is* rather than shaping work that exists. What is left is the
-      // door back to that flow, the way back from a replacement, and the narrow
-      // application that edits layers already on the canvas.
+      // door back to that flow and the narrow application that edits layers
+      // already on the canvas. Taking back a replacement went in with the rest:
+      // it now appears inside the flow, and only when a replacement is held,
+      // which is something a permanent panel row cannot do.
       "Composition",
-      "Previous Stack",
       // Stays in the panel: how hard to look at a study, and how to read it
       // against the work, are both adjusted while looking at the canvas.
       "Selected Layer",

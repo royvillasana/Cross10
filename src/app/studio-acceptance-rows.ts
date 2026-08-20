@@ -124,7 +124,20 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * different ones, and it is the assertion a "the frame changed" proof would pass
  * straight over.
  */
-/** Taking back a replacement, which is the one panel press that still exists. */
+/**
+ * Taking back a replacement, which now happens where the replacement was made.
+ *
+ * It was a panel row, kept there against the intent of the rest of the move
+ * because the snapshot was believed not to reach a selector inside the dialog.
+ * It does. What that note recorded was a conclusion from one instrumented run
+ * rather than a property of the runtime, and it outlived whatever made it true.
+ *
+ * The row targets the door rather than a control of its own, because the offer
+ * is no longer a control: it appears inside the flow, and only when a
+ * replacement is actually held. That is the reverse of what a panel row can do
+ * -- a permanent row has to be present and inert most of the time, while an
+ * offer that appears exactly when it can be taken is an offer.
+ */
 export const studioRestoreAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
@@ -134,12 +147,13 @@ export const studioRestoreAcceptanceRows: readonly ToolcraftComponentAcceptance[
     componentType: "actions",
     evidence: "rendered-pixels",
     expectedObservable:
-      "Pressing Restore previous brings back the layers, names and values the last application replaced, and does nothing when no application is held.",
+      "After a technique has replaced a stack, reopening the flow offers to restore what was there, and taking it brings back the layers, names and values the replacement removed. With no replacement held the offer is not shown at all, so there is no press that does nothing.",
     fixture: SELECTED_LAYER_FIXTURE,
     id: "gallery.restore",
     kind: "control",
-    target: "gallery.restore",
-    userAction: "Apply a composition over existing work, then press Restore previous.",
+    target: "gallery.actions",
+    userAction:
+      "Apply a technique over existing work, reopen the flow, and press Restore what was there.",
   },
 ];
 
