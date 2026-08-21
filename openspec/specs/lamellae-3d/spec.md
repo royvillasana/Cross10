@@ -3,27 +3,44 @@
 ## Purpose
 Recorded from the Croix10 change, archived at 110 of 219 tasks.
 
-**Build status: none of this is built, and the product declares the opposite.**
+**Build status: none of this is built, and the product currently declares the
+opposite. The owner decided on 2026-08-21 to build it.**
+
 Audited against the app on 2026-08-17 (`outstanding` 1.1). There is no Three.js
 scene, no gizmo, no instanced geometry and no curved-surface mode. The only
 search hits were the word "three" and the preset named *Lamella Sweep*, which is
 a flat band field.
 
-**This file is not merely pending — it conflicts with a live declaration.** The
-app declares `productReadiness.viewInteraction` as `mode: "non-spatial"`, and
-its recorded reason is the direct negation of what the second requirement here
-asks for: *"Output is a two-dimensional shader field with no scene geometry,
-model, or camera to orbit. Layer order is a compositing sequence rather than
-depth in a space, so there is nothing an orbit gesture would move around."*
+**The conflict was real and does not dissolve.** The app declares
+`productReadiness.viewInteraction` as `mode: "non-spatial"`, and its recorded
+reason is the direct negation of what the second requirement asks for: *"Output
+is a two-dimensional shader field with no scene geometry, model, or camera to
+orbit."* Building this flips that declaration.
 
-One of the two has to give. Building lamellae means flipping that declaration to
-`orbit`, adding a gizmo, and taking on the model-presentation obligations that
-come with a spatial product — which is a different product from the one the rest
-of these specs describe, not an addition to it. Leaving it as pending intent
-means the specs contain a requirement the app is actively declared against, and
-someone will eventually try to satisfy it.
+**What it costs is worth stating plainly, because it is not only work.** The
+product's coherence rests on four things: one WebGL2 program assembled from a
+layer stack, per-layer uniforms, one export path, and delivery as shader source.
+A spatial mode touches all four — a second renderer beside the stack, geometry
+where there were uniforms, two pipelines that have to agree at export, and a
+scene that **cannot be delivered as a fragment shader**. `Copy shader source`
+and the MCP package have no meaning for a composition in this mode, and that is
+a gap in the artifact story rather than a detail.
 
-The audit does not resolve that; it names it. Carried as `outstanding` 1a.5.
+**What it buys is the subject.** A Physichromie *is* lamellae, and its colour
+changing as a viewer moves is the phenomenon rather than an effect over it. The
+product does that today in the plane, as a simulated shift — which is precisely
+what the parallax requirement below forbids. Real occlusion is a different
+claim, and the only one that is actually true of the works.
+
+Two things make the build smaller than it looks: Three.js is already a
+dependency of the runtime, and the runtime owns the orbit gizmo and the
+model-orbit interaction, so no dependency is added and no signed source is
+touched.
+
+Scheduled as `outstanding` 1a.5a (the scene, the gizmo and the declaration),
+1a.5b (extruded lamellae, real parallax and lighting) and 1a.5c (curved surfaces
+and export parity).
+
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface
 The 3D tool SHALL render a Three.js scene into a product canvas marked `data-toolcraft-product-output` inside `canvasContent`, sized and translated by `useToolcraftProductSceneFrame()`. Because the lamellae are procedural geometry rather than an uploaded model, `modelPresentation` SHALL remain `{ mode: "runtime" }` and no model loader, presentation lease, or second Three cache SHALL be created. A canvas outside the runtime scene surface MUST NOT be mounted.
