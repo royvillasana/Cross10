@@ -611,6 +611,22 @@ export const studioLayerAcceptanceRows: readonly ToolcraftComponentAcceptance[] 
   },
   {
     automated: true,
+    automatedTestName: "declares the plate offset separates the primaries along the reading axis",
+    browser: true,
+    browserTestName: "browser: studio plate offset separates the primaries along the reading axis",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Plate offset separates the layer's primaries along the axis its field is read on, so edges gain a coloured fringe on one side and its complement on the other, and turning the layer's angle turns the direction of the separation with it. The layer's own shape does not fray: the ink shifts and the paper does not. At zero the layer is drawn exactly as it was.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "selectedLayer.channelSplit",
+    kind: "control",
+    layerCoverage: "selected-layer-controls",
+    target: "selectedLayer.channelSplit",
+    userAction: "Raise Plate offset on a banded layer, then change the layer's angle.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares quantization admits only the inks the layer carries",
     browser: true,
     browserTestName: "browser: studio quantization keeps only the inks the layer carries",

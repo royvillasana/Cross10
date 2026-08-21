@@ -1180,6 +1180,31 @@ widthRatio: {
         target: "selectedLayer.pixelBlock",
         type: "slider",
       },
+      channelSplit: {
+        semanticGroup: "treatment",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        /*
+         * Misregistration, which is a condition these techniques exploit
+         * rather than an effect over them: a plate laid down slightly off
+         * prints the same image somewhere else, and the primaries separating
+         * along the axis the field is read on is what an induced third colour
+         * looks like when the press is out.
+         *
+         * Bounded low on purpose. Past a small fraction of the frame the
+         * primaries stop reading as one image printed badly and start reading
+         * as three images.
+         */
+        label: "Plate offset",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "While it is above zero the layer's field is read three times instead of once, which is a constant factor rather than a cost that grows with the value; at zero it is one comparison.",
+        performanceRole: "responsiveness",
+        step: 0.01,
+        target: "selectedLayer.channelSplit",
+        type: "slider",
+      },
       quantize: {
         semanticGroup: "treatment",
         applicability: { mode: "always" },

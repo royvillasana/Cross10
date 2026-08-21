@@ -295,6 +295,7 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
         "selectedLayer.halftoneCell",
         "selectedLayer.halftoneAngle",
         "selectedLayer.pixelBlock",
+        "selectedLayer.channelSplit",
         "selectedLayer.quantize",
       ],
       title: "Layer Print",

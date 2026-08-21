@@ -1197,6 +1197,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         // How the layer is printed: the screen it is cut through, the grain it
         // is sampled at, and whether its colours are held to its own inks.
         { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "channelSplit", type: "float" },
         { defaultValue: 0, name: "quantize", type: "float" },
         { defaultValue: 12, name: "halftoneCell", type: "float" },
         { defaultValue: 0, name: "halftoneAngle", type: "float" },
@@ -1303,6 +1304,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         // How the layer is printed: the screen it is cut through, the grain it
         // is sampled at, and whether its colours are held to its own inks.
         { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "channelSplit", type: "float" },
         { defaultValue: 0, name: "quantize", type: "float" },
         { defaultValue: 12, name: "halftoneCell", type: "float" },
         { defaultValue: 0, name: "halftoneAngle", type: "float" },
@@ -1391,6 +1393,7 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         // How the layer is printed: the screen it is cut through, the grain it
         // is sampled at, and whether its colours are held to its own inks.
         { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "channelSplit", type: "float" },
         { defaultValue: 0, name: "quantize", type: "float" },
         { defaultValue: 12, name: "halftoneCell", type: "float" },
         { defaultValue: 0, name: "halftoneAngle", type: "float" },
@@ -1609,6 +1612,7 @@ float studioPathInside${index}(vec2 point) {
  * compiling for every stack at once.
  */
 const STUDIO_PRINT_UNIFORMS = new Set([
+  "channelSplit",
   "halftone",
   "halftoneAngle",
   "halftoneCell",
@@ -1649,6 +1653,22 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
   const weight = `${name("opacity")} * layerReach`;
 
   const aspect = `max(${name("maskAspect")}, 0.01)`;
+  const hasAngle = type.uniforms.some((uniform) => uniform.name === "angle");
+  /**
+   * The body call, as an expression rather than a statement.
+   *
+   * Named because the channel split reads the layer again at displaced
+   * positions, and three hand-written copies of a call with this many
+   * positional arguments is three places for one of them to drift.
+   */
+  const bodyCall = (position: string): string =>
+    `${type.entryPoint}(${position}, uResolution, uCursor, uLoop${
+      // Only the image type takes the shape's frame. The procedural bodies are
+      // fields over the whole canvas that the mask then confines, which is the
+      // right model for them -- a stripe field does not "belong to" its shape
+      // the way a picture does.
+      entry.typeId === "image" ? `, maskLocal, maskWidth, ${name("maskSize")}` : ""
+    }${args ? `, ${args}` : ""})`;
   const hasPath = (entry.vertices?.length ?? 0) >= 3;
 
   return `  {
@@ -1765,15 +1785,40 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
       ? fragmentPosition
       : floor(fragmentPosition / pixelBlock) * pixelBlock + pixelBlock * 0.5;
 
-    vec4 layer = ${type.entryPoint}(sourcePosition, uResolution, uCursor, uLoop${
-      // Only the image type takes the shape's frame. The procedural bodies are
-      // fields over the whole canvas that the mask then confines, which is the
-      // right model for them -- a stripe field does not "belong to" its shape
-      // the way a picture does.
-      entry.typeId === "image"
-        ? `, maskLocal, maskWidth, ${name("maskSize")}`
-        : ""
-    }${args ? `, ${args}` : ""});
+    vec4 layer = ${bodyCall("sourcePosition")};
+
+    /**
+     * The primaries displaced against each other along the axis the field is
+     * read on, which is what a mis-registered print does.
+     *
+     * The layer is *re-read* at two displaced positions rather than having its
+     * output smeared, and that is the difference between a misregistration and
+     * a blur: a plate laid down slightly off prints the same image somewhere
+     * else, so what the red channel shows is genuinely the field a little to
+     * one side. Smearing the colour that was already computed would produce a
+     * fringe that no plate could make.
+     *
+     * The cost is honest and worth stating: while the split is on, the body is
+     * evaluated three times for that layer instead of once. It is guarded by a
+     * branch, so a layer with no split pays one comparison, and it is bounded
+     * by a constant rather than by any control's value.
+     *
+     * The centre sample keeps its alpha. Inside a shape that is what a plate
+     * does -- the ink shifts, the paper does not -- and taking the displaced
+     * alphas would fray the layer's own edge into three.
+     */
+    float channelSplit = ${name("channelSplit")};
+    if (channelSplit > 0.0) {
+      // Up to two percent of the frame's height, which is a misregistration
+      // rather than a special effect: past that the primaries stop reading as
+      // one image printed badly and start reading as three images.
+      float splitReach = channelSplit * 0.02 * uResolution.y;
+      float splitAngle = radians(${hasAngle ? name("angle") : "0.0"});
+      vec2 splitAxis = vec2(cos(splitAngle), sin(splitAngle)) * splitReach;
+      vec4 splitLow = ${bodyCall("sourcePosition - splitAxis")};
+      vec4 splitHigh = ${bodyCall("sourcePosition + splitAxis")};
+      layer = vec4(splitLow.r, layer.g, splitHigh.b, layer.a);
+    }
     /**
      * Halftone, then quantization, in the order the spec declares.
      *

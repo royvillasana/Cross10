@@ -166,7 +166,12 @@ describe("stack assembly", () => {
     // one: pixelation is applied upstream of the body, because a field sampled
     // once per block is coarsely *sampled* where averaging the output would be
     // the same field smeared.
-    expect(source.split("studioStripesBody(sourcePosition").length - 1).toBe(3);
+    //
+    // Counted at the *centre* call, because a layer now reads its body three
+    // times when the channel split is on -- the primaries are displaced by
+    // re-reading the field either side, which is what a mis-registered plate
+    // does and what smearing the output could not.
+    expect(source.split("studioStripesBody(sourcePosition,").length - 1).toBe(3);
   });
 
   it("omits a type the stack does not use", () => {
@@ -210,5 +215,65 @@ describe("stack assembly", () => {
 
     expect(source).not.toContain("uEngine");
     expect(source).not.toContain("studioResolveField");
+  });
+});
+
+describe("the order the print effects are applied in", () => {
+  /**
+   * Not a matter of taste: two of these four orderings make a promise false.
+   *
+   * The grain must precede the body, because it decides *what the body reads*
+   * rather than what happens to the result -- applying it afterwards would
+   * average the output into squares, which is a smear rather than a coarse
+   * reading. The split must precede the screen, because the screen turns the
+   * layer's tone into area and the split changes what that tone is. And the
+   * quantization must come last, because its whole promise is that every colour
+   * the layer draws is one of its own inks: a split applied after it would
+   * displace the primaries and produce colours that are not.
+   */
+  it("declares an order that keeps every effect's promise true", () => {
+    const source = studioAssembleStackFragmentShader([{ typeId: "stripes" }]);
+
+    const grain = source.indexOf("vec2 sourcePosition =");
+    const body = source.indexOf("vec4 layer = studioStripesBody(sourcePosition,");
+    const split = source.indexOf("float channelSplit =");
+    const screen = source.indexOf("layer.a *= studioHalftone(");
+    // The call rather than the definition, which is emitted with the shared
+    // helpers near the top of the program.
+    const quantize = source.indexOf("layer.rgb = studioQuantizeToBank(");
+
+    for (const [name, at] of [
+      ["grain", grain],
+      ["body", body],
+      ["split", split],
+      ["screen", screen],
+      ["quantize", quantize],
+    ] as const) {
+      expect(at, `${name} must be emitted at all`).toBeGreaterThan(-1);
+    }
+
+    expect(grain, "the grain decides what the body reads").toBeLessThan(body);
+    expect(split, "the split changes the tone the screen reads").toBeLessThan(screen);
+    expect(
+      screen,
+      "quantization is last, or it is not true that only the layer's inks are used",
+    ).toBeLessThan(quantize);
+  });
+
+  it("leaves every print effect bypassable at its own resting value", () => {
+    // Each is off at the value it starts at, so "bypassed" is a state of the
+    // control rather than a second switch beside it -- and a stack that touches
+    // none of them is byte-identical to one assembled before they existed,
+    // which is what makes the whole section additive.
+    const uniforms = studioLayerUniforms("stripes");
+    for (const name of [
+      "channelSplit",
+      "halftone",
+      "pixelBlock",
+      "quantize",
+    ]) {
+      const uniform = uniforms.find((entry) => entry.name === name);
+      expect(uniform?.defaultValue, `${name} must rest at off`).toBe(0);
+    }
   });
 });

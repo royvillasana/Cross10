@@ -90,16 +90,28 @@ one it looks most like.
 ### Requirement: Channel split along the stripe axis
 The channel split SHALL displace the red, green, and blue channels along the current stripe axis, with an intensity control, and SHALL be deterministic.
 
-**Status: pending — scheduled.** What was the first quarter of a glitch tool,
-kept on its own terms. Displacing the primaries against each other along the
-axis the field is read on is a chromatic operation: it is what a mis-registered
-print does, and misregistration is one of the conditions these techniques were
-built to exploit. The other three glitch effects — block displacement, scanline
-tearing, datamosh smear — were dropped with the rest of the toolkit.
+**Status: satisfied.** `Plate offset` separates the primaries along the axis the
+layer's field is read on, so turning the layer turns the separation with it.
 
-The seed and loop-periodicity scenarios went with them. Nothing that remains is
-random: a channel split is a displacement by an amount the author sets, so there
-is no noise to seed and nothing that could fail to close the loop.
+**The layer is re-read at two displaced positions rather than having its output
+smeared**, and that is the difference between a misregistration and a blur: a
+plate laid down slightly off prints the same image somewhere else, so what the
+red channel shows has to be the field genuinely displaced. A fringe made by
+smearing the colour already computed is one no plate could produce.
+
+The cost is stated rather than hidden: while the offset is above zero the
+layer's body is evaluated three times instead of once. It is a constant factor
+rather than a cost that grows with the value, it is guarded by a branch so an
+unsplit layer pays one comparison, and it is bounded by the same declaration the
+other per-layer work is.
+
+The centre sample keeps its alpha. Inside a shape that is what a plate does —
+the ink shifts and the paper does not — and taking the displaced alphas would
+fray the layer's own edge into three.
+
+The seed and loop-periodicity scenarios went with the dropped effects, and
+correctly: a split is a displacement by an amount the author sets, so there is
+no noise to seed and nothing that could fail to close the loop.
 
 #### Scenario: Channel split follows the stripe axis
 - **WHEN** channel split is applied with a nonzero intensity
@@ -113,11 +125,27 @@ is no noise to seed and nothing that could fail to close the loop.
 ### Requirement: Post FX composition order
 Post FX SHALL apply to whatever the active tool renders, in a deterministic documented order, and SHALL be individually bypassable.
 
-**Status: pending — scheduled, and smaller than it was.** With three effects
-rather than five tools, the order is halftone, then quantization, then channel
-split: the first two decide what the ink is, and the last displaces it. The
-requirement survives the trim because it is the one that stops three
-independently-correct effects from producing a frame nobody chose.
+**Status: satisfied, in an order the building corrected.** This file said
+halftone, then quantization, then channel split. Two of those turn out to be
+wrong, and not as a matter of taste — each ordering makes some effect's promise
+false.
+
+The order is **grain, split, screen, quantization**:
+
+- **Grain precedes the body**, because it decides what the body *reads* rather
+  than what happens to the result. Applied afterwards it would average the
+  output into squares, which is a smear rather than a coarse reading.
+- **The split precedes the screen**, because a screen turns the layer's tone
+  into area and the split changes what that tone is.
+- **Quantization is last**, because its whole promise is that every colour the
+  layer draws is one of its own inks. A split applied after it displaces the
+  primaries and produces colours that are not, so the promise would simply be
+  untrue.
+
+Each is bypassed at its own resting value rather than by a switch beside it, so
+a stack that touches none of them assembles exactly as it did before this
+section existed. Both claims are asserted against the emitted source rather than
+described.
 
 #### Scenario: Bypassing an effect
 - **WHEN** an enabled effect is bypassed

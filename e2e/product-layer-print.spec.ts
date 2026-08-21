@@ -233,3 +233,55 @@ test("browser: studio quantization keeps only the inks the layer carries", async
     )
     .toBeLessThanOrEqual(3);
 });
+
+/**
+ * Misregistration, which is a condition these techniques exploit rather than an
+ * effect laid over them.
+ *
+ * The claim that matters is *how* the primaries separate. A blur of the colour
+ * already computed would produce a fringe no plate could make; what a plate
+ * out of register does is print the same image somewhere else, so the red
+ * channel has to show the field genuinely displaced. That is why the layer is
+ * read again at two positions rather than smeared, and why this proof checks
+ * the direction follows the layer's own angle -- a fringe that ignored the
+ * reading axis would be a filter rather than a misprint.
+ */
+test("browser: studio plate offset separates the primaries along the reading axis", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  const plain = await readStudioPrintRow(page);
+
+  /** How far the row's channels disagree, which is what a split produces. */
+  const fringe = (row: readonly string[]): number =>
+    row.filter((pixel) => {
+      const [red = 0, green = 0, blue = 0] = pixel.split(",").map(Number);
+      return Math.max(red, green, blue) - Math.min(red, green, blue) > 30;
+    }).length;
+
+  // A grey field has no coloured pixels at all until the plates come apart.
+  expect(fringe(plain), "the layer is unsplit before the offset is raised").toBe(0);
+
+  await setStudioSlider(page, "Plate offset", 0.5);
+  await expect
+    .poll(async () => fringe(await readStudioPrintRow(page)), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+
+  // The separation follows the axis the field is read on: turned a quarter
+  // turn, the displacement runs along the sampled row rather than across it,
+  // so the amount of fringe the row crosses changes.
+  const across = fringe(await readStudioPrintRow(page));
+  await setStudioSlider(page, "Angle", 90);
+  await expect
+    .poll(async () => fringe(await readStudioPrintRow(page)), { timeout: 15_000 })
+    .not.toBe(across);
+
+  // And zero is off rather than a smallest setting.
+  await setStudioSlider(page, "Angle", 0);
+  await setStudioSlider(page, "Plate offset", 0);
+  await expect
+    .poll(async () => (await readStudioPrintRow(page)).join("|"), { timeout: 15_000 })
+    .toBe(plain.join("|"));
+});

@@ -280,6 +280,12 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     uniform: "pixelBlock",
   },
   {
+    target: "selectedLayer.channelSplit",
+    test: "declares the plate offset separates the primaries along the reading axis",
+    types: ALL_TYPES,
+    uniform: "channelSplit",
+  },
+  {
     target: "selectedLayer.quantize",
     test: "declares quantization admits only the inks the layer carries",
     types: ALL_TYPES,
