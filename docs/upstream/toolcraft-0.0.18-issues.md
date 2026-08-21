@@ -914,6 +914,56 @@ await expectToolcraftOrientationModelDrag(observation, session, {
 });
 ```
 
+## 20. Protected app self-tests assume nothing is on screen on a first visit
+
+**Same family as issue 3**, and found the same way: by running the whole suite
+rather than the file being worked on.
+
+`app-persistence.spec.ts` proves the runtime restores canvas, values and panel
+workspace after a reload. To move the canvas it clicks the runtime toolbar:
+
+```ts
+await currentPage.getByRole("button", { name: "Zoom in" }).click();
+```
+
+It never dismisses anything first, because it assumes a first visit shows a bare
+shell. Any product that opens a modal on first load fails it at the click —
+the button is behind a backdrop, and the test times out after 30s waiting for it
+to become actionable. The page snapshot in the failure shows the product's own
+dialog, listing its gallery entries, exactly as designed.
+
+The same assumption breaks `browser: starter opens as a neutral Toolcraft
+shell`, `browser canvas contains product output without app UI controls or CTA
+copy`, `browser preserves the Toolcraft canvas backing surface`, and `browser:
+starter canvas accepts media upload without product controls`, all of which
+report `element(s) not found` or a failed visibility check for the same reason.
+
+**A modal first run is not a misuse of the framework.** The runtime ships the
+dialog composites these products render (`ToolcraftDialog` and friends, issue 14
+notwithstanding), and a first-run flow is the shape a generated app is
+encouraged toward: choose what you are making before you make it. The
+product-side proofs all call their own dismissal helper and pass. Only the
+protected self-tests, which cannot know a product has a first run, do not.
+
+**Confirmed pre-existing rather than introduced.** The failure reproduces
+unchanged at a commit predating a session's worth of product work, checked
+directly rather than assumed.
+
+**What would fix it.** Either:
+
+1. **Dismiss whatever is modal before driving the toolbar.** A protected helper
+   that closes any open dialog — the runtime knows its own dialog surfaces —
+   called at the top of the self-tests that interact with chrome. This keeps
+   the tests testing the runtime rather than the product's first-run state.
+
+2. **Drive the toolbar through the store instead of the DOM.** These tests care
+   that a viewport change survives a reload, not that a particular button is
+   clickable; dispatching `canvas.zoomIn` would prove the same thing and be
+   immune to whatever a product renders over it.
+
+The second is smaller and more honest about what the test is for: the click is
+incidental to the claim.
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

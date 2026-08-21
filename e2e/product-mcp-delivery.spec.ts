@@ -42,8 +42,25 @@ function assembleThroughPackage(id: string, overrides: unknown[] = []): string {
         )}, preset }));`,
       ].join("\n"),
     ],
-    { cwd: PACKAGE, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
+    { cwd: PACKAGE, encoding: "utf8", env: childEnvironment(), maxBuffer: 32 * 1024 * 1024 },
   );
+}
+
+/**
+ * The environment for a child run from the package directory.
+ *
+ * `NODE_OPTIONS` is inherited, and the stable suite sets it to
+ * `--require ./tools/toolcraft-keepalive-preload.cjs` -- a path relative to the
+ * repository root. A child started with `cwd` set to this package resolves that
+ * against the wrong directory and dies before it runs, which is a failure with
+ * nothing to do with what is being tested and which only appears under
+ * `test:browser:stable`. Dropping the variable is right rather than expedient:
+ * the preload keeps a *browser* connection alive, and this child is a Node
+ * process assembling a string.
+ */
+function childEnvironment(): NodeJS.ProcessEnv {
+  const { NODE_OPTIONS: _dropped, ...rest } = process.env;
+  return rest;
 }
 
 test("browser: studio mcp source compiles standalone in a real context", async ({
@@ -113,7 +130,7 @@ void main() {
         "-e",
         `import { studioCatalog } from "./src/catalog"; process.stdout.write(JSON.stringify(studioCatalog().map((entry) => entry.id)));`,
       ],
-      { cwd: PACKAGE, encoding: "utf8" },
+      { cwd: PACKAGE, encoding: "utf8", env: childEnvironment() },
     ),
   ) as string[];
 
