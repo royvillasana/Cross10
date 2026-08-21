@@ -66,11 +66,22 @@ runtime's model-layer attributes would make the recipe pass by claiming the
 scene is something it is not, which is the one move this project has refused
 everywhere else.
 
-Resolving it needs one of: a framework recipe that accepts a product-supplied
-orbit surface; a rule change making `model-drag` inapplicable when
-`modelPresentation` is runtime-owned and the scene is procedural; or a decision
-that the spatial mode goes through the model pipeline after all — which
-contradicts the first requirement rather than the second.
+**Filed upstream as issue 19**, with the patch written out in full: an optional
+`surfaceSelector` on `createToolcraftModelOrbitAction` and
+`expectToolcraftOrientationModelDrag`, defaulting to the runtime's model layer
+so no existing caller changes. Both files are protected — their hashes are in
+the integrity manifest — so it could not be applied here.
+
+That is the fix the owner chose of the three offered. The other two are recorded
+in the issue: making `model-drag` inapplicable when `modelPresentation` is
+runtime-owned and no model asset control exists, or routing the spatial mode
+through the model pipeline, which would contradict this file's first requirement
+instead of its second.
+
+Until the recipe lands, 1a.5a is blocked at the proof rather than at the build:
+the scene, the gizmo, the single product output and the flipped declaration all
+worked in a browser. What cannot be done is certifying one of the seven
+orientation behaviours a gizmo is required to declare.
 
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface

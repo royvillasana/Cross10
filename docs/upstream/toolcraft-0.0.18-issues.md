@@ -766,6 +766,154 @@ exported way to stage a binary resource, which would let a product perform the
 import it is already allowed to command. The first is smaller and is what this
 product needs.
 
+## 19. A product-owned spatial scene cannot satisfy the orientation `model-drag` recipe
+
+**The contradiction is between two framework-owned rules, and no product change
+resolves it.** Same class as issues 3 and 4.
+
+`control-acceptance-coverage.ts` requires a control of type `orientationGizmo`
+to declare **all seven** orientation coverages — `axis-drag`, `axis-snap`,
+`canvas-miss-pan`, `export-clean`, `model-drag`, `shared-pose-output`,
+`undo-reset`. `hasTypedCoverage` accepts either the literal
+`"all-required-orientation-gizmo-behavior"` or a list containing every one of
+them, so there is no honest subset: a product that can prove six of seven has no
+way to say so.
+
+One of the seven is `model-drag`, whose protected recipe is
+`expectToolcraftOrientationModelDrag`. It builds its action with
+`createToolcraftModelOrbitAction`, which locates its surface by
+
+```
+'[data-canvas-model-layer][data-toolcraft-model-orbit-surface="true"]'
+```
+
+and asserts `toHaveCount(1)`. Both attributes are written in exactly one place —
+`model-canvas-layer.tsx` — and only for a **runtime-presented model asset**:
+`data-canvas-model-layer={asset.layerId}` comes from a media record.
+
+**So the recipe can only certify a scene the runtime presents from an imported
+model.** A product whose geometry is procedural has no asset, no layer id, and
+no model layer, and therefore cannot satisfy a coverage it is required to
+declare.
+
+**This is not a hypothetical.** The Toolcraft-authored capability spec this app
+carries (`lamellae-3d`, recorded from the Croix10 change) requires *both* sides
+of the contradiction in adjacent requirements:
+
+- *"Because the lamellae are procedural geometry rather than an uploaded model,
+  `modelPresentation` SHALL remain `{ mode: "runtime" }` and no model loader,
+  presentation lease, or second Three cache SHALL be created."*
+- *"WHEN the user drags on visible lamellae geometry THEN
+  `useToolcraftModelOrbitInteraction` with a product-supplied geometry hit test
+  rotates the same shared pose target."*
+
+The second is precisely what was built: `useToolcraftModelOrbitInteraction`
+accepts a `hitTest` callback, which is the framework's own extension point for a
+product-supplied surface. The hook supports it; the proof recipe does not.
+
+**What was built and reverted.** A Three scene rendered into the runtime product
+scene surface via `useToolcraftProductSceneFrame()`, marked
+`data-toolcraft-product-output`, with exactly one such element mounted at a time,
+the gizmo gated on the spatial mode, `viewInteraction` flipped to `orbit`, and
+the shared pose driving an orthographic camera. It worked in a browser. It was
+reverted because it cannot be proved, and a half-landed capability that fails its
+own gate is worse than a recorded gap.
+
+**Why the obvious workaround was refused.** Nothing in the runtime *reads*
+`data-canvas-model-layer` — the only readers are this recipe and a performance
+helper. A product could therefore write both attributes onto its own canvas and
+the recipe would pass. That is a marker added purely to make a check succeed, on
+an element that is not a runtime model layer, and it would make the proof assert
+something untrue about what it is testing. The attribute being inert is what
+makes the temptation worse rather than better.
+
+**What would fix it.** Either of these is small:
+
+1. **Let the action take the surface.** Give
+   `createToolcraftModelOrbitAction` and `expectToolcraftOrientationModelDrag`
+   an optional `surfaceSelector`, defaulting to the current one. A product with
+   a procedural scene passes its own product-output selector, and the recipe
+   proves exactly what it proves today — a press on visible geometry moves the
+   shared pose and the output, a miss does not.
+
+2. **Make the coverage conditional.** Treat `model-drag` as not-required when the
+   product declares `modelPresentation: { mode: "runtime" }` and no schema
+   control of a model asset kind exists, since in that state there is provably no
+   model to drag. `canvas-miss-pan` already covers the "a miss pans" half.
+
+The first is preferable: it keeps the behaviour proved rather than excused, and
+the hook it pairs with already accepts a product-supplied hit test. The
+asymmetry is the whole bug — `useToolcraftModelOrbitInteraction` was designed for
+this case and its recipe was not.
+
+**The patch, in full.** Both files are protected, so this could not be applied
+here; it is written out so it can be applied there. It is additive and no
+existing caller changes.
+
+`e2e/browser-orientation-gizmo-actions.ts`:
+
+```diff
+ export function createToolcraftModelOrbitAction(
+   session: ToolcraftBrowserProofSession,
+   dragDelta: PointerDelta,
++  /**
++   * The element carrying the orbit interaction, when the product owns it.
++   *
++   * Defaults to the runtime's model layer, which is where a presented model
++   * lives. A product whose geometry is procedural has no model layer and no
++   * asset id, so it passes its own product-output selector instead --
++   * `useToolcraftModelOrbitInteraction` already accepts a product-supplied hit
++   * test, and this is the same extension point on the proof side.
++   */
++  surfaceSelector: string = modelOrbitSurfaceSelector,
+ ): ToolcraftBrowserAction {
+   expectFiniteNonZeroDragDelta(dragDelta, "Direct model orbit proof");
+   return session.action(async (page) => {
+-    const surface = page.locator(modelOrbitSurfaceSelector);
++    const surface = page.locator(surfaceSelector);
+     await expect(
+       surface,
+-      "Direct model orbit proof requires exactly one visible runtime model orbit surface.",
++      `Direct model orbit proof requires exactly one visible orbit surface (${surfaceSelector}).`,
+     ).toHaveCount(1);
+```
+
+`e2e/browser-orientation-gizmo-evidence-helpers.ts`:
+
+```diff
+ export type ToolcraftOrientationModelDragEvidenceOptions =
+   ToolcraftOrientationEvidenceOptions & {
+     dragDelta: Readonly<{ x: number; y: number }>;
++    /** The orbit surface, when the product owns it rather than the runtime. */
++    surfaceSelector?: string;
+   };
+```
+
+```diff
+-  const action = createToolcraftModelOrbitAction(session, options.dragDelta);
++  const action = createToolcraftModelOrbitAction(
++    session,
++    options.dragDelta,
++    options.surfaceSelector,
++  );
+```
+
+Nothing else moves. Every existing product keeps the current selector by
+default, the assertion that exactly one surface is visible is unchanged, and the
+message names the selector so a miss is diagnosable rather than mysterious.
+
+**What the consumer side then looks like**, so the shape can be checked against
+a real caller:
+
+```ts
+await expectToolcraftOrientationModelDrag(observation, session, {
+  dragDelta: { x: 64, y: 0 },
+  requirementId: "stack.pose",
+  surfaceSelector: "[data-studio-relief]",
+  target: "stack.pose",
+});
+```
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:
