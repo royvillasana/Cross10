@@ -1090,4 +1090,109 @@ widthRatio: {
     id: "selected-layer-treatment",
     title: "Layer Treatment",
   },
+  {
+    controls: {
+      /*
+       * How the layer is printed, as distinct from how it is coloured.
+       *
+       * These are reprographic rather than chromatic: a screen decides how much
+       * of a mark is there, a grain decides how coarsely the field is sampled,
+       * and quantization decides which of the layer's own inks a colour
+       * becomes. They are the printing half of this subject, which is the
+       * tradition these techniques come out of -- a Physichromie is a printed
+       * and assembled object before it is an optical one.
+       *
+       * Their own section because they act on the layer *after* it is drawn,
+       * where the treatment acts on what sits beneath it and the engine acts on
+       * the field itself.
+       */
+      halftone: {
+        semanticGroup: "treatment",
+        applicability: { mode: "always" },
+        defaultValue: "none",
+        label: "Screen",
+        options: [
+          { label: "None", value: "none" },
+          { label: "Dot", value: "dot" },
+          { label: "Line", value: "line" },
+          { label: "Cross", value: "cross" },
+        ],
+        performanceReason:
+          "One cell lookup per pixel whichever mode is chosen; the cost does not vary with cell size or angle.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.halftone",
+        type: "select",
+      },
+      halftoneCell: {
+        semanticGroup: "treatment",
+        applicability: {
+          all: [{ notOneOf: ["none"], target: "selectedLayer.halftone" }],
+          mode: "conditional",
+        },
+        defaultValue: 12,
+        label: "Screen cell",
+        max: 64,
+        min: 2,
+        performanceReason:
+          "Scales the coordinate the screen is cut from; the work per pixel is the same at every cell size.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.halftoneCell",
+        type: "slider",
+      },
+      halftoneAngle: {
+        semanticGroup: "treatment",
+        applicability: {
+          all: [{ notOneOf: ["none"], target: "selectedLayer.halftone" }],
+          mode: "conditional",
+        },
+        defaultValue: 0,
+        label: "Screen angle",
+        max: 90,
+        min: 0,
+        performanceReason: "One rotation of the screen coordinate per pixel.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 5,
+        target: "selectedLayer.halftoneAngle",
+        // Nineteen positions in five-degree steps, which the runtime renders
+        // with tick markers: a screen angle is chosen from a handful of
+        // conventional ones rather than dialled continuously.
+        variant: "discrete",
+        type: "slider",
+      },
+      pixelBlock: {
+        semanticGroup: "treatment",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        // Zero is off rather than a separate switch: a grain of no pixels is
+        // the same statement as "do not do this", and a switch beside a slider
+        // would be two controls for one decision.
+        label: "Sample grain",
+        max: 64,
+        min: 0,
+        performanceReason:
+          "Snaps the coordinate before the body reads it; one floor per pixel and no extra sampling.",
+        performanceRole: "responsiveness",
+        sliderValueKind: "discrete",
+        step: 1,
+        target: "selectedLayer.pixelBlock",
+        type: "slider",
+      },
+      quantize: {
+        semanticGroup: "treatment",
+        applicability: { mode: "always" },
+        defaultValue: false,
+        label: "Only the layer's inks",
+        performanceReason:
+          "Compares the drawn colour against the slots in use, which is bounded by the palette rather than by any control.",
+        performanceRole: "responsiveness",
+        target: "selectedLayer.quantize",
+        type: "switch",
+      },
+    },
+    id: "selected-layer-print",
+    title: "Layer Print",
+  },
 ] as const;

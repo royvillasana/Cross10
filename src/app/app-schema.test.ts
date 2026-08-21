@@ -83,6 +83,9 @@ describe("appSchema", () => {
       "Layer Motion",
       "Pointer",
       "Layer Treatment",
+      // After the treatment: these act on the layer once it is drawn, where the
+      // treatment acts on what sits beneath it.
+      "Layer Print",
       // After every layer section and before the export ones: a reroll is what
       // an author reaches for once a composition exists and they want to see it
       // differently, and it is not something delivery is downstream of.

@@ -254,6 +254,39 @@ const LAYER_DECLARATIONS: readonly StudioDeclarationCase[] = [
     uniform: "contrast",
   },
   {
+    target: "selectedLayer.halftone",
+    test: "declares a screen turns a tone into marks whose area follows it",
+    types: ALL_TYPES,
+    // Read through the screen function rather than by name at the call site.
+    reads: "studioHalftone",
+    uniform: "halftone",
+  },
+  {
+    target: "selectedLayer.halftoneCell",
+    test: "declares the screen cell decides how fine the marks are",
+    types: ALL_TYPES,
+    uniform: "halftoneCell",
+  },
+  {
+    target: "selectedLayer.halftoneAngle",
+    test: "declares the screen angle turns the screen and not the picture",
+    types: ALL_TYPES,
+    uniform: "halftoneAngle",
+  },
+  {
+    target: "selectedLayer.pixelBlock",
+    test: "declares the sample grain reads the field coarsely rather than blurring it",
+    types: ALL_TYPES,
+    uniform: "pixelBlock",
+  },
+  {
+    target: "selectedLayer.quantize",
+    test: "declares quantization admits only the inks the layer carries",
+    types: ALL_TYPES,
+    reads: "studioQuantizeToBank",
+    uniform: "quantize",
+  },
+  {
     target: "selectedLayer.blendMode",
     test: "declares the blend mode changes how the layer meets what it sits on",
     types: ALL_TYPES,

@@ -286,6 +286,22 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
     },
     {
       entity: "Selected layer",
+      entityId: "selected-layer-print",
+      groupingReason:
+        "How the layer is printed, as distinct from how it is coloured. A screen decides how much of a mark is there, a grain decides how coarsely the field is sampled, and quantization decides which of the layer's own inks a colour becomes -- reprographic operations rather than chromatic ones, and the printing half of a subject whose works are printed and assembled before they are optical. Its own stage because these act on the layer after it is drawn, where the treatment acts on what sits beneath it and the engine acts on the field itself.",
+      id: "selected-layer-print",
+      targets: [
+        "selectedLayer.halftone",
+        "selectedLayer.halftoneCell",
+        "selectedLayer.halftoneAngle",
+        "selectedLayer.pixelBlock",
+        "selectedLayer.quantize",
+      ],
+      title: "Layer Print",
+      workflowStage: "ink",
+    },
+    {
+      entity: "Selected layer",
       entityId: "selected-layer-engine",
       groupingReason:
         "How the layer's field is coloured, as distinct from what the field is. The Cruz-Diez techniques read a field rather than build one, so they sit beside the layer kind as a second axis and carry their own gate -- which is what lets them be a stage of their own rather than a twelfth control in the kind's section.",

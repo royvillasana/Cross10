@@ -331,6 +331,110 @@ float studioLoopShape(float loop, float shape) {
   return (1.0 - cos(t * 6.283185307179586)) * 0.5;
 }
 
+/**
+ * Where a band gives way, as coverage rather than as a hard edge.
+ *
+ * Pulled out of the stripe body so the halftone can use the same construction
+ * instead of writing a second one. That is a requirement rather than a
+ * convenience: a halftone line *is* a band, and two implementations of one
+ * thing are two answers to the same question -- the first time they disagree
+ * about where an edge falls, one of them is wrong and nobody can say which.
+ *
+ * The edge is analytic, from the screen-space derivative, so the width of the
+ * transition is a pixel wherever the field is read and whatever it is read at.
+ * Supersampling would cost more and antialias less.
+ */
+float studioBandInk(float position, float split) {
+  float edge = max(fwidth(position) * 1.5, 1e-5);
+  return smoothstep(split - edge, split + edge, position);
+}
+
+/**
+ * A tone rendered as marks whose area follows it, which is what a halftone is.
+ *
+ * The mark carries the layer's own colour and the space between marks carries
+ * nothing, so what shows through is whatever sits beneath -- the same reading a
+ * band separator already has. A halftone that painted its own paper would be
+ * opaque white over the stack, which is a different picture from a screen.
+ *
+ * Three modes, and two of them are the band field read twice. A halftone line
+ * *is* a band: the same coverage function decides where it gives way, with the
+ * tone standing in for the width. Cross is that field crossed with itself a
+ * quarter turn away, which is how a cross screen is actually made.
+ *
+ * Tone drives *area*, not brightness. That is the whole of the technique: a
+ * dark region is dark because more of it is covered, not because the ink is
+ * darker, which is why a halftone survives being printed in one flat ink.
+ */
+float studioHalftone(vec2 position, float mode, float cell, float angle, float tone) {
+  if (mode < 0.5) return 1.0;
+
+  float grain = max(cell, 1e-3);
+  float turn = radians(angle);
+  float cosine = cos(turn);
+  float sine = sin(turn);
+  // Turned before it is cut into cells, so the screen turns rather than the
+  // picture -- which is the difference between rotating a halftone and
+  // halftoning a rotated picture.
+  vec2 screen = vec2(
+    position.x * cosine + position.y * sine,
+    -position.x * sine + position.y * cosine
+  ) / grain;
+
+  float covered = clamp(tone, 0.0, 1.0);
+
+  if (mode < 1.5) {
+    // Dots. Radius from the square root of coverage, because area goes as the
+    // square of the radius: without it the midtones come out far too light and
+    // the ramp reads as a curve nobody chose.
+    vec2 within = fract(screen) - 0.5;
+    float radius = sqrt(covered) * 0.5;
+    float reach = length(within);
+    float edge = max(fwidth(reach) * 1.5, 1e-5);
+    return 1.0 - smoothstep(radius - edge, radius + edge, reach);
+  }
+
+  // Lines, and cross as lines twice. studioBandInk is the stripe field's own
+  // reading, so a halftone line gives way exactly where a band does.
+  float line = 1.0 - studioBandInk(fract(screen.y), covered);
+  if (mode < 2.5) return line;
+
+  float crossed = 1.0 - studioBandInk(fract(screen.x), covered);
+  // Union rather than product: two screens laid over one another cover what
+  // either of them covers, and multiplying would thin the midtones toward
+  // nothing where a real cross screen thickens them.
+  return max(line, crossed);
+}
+
+/**
+ * The nearest ink in the layer's own bank.
+ *
+ * Measured in Oklab rather than in linear light, and that is the difference
+ * between "nearest" meaning what an eye would say and what a distance in a
+ * cube would. Linear light puts most of its volume in the brights, so a
+ * mid-tone snaps to whichever ink happens to be lightest rather than to the one
+ * it looks most like.
+ */
+vec3 studioQuantizeToBank(vec3 colour, vec3 bank[PALETTE_MAX], float slots) {
+  int used = int(clamp(floor(slots + 0.5), 2.0, float(PALETTE_MAX)));
+  vec3 target = studioLinearToOklab(colour);
+  vec3 nearest = bank[0];
+  float best = 1e9;
+
+  for (int index = 0; index < PALETTE_MAX; index += 1) {
+    if (index >= used) break;
+    vec3 candidate = studioLinearToOklab(bank[index]);
+    vec3 delta = candidate - target;
+    float distance = dot(delta, delta);
+    if (distance < best) {
+      best = distance;
+      nearest = bank[index];
+    }
+  }
+
+  return nearest;
+}
+
 vec3 studioMixInks(vec3 a, vec3 b, float t, float space) {
   if (space < 0.5) return mix(a, b, t);
   if (space < 1.5) {
@@ -608,7 +712,7 @@ vec4 studioStripesBody(
   float split = widthRatio + taper * along;
 
   float edge = max(fwidth(position) * 1.5, 1e-5);
-  float band = smoothstep(split - edge, split + edge, position);
+  float band = studioBandInk(position, split);
 
   // A separator is a gap the layer does not paint rather than a third colour:
   // in a stack, what shows through is whatever sits beneath, which is the only
@@ -1090,6 +1194,19 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
          */
         { defaultValue: 0, name: "phase", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        // How the layer is printed: the screen it is cut through, the grain it
+        // is sampled at, and whether its colours are held to its own inks.
+        { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "quantize", type: "float" },
+        { defaultValue: 12, name: "halftoneCell", type: "float" },
+        { defaultValue: 0, name: "halftoneAngle", type: "float" },
+        {
+          defaultValue: 0,
+          name: "halftone",
+          // The index into this list is the float the shader branches on.
+          optionValues: ["none", "dot", "line", "cross"],
+          type: "float",
+        },
         {
           defaultValue: 0,
           name: "mixSpace",
@@ -1183,6 +1300,19 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
         { defaultValue: 0.5, name: "sourceWidthRatio", type: "float" },
         { defaultValue: 1, name: "sourceStrength", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        // How the layer is printed: the screen it is cut through, the grain it
+        // is sampled at, and whether its colours are held to its own inks.
+        { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "quantize", type: "float" },
+        { defaultValue: 12, name: "halftoneCell", type: "float" },
+        { defaultValue: 0, name: "halftoneAngle", type: "float" },
+        {
+          defaultValue: 0,
+          name: "halftone",
+          // The index into this list is the float the shader branches on.
+          optionValues: ["none", "dot", "line", "cross"],
+          type: "float",
+        },
         {
           defaultValue: 0,
           name: "mixSpace",
@@ -1258,6 +1388,19 @@ export const STUDIO_LAYER_TYPES: Readonly<Record<StudioLayerTypeId, StudioLayerT
          */
         { defaultValue: 12, name: "jitterVariation", type: "float" },
         { defaultValue: 2, name: "paletteSlots", type: "float" },
+        // How the layer is printed: the screen it is cut through, the grain it
+        // is sampled at, and whether its colours are held to its own inks.
+        { defaultValue: 0, name: "pixelBlock", type: "float" },
+        { defaultValue: 0, name: "quantize", type: "float" },
+        { defaultValue: 12, name: "halftoneCell", type: "float" },
+        { defaultValue: 0, name: "halftoneAngle", type: "float" },
+        {
+          defaultValue: 0,
+          name: "halftone",
+          // The index into this list is the float the shader branches on.
+          optionValues: ["none", "dot", "line", "cross"],
+          type: "float",
+        },
         {
           defaultValue: 0,
           name: "mixSpace",
@@ -1456,6 +1599,23 @@ float studioPathInside${index}(vec2 point) {
 `;
 }
 
+/**
+ * The print uniforms, which the wrapper reads and no body takes.
+ *
+ * A body draws a field; a screen, a grain and a quantization act on what it
+ * drew. Passing them positionally to the body would be handing it five values
+ * it has no parameters for -- which is exactly what happened when they were
+ * added to the registry and not excluded here, and the shader stopped
+ * compiling for every stack at once.
+ */
+const STUDIO_PRINT_UNIFORMS = new Set([
+  "halftone",
+  "halftoneAngle",
+  "halftoneCell",
+  "pixelBlock",
+  "quantize",
+]);
+
 /** The ink uniforms, in cycle order. Also the order the bank is built in. */
 export const STUDIO_PALETTE_UNIFORMS = Array.from(
   { length: STUDIO_PALETTE_MAX },
@@ -1479,7 +1639,9 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
         ? uniform.name === STUDIO_PALETTE_UNIFORMS[0]
           ? ["bank"]
           : []
-        : [studioLayerUniformName(index, uniform.name)],
+        : STUDIO_PRINT_UNIFORMS.has(uniform.name)
+          ? []
+          : [studioLayerUniformName(index, uniform.name)],
     )
     .join(", ");
   const name = (suffix: string): string => studioLayerUniformName(index, suffix);
@@ -1584,7 +1746,26 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
           ).join(", ")});`
         : ""
     }
-    vec4 layer = ${type.entryPoint}(fragmentPosition, uResolution, uCursor, uLoop${
+    /**
+     * The source, snapped to a grid before anything reads it.
+     *
+     * Pixelation is applied *upstream* of the body rather than to what the body
+     * produced, and that is the difference between pixelating the work and
+     * blurring it into squares: a field read at one point per block is a field
+     * genuinely sampled coarsely, where averaging the output afterwards would
+     * be a picture of the field with its detail smeared rather than absent.
+     *
+     * It therefore necessarily precedes halftone and quantization, which act on
+     * what comes back. The declared order of the three effects is about what
+     * happens after the body; this happens before it, and could not be ordered
+     * any other way.
+     */
+    float pixelBlock = ${name("pixelBlock")};
+    vec2 sourcePosition = pixelBlock < 0.5
+      ? fragmentPosition
+      : floor(fragmentPosition / pixelBlock) * pixelBlock + pixelBlock * 0.5;
+
+    vec4 layer = ${type.entryPoint}(sourcePosition, uResolution, uCursor, uLoop${
       // Only the image type takes the shape's frame. The procedural bodies are
       // fields over the whole canvas that the mask then confines, which is the
       // right model for them -- a stripe field does not "belong to" its shape
@@ -1593,6 +1774,35 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
         ? `, maskLocal, maskWidth, ${name("maskSize")}`
         : ""
     }${args ? `, ${args}` : ""});
+    /**
+     * Halftone, then quantization, in the order the spec declares.
+     *
+     * Halftone decides *how much* of the mark is there and quantization decides
+     * which ink it is, so quantizing first would snap a tone the halftone is
+     * about to turn into coverage -- the screen would be reading an ink rather
+     * than the tone that chose it.
+     *
+     * The tone is the layer's own luminance at Rec. 709 weights, because the
+     * value being read is linear light. Coverage multiplies alpha rather than
+     * painting paper: what shows between the marks is whatever sits beneath,
+     * which is the same reading a band separator has.
+     */
+    float halftoneTone = dot(layer.rgb, vec3(0.2126, 0.7152, 0.0722));
+    layer.a *= studioHalftone(
+      sourcePosition,
+      ${name("halftone")},
+      ${name("halftoneCell")},
+      ${name("halftoneAngle")},
+      halftoneTone
+    );
+    ${
+      type.uniforms.some((uniform) => palette.has(uniform.name))
+        ? `if (${name("quantize")} > 0.5) {
+      layer.rgb = studioQuantizeToBank(layer.rgb, bank, ${name("paletteSlots")});
+    }`
+        : ""
+    }
+
     composite = studioComposite(composite, layer, ${weight}, ${name("blendMode")});
   }`;
 }

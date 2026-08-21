@@ -173,7 +173,7 @@ describe("deliverable shader source", () => {
         typeId === "stripes" ? "studioStripesBody" : "studioGradientBody";
 
       expect(source).toContain(`vec4 ${entryPoint}(`);
-      expect(source).toContain(`${entryPoint}(fragmentPosition`);
+      expect(source).toContain(`${entryPoint}(sourcePosition`);
     }
   });
 
@@ -182,8 +182,8 @@ describe("deliverable shader source", () => {
 
     expect(source).toContain("const float uLayer0_count = 12.0;");
     expect(source).toContain("const float uLayer1_rampType = 1.0;");
-    expect(source.indexOf("studioStripesBody(fragmentPosition")).toBeLessThan(
-      source.indexOf("studioGradientBody(fragmentPosition"),
+    expect(source.indexOf("studioStripesBody(sourcePosition")).toBeLessThan(
+      source.indexOf("studioGradientBody(sourcePosition"),
     );
   });
 

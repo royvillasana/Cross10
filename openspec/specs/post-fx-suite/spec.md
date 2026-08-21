@@ -37,11 +37,22 @@ and 1a.3b.
 ### Requirement: Halftone modes
 The halftone tool SHALL provide dot, line, and cross halftone modes with controllable cell size and angle, and the line mode SHALL reuse the shared stripe field rather than a separate implementation.
 
-**Status: pending — scheduled.** Nothing of it is built. Kept because it is the
-printing half of this subject rather than an effect over it: the reason line
-halftone must reuse the stripe field is that a halftone line *is* a band, and a
-second implementation would be a second answer to a question this product has
-already answered.
+**Status: satisfied.** `Screen` offers dot, line and cross with a cell and an
+angle, per layer. The mark carries the layer's own colour and the space between
+marks carries nothing, so what shows through is whatever sits beneath — the same
+reading a band separator already has. A screen that painted its own paper would
+be opaque white over the stack, which is a different picture from a screen.
+
+The reuse is real rather than declared: `studioBandInk` was lifted out of the
+stripe body and both now read through it, so a halftone line gives way exactly
+where a band does. Line and cross are that one function read once and twice.
+
+Two things the technique required and the obvious implementation would miss. Dot
+radius comes from the *square root* of coverage, because area goes as the square
+of the radius — without it the midtones come out far too light and the ramp
+reads as a curve nobody chose. And cross is the union of its two screens rather
+than the product: two screens laid over one another cover what either covers,
+where multiplying thins the midtones toward nothing.
 
 #### Scenario: Line halftone reuses the stripe engine
 - **WHEN** line halftone is selected
@@ -54,11 +65,23 @@ already answered.
 ### Requirement: Pixelation with palette quantization
 The pixel tool SHALL pixelate its source at a controllable block size and SHALL optionally quantize the result to the active palette.
 
-**Status: pending — scheduled.** Kept for the quantization rather than the
-pixelation: reducing an image to the inks actually in play is a colour
-operation, and it is the same act `color-and-gradient-system` asks for when it
-requires a gradient to be convertible to a band sequence. The block size is what
-decides the grain that quantization is applied at.
+**Status: satisfied.** `Sample grain` reads the layer's field once per block
+rather than once per pixel, and `Only the layer's inks` holds every colour it
+draws to the slots in use.
+
+Grain is applied *upstream of the body* rather than to what the body produced,
+and that is the difference between pixelating the work and blurring it: a field
+sampled once per block is genuinely read coarsely, where averaging the output
+afterwards would be the same field with its detail smeared rather than absent.
+It therefore necessarily precedes the screen and the quantization, which act on
+what comes back — a refinement of the ordering requirement below rather than a
+contradiction of it.
+
+Quantization measures distance in Oklab rather than in linear light, which is
+the difference between "nearest" meaning what an eye would say and what a
+distance in a cube would: linear light puts most of its volume in the brights,
+so a midtone would snap to whichever ink happens to be lightest rather than the
+one it looks most like.
 
 #### Scenario: Pixelate and quantize
 - **WHEN** block size is raised and palette quantization is enabled

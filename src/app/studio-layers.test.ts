@@ -162,7 +162,11 @@ describe("stack assembly", () => {
     // Three layers, one compiled body. Emitting the field code per instance
     // would triple compile time for a stack a user builds in seconds.
     expect(bodyDefinitions).toBe(1);
-    expect(source.split("studioStripesBody(fragmentPosition").length - 1).toBe(3);
+    // Called with the pixelated source position rather than the raw fragment
+    // one: pixelation is applied upstream of the body, because a field sampled
+    // once per block is coarsely *sampled* where averaging the output would be
+    // the same field smeared.
+    expect(source.split("studioStripesBody(sourcePosition").length - 1).toBe(3);
   });
 
   it("omits a type the stack does not use", () => {
@@ -174,8 +178,8 @@ describe("stack assembly", () => {
 
   it("composites in stack order, lowest index first", () => {
     const source = studioAssembleStackFragmentShader([stripes, gradient]);
-    const stripeCall = source.indexOf("studioStripesBody(fragmentPosition");
-    const gradientCall = source.indexOf("studioGradientBody(fragmentPosition");
+    const stripeCall = source.indexOf("studioStripesBody(sourcePosition");
+    const gradientCall = source.indexOf("studioGradientBody(sourcePosition");
 
     expect(stripeCall).toBeGreaterThan(-1);
     expect(gradientCall).toBeGreaterThan(stripeCall);

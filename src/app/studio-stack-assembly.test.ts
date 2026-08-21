@@ -27,9 +27,9 @@ function callOrder(layers: readonly StudioRuntimeLayer[]): readonly string[] {
 
   return (
     [
-      { call: source.indexOf("studioStripesBody(fragmentPosition"), type: "stripes" },
-      { call: source.indexOf("studioGradientBody(fragmentPosition"), type: "gradient" },
-      { call: source.indexOf("studioImageBody(fragmentPosition"), type: "image" },
+      { call: source.indexOf("studioStripesBody(sourcePosition"), type: "stripes" },
+      { call: source.indexOf("studioGradientBody(sourcePosition"), type: "gradient" },
+      { call: source.indexOf("studioImageBody(sourcePosition"), type: "image" },
     ]
       .filter((entry) => entry.call > -1)
       .sort((left, right) => left.call - right.call)
