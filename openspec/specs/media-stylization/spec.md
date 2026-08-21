@@ -217,7 +217,17 @@ product now depends on for every video frame it writes.
 ### Requirement: Motion modulation of stripe phase
 Video sources SHALL support a motion-driven mode where inter-frame difference in the source modulates stripe phase, with a controllable strength.
 
-**Status: pending.** Depends on video existing at all.
+**Status: pending — and no longer blocked.** The premise this recorded is gone:
+video exists, a clip is read at the loop position, and its frames reach the
+shader as a texture. What is missing is the modulation itself — nothing computes
+inter-frame difference, because reading a clip by position means the renderer
+holds one frame rather than two.
+
+That is the whole of what it would take: a second sample of the clip at the
+previous position, the difference driving phase, and a strength control. The
+determinism the second scenario asks for comes free, because the frame at a
+given loop position is a function of that position — which is the property the
+whole clip design was built around.
 
 #### Scenario: Motion drives phase
 - **WHEN** motion modulation is enabled and the source contains movement

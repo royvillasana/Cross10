@@ -143,10 +143,18 @@ control, because a gradient is a layer and a layer already has a position.
 ### Requirement: Quantize gradients to bands
 Any gradient SHALL be convertible to a discrete band sequence through a band-count control, and a quantized gradient SHALL be usable as the active palette source.
 
-**Status: pending — not built.** There is no quantize step. The nearest thing
-is that a stripes layer *is* a discrete band sequence over the same palette, so
-an author reaches the same look by choosing the other layer kind rather than by
-converting one into the other.
+**Status: half satisfied, and the half that arrived came from somewhere else.**
+`Only the layer's inks` was built for `post-fx-suite`, and applied to a gradient
+it is exactly the conversion this asks for: with the slot count at seven, a
+smooth ramp becomes seven flat regions with hard boundaries drawn from the
+ramp's own stops, because the palette *is* the gradient's stops. The proof for
+that control uses a three-slot ramp and asserts the frame carries no more than
+three colours.
+
+What is still missing is the second scenario: a quantized gradient usable as the
+*active palette source* for another layer's engine. That is plumbing between
+layers rather than a step inside one, and nothing carries a colour sequence from
+one layer to another today.
 
 #### Scenario: Quantizing a smooth gradient
 - **WHEN** a smooth linear gradient is quantized to 7 bands

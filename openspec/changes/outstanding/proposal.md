@@ -31,9 +31,19 @@ change applies a requirement the product satisfies rather than a promise.
 
 **Unbuilt features.** Groups 6, 9, 10 and 11 of Shader Studio — per-layer
 animation, MCP delivery, preset corrections, and the final delivery gate. Each
-was scoped and none was started. Group 6 is the one the main specs assert:
-`shader-authoring` carries "Layers animate individually" as a pending
-requirement.
+was scoped and none was started when this was written.
+
+*Three of the four are now done.* Group 6 shipped with
+`video-export-and-motion` and its requirement is satisfied; group 9 is the
+`mcp/` package; group 10 closed as superseded, because the palettes it wanted
+corrected had already been replaced by the studio's own. Group 11 remains, and
+is blocked on the same delivery credentials as everything else below.
+
+One thing worth keeping from how group 6 went: its requirement said "pending —
+not built" for weeks after it was built, asserting an `animationIntent` the
+product had already changed. The task list was right and the spec was wrong,
+which is the direction that hides longest — nobody re-reads a status that says
+nothing happened.
 
 **Blocked verification.** Five delivery-gate tasks (2.10, 3.5, 4.6, 5.5, 8.3)
 are one blocker wearing five numbers: `npm run verify:delivery` runs the

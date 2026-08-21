@@ -116,11 +116,23 @@ Flip controls MUST NOT be named such that they can be read as the stripe field's
 ### Requirement: Layers animate individually
 Each layer SHALL be animatable over the runtime timeline, so a stack can carry motion in more than one component at once. Loop seams SHALL hold per layer, since a stack whose layers close at different times does not close at all.
 
-**Status: pending — not built.** The product declares no timeline at all
-(`animationIntent: none`), so nothing here is implemented and no per-layer rate
-or loop seam exists. This is group 6 of the archived change and is carried as a
-task in the `outstanding` change. Declaring a timeline obliges playback coverage
-in the same batch, which is why it was never half-started.
+**Status: satisfied. This said "pending — not built" long after it was built**,
+which is worth recording as a failure of bookkeeping rather than quietly
+correcting: the status asserted `animationIntent: none` when the product had
+declared `timeline-playback` since `video-export-and-motion`, and the task list
+had marked the work done. A spec claiming the product cannot do something it
+demonstrably does is the same class of quiet inaccuracy as a proof that asserts
+nothing — true somewhere nobody looks.
+
+Every layer carries its own `Travel per loop` and `Turns per loop`, counted in
+whole cycles, so a stack can move in more than one component at once. The seam
+holds per layer by construction rather than by care: a rate is a whole number of
+cycles, so at the end of the loop every layer has advanced an exact number and
+is back where it began, whatever the other layers are doing.
+
+The scenario below is proved directly — two layers at rates one and three, read
+at a fifth and two fifths of the loop so neither is home and no two positions
+coincide, then at the seam where both must be.
 
 #### Scenario: Two layers animate independently
 - **WHEN** two layers are given different animation rates
