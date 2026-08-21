@@ -1,3 +1,8 @@
+import {
+  isStudioHookDefault,
+  studioHookChunk,
+  STUDIO_HOOK_ENTRY,
+} from "./studio-hook";
 import { type StudioVertexPoint } from "./studio-stack-state";
 /**
  * Layer-type registry.
@@ -1497,7 +1502,18 @@ export function studioLayerUniforms(
  * Two stacks with the same types in a different order are different programs, so
  * order is part of the key. An engine-shaped key would collide across both.
  */
-export function studioStackSignature(stack: readonly StudioStackEntry[]): string {
+export function studioStackSignature(
+  stack: readonly StudioStackEntry[],
+  /**
+   * The hook is part of the key, because it is part of the program.
+   *
+   * Unlike a path -- which became a texture and stopped changing the program --
+   * a hook *is* source, so two stacks with the same layers and different hooks
+   * are different programs. Keying on the text is what makes an edit take
+   * effect, and it is why a hook edit recompiles where a slider does not.
+   */
+  hookSource = "",
+): string {
   return (
     stack
       .map((entry) => {
@@ -1515,7 +1531,7 @@ export function studioStackSignature(stack: readonly StudioStackEntry[]): string
         return `${entry.typeId}${(entry.vertices?.length ?? 0) >= 2 ? "#path" : ""}`;
       })
       .join(">") || "empty"
-  );
+  ) + (isStudioHookDefault(hookSource) ? "" : `@${hookSource}`);
 }
 
 const VERTEX_SHADER = `#version 300 es
@@ -1861,6 +1877,15 @@ function compositeLayer(entry: StudioStackEntry, index: number): string {
  */
 export function studioAssembleStackFragmentShader(
   stack: readonly StudioStackEntry[],
+  /**
+   * The author's own chunk, emitted into the program the composite calls.
+   *
+   * Passed in rather than read from a module, because assembly is a pure
+   * function of what it is given -- the export frame, the delivered source and
+   * the preview all build the same program from the same inputs, and a hook
+   * read from somewhere else would be a fourth input only one of them had.
+   */
+  hookSource = "",
 ): string {
   const usedTypes = STUDIO_LAYER_TYPE_IDS.filter((typeId) =>
     stack.some((entry) => entry.typeId === typeId),
@@ -1914,12 +1939,22 @@ in vec2 vUv;
 out vec4 fragColor;
 `;
 
+  const hook = studioHookChunk(hookSource);
   const main = `
 void main() {
   vec2 fragmentPosition = vUv * uResolution;
   vec4 composite = vec4(uBackgroundColor, uIncludeBackground);
 
 ${stack.map((entry, index) => compositeLayer(entry, index)).join("\n")}
+${
+  hook
+    ? `
+  // The author's own chunk, after the stack has composited and before the
+  // frame is encoded. Inside the assembled program rather than beside it, so
+  // the delivered source carries it like any other part of the work.
+  composite.rgb = ${STUDIO_HOOK_ENTRY}(composite.rgb, vUv, uLoop);`
+    : ""
+}
 
   fragColor = vec4(studioLinearToSrgb(composite.rgb), composite.a);
 }
@@ -1930,6 +1965,7 @@ ${stack.map((entry, index) => compositeLayer(entry, index)).join("\n")}
     CHUNK_LAYER_SUPPORT,
     ...usedTypes.map((typeId) => STUDIO_LAYER_TYPES[typeId].chunk),
     ...stack.map((entry, index) => pathFunction(entry, index)),
+    hook,
     main,
   ].join("\n");
 }

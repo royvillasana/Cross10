@@ -11,6 +11,8 @@ import {
   STUDIO_ONBOARDING_SETTLED_TARGET,
   STUDIO_ONBOARDING_TARGET,
 } from "./studio-onboarding";
+import { STUDIO_HOOK_TARGET } from "./studio-hook";
+import { STUDIO_HOOK_SECTIONS } from "./studio-hook-sections";
 import { STUDIO_RANDOMIZE_SECTIONS } from "./studio-randomize-sections";
 import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
 import { STUDIO_SMALL_VIEWPORT_TARGET } from "./studio-small-viewport";
@@ -66,6 +68,9 @@ export const appSchema = defineToolcraft({
         // After the layer sections rather than before them: a reroll is
         // something an author reaches for once a composition exists and they
         // want to see it differently, not a way of starting one.
+        // After the layers and before the reroll: it acts on what they
+        // composited into, which is the last thing that happens to a frame.
+        ...STUDIO_HOOK_SECTIONS,
         ...STUDIO_RANDOMIZE_SECTIONS,
         ...STUDIO_EXPORT_SECTIONS,
       ],
@@ -99,6 +104,10 @@ export const appSchema = defineToolcraft({
       // the apply that replaced one should survive it too. One snapshot, so the
       // cost is bounded by a single stack's metadata.
       STUDIO_SNAPSHOT_TARGET,
+      // The author's own chunk, persisted with the composition it is part of:
+      // a hook that vanished on reload would be the one part of a work that did
+      // not survive being saved.
+      STUDIO_HOOK_TARGET,
       // Which construction the canvas was started from. Persisted because the
       // composition is: a reload that forgot it would report no current
       // technique for a canvas that plainly has one.

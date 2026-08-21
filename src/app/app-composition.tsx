@@ -20,6 +20,7 @@ import {
   STUDIO_LAYER_RECORD_TARGET,
   writeStudioLayerEntry,
 } from "./studio-stack-state";
+import { STUDIO_HOOK_DEFAULT, STUDIO_HOOK_TARGET } from "./studio-hook";
 import { studioLayerToSvg } from "./studio-svg";
 import {
   planStudioRandomization,
@@ -257,6 +258,19 @@ function handleStudioPanelAction({
 
   if (action.value === "duplicate-layer") {
     duplicateStudioSelectedLayer({ dispatch, state });
+    return;
+  }
+
+  if (action.value === "reset-hook") {
+    // Written as the shipped source rather than as an empty string: blank and
+    // shipped mean the same thing to the assembler, but only one of them shows
+    // an author the contract they are editing against.
+    dispatch({
+      label: "Restore the shipped code",
+      target: STUDIO_HOOK_TARGET,
+      type: "controls.setValue",
+      value: STUDIO_HOOK_DEFAULT,
+    } as Parameters<typeof dispatch>[0]);
     return;
   }
 

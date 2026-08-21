@@ -77,7 +77,10 @@ export function studioAssembleDeliverableSource(
   scene: StudioStackSceneParameters,
 ): string {
   const stack = scene.layers.map((layer) => ({ typeId: layer.typeId }));
-  let source = studioAssembleStackFragmentShader(stack);
+  // The hook is part of the program, so it is part of what is delivered. That
+  // is the whole reason a hand-written chunk does not contradict one-way
+  // delivery: what leaves is complete, including the part the author typed.
+  let source = studioAssembleStackFragmentShader(stack, scene.hookSource ?? "");
 
   scene.layers.forEach((layer, index) => {
     for (const uniform of studioLayerUniforms(layer.typeId)) {

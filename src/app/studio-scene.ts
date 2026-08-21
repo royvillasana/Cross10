@@ -20,6 +20,7 @@ import {
 } from "@/toolcraft/runtime";
 
 import { studioColorToLinear } from "./studio-color";
+import { readStudioHookSource, STUDIO_HOOK_TARGET } from "./studio-hook";
 import type { StudioLayerValues, StudioStackSceneParameters } from "./studio-stack-render";
 
 /**
@@ -230,6 +231,9 @@ export function buildStudioSceneParameters(
     // two coverage claims false.
     includeBackground,
     layers: stack.map(toLinearLayerValues),
+    // The author's own chunk travels with the scene, so the preview, the export
+    // frame and the delivered source assemble one program rather than three.
+    hookSource: readStudioHookSource(state.values[STUDIO_HOOK_TARGET]),
   };
 }
 

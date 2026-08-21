@@ -17,3 +17,30 @@
   text-align: center;
   text-wrap: balance;
 }
+
+/*
+ * The compile message for the author's own chunk.
+ *
+ * Over the canvas rather than in the panel: what it is about is the frame
+ * behind it, which is the last program that compiled rather than the one just
+ * typed. Kept out of the pointer's way, because the canvas underneath is still
+ * a working composition.
+ */
+.hookError {
+  background: rgb(20 6 6 / 92%);
+  border: 1px solid rgb(255 120 120 / 60%);
+  border-radius: 6px;
+  bottom: 12px;
+  color: rgb(255 190 190);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  left: 12px;
+  line-height: 1.4;
+  margin: 0;
+  max-inline-size: 48ch;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: absolute;
+  white-space: pre-wrap;
+  z-index: 6;
+}

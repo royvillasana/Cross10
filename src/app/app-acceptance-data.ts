@@ -15,6 +15,7 @@ import {
   studioMotionAcceptanceRows,
   studioSourceAcceptanceRows,
   studioRestoreAcceptanceRows,
+  studioHookAcceptanceRows,
   studioSvgAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
@@ -161,6 +162,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioMotionAcceptanceRows,
   ...studioSourceAcceptanceRows,
   ...studioRestoreAcceptanceRows,
+  ...studioHookAcceptanceRows,
   ...studioSvgAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
@@ -267,6 +269,26 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["export.svg"],
       title: "Vector Copy",
       workflowStage: "deliver",
+    },
+    {
+      entity: "Composition",
+      entityId: "composition-hook",
+      groupingReason:
+        "The author's own code, applied to the frame the layers composited into. Its own entity because everything else in the panel edits one layer and this edits what they add up to -- and because it is the only value in the product that can be *wrong*, which is why the renderer keeps the last program that compiled and the message is surfaced rather than thrown.",
+      id: "composition-hook",
+      targets: ["stack.hookSource"],
+      title: "Your Code",
+      workflowStage: "compose",
+    },
+    {
+      entity: "Composition",
+      entityId: "composition-hook-reset",
+      groupingReason:
+        "Taking the hand-written chunk back. A section of its own because a compound control takes one to itself: the runtime gives a code control its own section, so an action beside it would leave two sections sharing one title. The same rule put the randomize locks beside their press rather than in the sections they cover.",
+      id: "composition-hook-reset",
+      targets: ["stack.hookReset"],
+      title: "Starting Over",
+      workflowStage: "compose",
     },
     {
       entity: "Composition",

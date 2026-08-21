@@ -89,6 +89,10 @@ describe("appSchema", () => {
       // After every layer section and before the export ones: a reroll is what
       // an author reaches for once a composition exists and they want to see it
       // differently, and it is not something delivery is downstream of.
+      // After every layer section: the code acts on what the layers composited
+      // into, which is the last thing that happens to a frame.
+      "Your Code",
+      "Starting Over",
       "Randomize",
       // Offered only while the selected layer is geometry, which is why it
       // sits before the artifact settings rather than among them: it delivers

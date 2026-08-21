@@ -100,6 +100,14 @@ export function StudioCanvas(): React.JSX.Element {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const rendererRef = React.useRef<StudioStackRenderer | null>(null);
   const [unsupported, setUnsupported] = React.useState(false);
+  /**
+   * Why the author's own chunk did not compile, or null while it does.
+   *
+   * Held in state rather than read during render, because it is produced by the
+   * draw: the renderer discovers it while compiling, and the surface that shows
+   * it is downstream of that. Read after each pass rather than polled.
+   */
+  const [hookError, setHookError] = React.useState<string | null>(null);
 
   // Keeps the per-layer record and the `selectedLayer.*` controls in step (R56).
   // Mounted here because product code has one mount point inside the runtime
@@ -411,6 +419,14 @@ export function StudioCanvas(): React.JSX.Element {
       if (canvas.height !== height) canvas.height = height;
 
       renderer.render(parameters, width, height);
+      // Read after the draw rather than during it: the renderer discovers a bad
+      // chunk while compiling, and setting state from inside the pass would be
+      // writing during a layout effect. Compared before setting so a hook that
+      // is fine does not re-render on every frame of a drifting composition.
+      setHookError((previous) => {
+        const next = renderer.hookError();
+        return previous === next ? previous : next;
+      });
     }, [acquireRenderer, frame, parameters, renderScale]),
   );
 
@@ -516,6 +532,19 @@ export function StudioCanvas(): React.JSX.Element {
         data-toolcraft-product-output=""
         ref={canvasRef}
       />
+      {hookError ? (
+        /*
+         * The compiler's own words, where the author is looking.
+         *
+         * Rendered beside the canvas rather than in the panel because it is
+         * about what is *not* on the canvas: the frame behind this message is
+         * the last program that compiled, and saying so next to it is what
+         * stops an author reading a stale picture as a working one.
+         */
+        <p className={styles.hookError} data-studio-hook-error="" role="status">
+          {hookError}
+        </p>
+      ) : null}
       <StudioAddMediaMenuItem />
       <StudioLayerRowActions />
       <StudioOnboardingDialog />

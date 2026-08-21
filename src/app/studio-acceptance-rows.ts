@@ -138,6 +138,42 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * -- a permanent row has to be present and inert most of the time, while an
  * offer that appears exactly when it can be taken is an offer.
  */
+/** The author's own chunk, which is the one value in the product that can be wrong. */
+export const studioHookAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares the hook is a chunk of the program the studio assembles",
+    browser: true,
+    browserTestName: "browser: studio hook compiles onto the canvas and survives being wrong",
+    componentType: "code",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Editing the code changes the frame: the chunk is compiled into the program the stack assembles and applied to the composite. A chunk that does not compile leaves the last good program rendering rather than blanking the canvas, and the compiler's message is shown with a line number counted from the first line of the editor rather than from the assembled program. Fixing it takes over again.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.hookSource",
+    kind: "control",
+    target: "stack.hookSource",
+    userAction:
+      "Edit the code so it tints the frame, then break it, then fix it.",
+  },
+  {
+    actionCoverage: ["reset-hook"],
+    automated: true,
+    automatedTestName: "declares restoring the shipped chunk returns the frame",
+    browser: true,
+    browserTestName: "browser: studio hook reset returns the shipped code and the frame with it",
+    componentType: "actions",
+    evidence: "command-side-effect",
+    expectedObservable:
+      "Restore the shipped code puts the pass-through back in the editor and the frame back to what the stack composites without it. A stack whose code has never been edited assembles exactly as it did before the editor existed, because the shipped chunk is emitted as nothing at all.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.hookReset",
+    kind: "control",
+    target: "stack.hookReset",
+    userAction: "Edit the code, then press Restore the shipped code.",
+  },
+];
+
 /** Vector delivery, which exists only where the state genuinely is geometry. */
 export const studioSvgAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {

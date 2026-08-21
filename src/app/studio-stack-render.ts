@@ -26,6 +26,10 @@ import {
   studioPathAtlasSignature,
   type StudioPathAtlas,
 } from "./studio-path-mask";
+import {
+  correctStudioHookErrors,
+  studioHookLineOffset,
+} from "./studio-hook";
 import { type StudioVertexPoint } from "./studio-stack-state";
 
 /** One layer's uniform values, keyed by the type's own uniform names. */
@@ -51,10 +55,21 @@ export type StudioStackSceneParameters = Readonly<{
   loop: number;
   includeBackground: boolean;
   layers: readonly StudioLayerValues[];
+  /**
+   * The author's own chunk, if they have written one.
+   *
+   * Part of the scene rather than of the renderer, because it is part of the
+   * *composition*: the export frame and the delivered source have to assemble
+   * the same program the preview does, and a hook the renderer held privately
+   * would be in one of the three and not the others.
+   */
+  hookSource?: string;
 }>;
 
 export interface StudioStackRenderer {
   dispose: () => void;
+  /** Why the current hook did not compile, or null while it does. */
+  hookError: () => string | null;
   readonly gl: WebGL2RenderingContext;
   render: (
     parameters: StudioStackSceneParameters,
@@ -90,12 +105,13 @@ function compileShader(
 function compileStack(
   gl: WebGL2RenderingContext,
   stack: readonly StudioStackEntry[],
+  hookSource = "",
 ): CompiledStack {
   const vertex = compileShader(gl, gl.VERTEX_SHADER, studioStackVertexShader());
   const fragment = compileShader(
     gl,
     gl.FRAGMENT_SHADER,
-    studioAssembleStackFragmentShader(stack),
+    studioAssembleStackFragmentShader(stack, hookSource),
   );
   const program = gl.createProgram();
   if (!program) throw new Error("Studio could not create a WebGL2 program.");
@@ -134,13 +150,51 @@ export function createStudioStackRenderer(
 ): StudioStackRenderer {
   const compiled = new Map<string, CompiledStack>();
 
-  function resolveStack(stack: readonly StudioStackEntry[]): CompiledStack {
-    const signature = studioStackSignature(stack);
+  /**
+   * The last program that compiled, and why the current one did not.
+   *
+   * A hand-written hook is the first thing in this product that can be *wrong*
+   * -- every other input is a control whose domain the schema guarantees. So
+   * the renderer holds onto the last good program and keeps drawing it, which
+   * is the difference between an editor and a trapdoor: an author who types a
+   * missing semicolon should see their work and a message, not a blank canvas.
+   */
+  let lastGood: CompiledStack | null = null;
+  let hookError: string | null = null;
+
+  function resolveStack(
+    stack: readonly StudioStackEntry[],
+    hookSource: string,
+  ): CompiledStack | null {
+    const signature = studioStackSignature(stack, hookSource);
     const cached = compiled.get(signature);
-    if (cached) return cached;
-    const program = compileStack(gl, stack);
-    compiled.set(signature, program);
-    return program;
+    if (cached) {
+      hookError = null;
+      lastGood = cached;
+      return cached;
+    }
+
+    try {
+      const program = compileStack(gl, stack, hookSource);
+      compiled.set(signature, program);
+      hookError = null;
+      lastGood = program;
+      return program;
+    } catch (failure) {
+      // Reported against the source the author is looking at rather than the
+      // assembled program: a message pointing at line 412 of something nobody
+      // wrote tells them the error is somewhere they cannot look.
+      hookError = correctStudioHookErrors(
+        failure instanceof Error ? failure.message : String(failure),
+        studioHookLineOffset(
+          studioAssembleStackFragmentShader(stack, hookSource),
+          hookSource,
+        ),
+      );
+      // Not cached under this signature: the next keystroke should try again
+      // rather than be told the same failure from memory.
+      return lastGood;
+    }
   }
 
   /**
@@ -249,6 +303,10 @@ export function createStudioStackRenderer(
   };
 
   return {
+    /** Why the current hook did not compile, or null while it does. */
+    hookError(): string | null {
+      return hookError;
+    },
     dispose() {
       for (const entry of compiled.values()) gl.deleteProgram(entry.program);
       compiled.clear();
@@ -275,7 +333,12 @@ export function createStudioStackRenderer(
         // of the signature, so the cache re-keys when the path changes.
         ...(layer.vertices ? { vertices: layer.vertices } : {}),
       }));
-      const { program, uniforms } = resolveStack(stack);
+      const resolved = resolveStack(stack, parameters.hookSource ?? "");
+      // Nothing has ever compiled, so there is nothing to draw. A first hook
+      // that does not compile leaves the canvas as the runtime cleared it
+      // rather than throwing through the pipeline pass.
+      if (!resolved) return;
+      const { program, uniforms } = resolved;
 
       gl.useProgram(program);
       gl.viewport(0, 0, width, height);

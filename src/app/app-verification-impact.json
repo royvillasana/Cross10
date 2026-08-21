@@ -18,7 +18,9 @@
         "randomize.lockEngine",
         "randomize.lockField",
         "randomize.lockMotion",
-        "randomize.lockPalette"
+        "randomize.lockPalette",
+        "stack.hookReset",
+        "stack.hookSource"
       ],
       "kind": "functional",
       "path": "src/app/app-composition.tsx"
@@ -99,7 +101,9 @@
         "selectedLayer.halftoneCell",
         "selectedLayer.mixSpace",
         "selectedLayer.pixelBlock",
-        "selectedLayer.quantize"
+        "selectedLayer.quantize",
+        "stack.hookReset",
+        "stack.hookSource"
       ],
       "kind": "performance",
       "passIds": [
@@ -145,6 +149,22 @@
       ],
       "kind": "functional",
       "path": "src/app/studio-gallery-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "stack.hookReset",
+        "stack.hookSource"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-hook-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "stack.hookReset",
+        "stack.hookSource"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-hook.ts"
     },
     {
       "acceptanceIds": [
@@ -295,6 +315,8 @@
         "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.hookReset",
+        "stack.hookSource",
         "stack.pathNodes"
       ],
       "kind": "performance",
@@ -496,7 +518,9 @@
         "selectedLayer.phase",
         "selectedLayer.rampType",
         "selectedLayer.type",
-        "selectedLayer.widthRatio"
+        "selectedLayer.widthRatio",
+        "stack.hookReset",
+        "stack.hookSource"
       ],
       "kind": "performance",
       "passIds": [
@@ -528,7 +552,9 @@
     },
     {
       "acceptanceIds": [
-        "export.image-action"
+        "export.image-action",
+        "stack.hookReset",
+        "stack.hookSource"
       ],
       "kind": "functional",
       "path": "src/app/studio-source.ts"
@@ -546,6 +572,8 @@
         "selectedLayer.rampType",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.hookReset",
+        "stack.hookSource",
         "stack.pathNodes"
       ],
       "kind": "performance",
