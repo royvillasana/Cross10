@@ -41,6 +41,37 @@ Scheduled as `outstanding` 1a.5a (the scene, the gizmo and the declaration),
 1a.5b (extruded lamellae, real parallax and lighting) and 1a.5c (curved surfaces
 and export parity).
 
+**1a.5a was attempted on 2026-08-21 and is blocked on a contradiction between
+this file and the framework's own proof recipes.** The build itself worked: a
+Three scene rendered into the runtime product scene surface, one product output
+at a time, the gizmo appearing only in the spatial mode, the declaration flipped
+to `orbit`, and the pose driving the camera. It was reverted rather than landed,
+because it cannot be *proved* as specified.
+
+The contradiction is precise. A gizmo control requires all seven orientation
+coverages — there is no honest subset — and the `model-drag` one is a protected
+recipe that finds its surface by
+`[data-canvas-model-layer][data-toolcraft-model-orbit-surface="true"]`. Only the
+runtime's model-canvas layer writes those attributes, and only for an imported
+model asset. This file's first requirement forbids exactly that: the lamellae
+are procedural, so `modelPresentation` stays `{ mode: "runtime" }` and no
+loader, lease or presentation document exists. Its second requirement then asks
+for direct drag through `useToolcraftModelOrbitInteraction` **with a
+product-supplied geometry hit test** — which is what was built, and which the
+recipe cannot see.
+
+So the spec asks for a product-owned spatial scene, and the proof machinery can
+only certify a runtime-presented model. Marking a product canvas with the
+runtime's model-layer attributes would make the recipe pass by claiming the
+scene is something it is not, which is the one move this project has refused
+everywhere else.
+
+Resolving it needs one of: a framework recipe that accepts a product-supplied
+orbit surface; a rule change making `model-drag` inapplicable when
+`modelPresentation` is runtime-owned and the scene is procedural; or a decision
+that the spatial mode goes through the model pipeline after all — which
+contradicts the first requirement rather than the second.
+
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface
 The 3D tool SHALL render a Three.js scene into a product canvas marked `data-toolcraft-product-output` inside `canvasContent`, sized and translated by `useToolcraftProductSceneFrame()`. Because the lamellae are procedural geometry rather than an uploaded model, `modelPresentation` SHALL remain `{ mode: "runtime" }` and no model loader, presentation lease, or second Three cache SHALL be created. A canvas outside the runtime scene surface MUST NOT be mounted.
