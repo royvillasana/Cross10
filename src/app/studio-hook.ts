@@ -126,3 +126,42 @@ export function correctStudioHookErrors(
     },
   );
 }
+
+/**
+ * The knobs a hand-written chunk can read.
+ *
+ * **This is what became of "annotated uniforms become controls".** That
+ * requirement asked for a uniform declared in the chunk to register itself as a
+ * control, and it cannot be built here: the runtime takes its schema once at
+ * mount and offers no command to change it, so a control that exists because
+ * someone typed a declaration would have to be added by editing signed runtime
+ * source. It would also have neither an inventory entry nor an acceptance row,
+ * which is the gate that stops an unproved control shipping.
+ *
+ * A fixed pool inverts the problem and keeps the substance. The controls exist
+ * in the schema, in the inventory, with rows and proofs, and what an author
+ * writes is which of them their code reads. The knob is provided; the meaning
+ * is authored. What is lost is the count -- four is the ceiling -- and the
+ * label, which cannot say what the author decided it means.
+ */
+export const STUDIO_HOOK_PARAMETERS = ["A", "B", "C", "D"] as const;
+
+/** The uniform one knob arrives as. */
+export function studioHookUniform(slot: string): string {
+  return `uHook${slot}`;
+}
+
+/** Where one knob's value lives in state. */
+export function studioHookParameterTarget(slot: string): string {
+  return `stack.hook${slot}`;
+}
+
+/** The knobs as the shader takes them, in slot order. */
+export function readStudioHookParameters(
+  values: Readonly<Record<string, unknown>>,
+): readonly number[] {
+  return STUDIO_HOOK_PARAMETERS.map((slot) => {
+    const value = values[studioHookParameterTarget(slot)];
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  });
+}

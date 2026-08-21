@@ -3,6 +3,7 @@ import {
   studioLayerUniforms,
   type StudioLayerUniform,
 } from "./studio-layers";
+import { studioHookUniform, STUDIO_HOOK_PARAMETERS } from "./studio-hook";
 import { studioAssembleStackFragmentShader } from "./studio-layers";
 import type { StudioStackSceneParameters } from "./studio-stack-render";
 
@@ -91,6 +92,21 @@ export function studioAssembleDeliverableSource(
         glslLiteral(uniform, layer.values[uniform.name]),
       );
     }
+  });
+
+  // The knobs are baked like every other value: a delivered shader carries the
+  // composition rather than a program that could be one, and a knob left as a
+  // uniform would be a parameter the recipient has to guess.
+  STUDIO_HOOK_PARAMETERS.forEach((slot, index) => {
+    source = bake(
+      source,
+      "float",
+      studioHookUniform(slot),
+      glslLiteral(
+        { defaultValue: 0, name: slot, type: "float" },
+        scene.hookParameters?.[index] ?? 0,
+      ),
+    );
   });
 
   source = bake(

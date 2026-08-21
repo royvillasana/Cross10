@@ -117,13 +117,35 @@ keystroke tries again rather than being told the same failure from memory.
 ### Requirement: Uniform annotations become controls
 Uniforms declared in the hook with a range annotation SHALL be registered as schema-backed controls in a namespace separate from the built-in parameters. Removing a declaration SHALL remove its control and stop its upload.
 
-**Status: pending — scheduled as `outstanding` 1a.4b, and separated on
-purpose.** This is the requirement that conflicts with a static schema. Every
-control target in this app appears in a signed inventory and carries an
-acceptance row; a control that exists because someone typed a declaration has
-neither, and cannot be given them by anything the build can check. It needs a
-decision about how a control surface that is not known until runtime is proved,
-which is a different question from the rest of this file.
+**Status: satisfied differently, and the difference is forced.**
+
+**As written it cannot be built here, and that is a fact about the runtime
+rather than an opinion.** The schema is taken once at mount and there is no
+command to change it — `state.schema` is fixed for the session — so a control
+that exists because someone typed a declaration would have to be added by
+editing signed runtime source, which permanently breaks the integrity gate. It
+would also arrive with neither an inventory entry nor an acceptance row, which
+is the gate that stops an unproved control shipping.
+
+**A fixed pool inverts the problem and keeps the substance.** Four knobs are
+declared in the schema, in the inventory, with rows and proofs. A chunk reads
+whichever it wants as `uHookA` through `uHookD`, so writing one gives an author
+a live control for their own parameter. The control is provided; the meaning is
+authored.
+
+What is lost is stated rather than glossed: four is a ceiling, the labels say
+position rather than purpose — the purpose lives in a chunk the schema cannot
+read — and a knob no chunk reads stays on the panel rather than disappearing. In
+exchange the surface is knowable at build time, which is what every gate in this
+product depends on.
+
+The uniforms are declared only when a chunk exists to read them, so an unedited
+stack carries nothing for a feature it is not using, and they are baked into the
+delivered source like every other value — a recipient supplies nothing.
+
+#### Scenario: A knob drives what the author's code says it drives
+- **WHEN** a chunk reads `uHookA` and the author moves Your parameter A
+- **THEN** the frame changes as the chunk decides, and the other three knobs are unaffected
 
 #### Scenario: Annotated uniform becomes a control
 - **WHEN** the user declares a float uniform with a range annotation and it compiles

@@ -92,6 +92,7 @@ describe("appSchema", () => {
       // After every layer section: the code acts on what the layers composited
       // into, which is the last thing that happens to a frame.
       "Your Code",
+      "Your Parameters",
       "Starting Over",
       "Randomize",
       // Offered only while the selected layer is geometry, which is why it

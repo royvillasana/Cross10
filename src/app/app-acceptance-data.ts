@@ -282,6 +282,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
     },
     {
       entity: "Composition",
+      entityId: "composition-hook-parameters",
+      groupingReason:
+        "Knobs whose meaning belongs to the author's own chunk. Their own stage because they are the only controls in the product whose purpose is not stated by the schema that declares them -- what each one does lives in code this schema cannot read, so grouping them with anything would claim a relationship the product cannot check. Four is a pool rather than a list: the requirement asked for a declared uniform to register itself as a control, which a fixed schema cannot do, so the control is provided and the meaning is authored.",
+      id: "composition-hook-parameters",
+      targets: ["stack.hookA", "stack.hookB", "stack.hookC", "stack.hookD"],
+      title: "Your Parameters",
+      workflowStage: "compose",
+    },
+    {
+      entity: "Composition",
       entityId: "composition-hook-reset",
       groupingReason:
         "Taking the hand-written chunk back. A section of its own because a compound control takes one to itself: the runtime gives a code control its own section, so an action beside it would leave two sections sharing one title. The same rule put the randomize locks beside their press rather than in the sections they cover.",

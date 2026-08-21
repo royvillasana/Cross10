@@ -54,6 +54,87 @@ export const STUDIO_HOOK_SECTIONS = [
   },
   {
     controls: {
+      /*
+       * A knob whose meaning is the author's.
+       *
+       * This is what became of "a uniform declared in the hook registers itself
+       * as a control". That cannot be built here: the runtime takes its schema
+       * once at mount, so a control nobody declared would have to be added by
+       * editing signed source, and it would have neither an inventory entry nor
+       * an acceptance row -- which is the gate that stops an unproved control
+       * shipping.
+       *
+       * A fixed pool inverts the problem and keeps the substance. The controls
+       * exist and are proved; what an author writes is which of them their code
+       * reads. Written out rather than generated, because a schema that says
+       * what it contains is one a reader can check against the panel.
+       *
+       * Labelled by position rather than by purpose: the purpose lives in a
+       * chunk this schema cannot read, so the name in the code is the
+       * documentation.
+       */
+      hookA: {
+        semanticGroup: "delivery",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Your parameter A",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One float uploaded per frame, and only when a chunk declares it; the value does not change the work per pixel.",
+        performanceRole: "responsiveness",
+        step: 0.01,
+        target: "stack.hookA",
+        type: "slider",
+      },
+      hookB: {
+        semanticGroup: "delivery",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Your parameter B",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One float uploaded per frame, and only when a chunk declares it; the value does not change the work per pixel.",
+        performanceRole: "responsiveness",
+        step: 0.01,
+        target: "stack.hookB",
+        type: "slider",
+      },
+      hookC: {
+        semanticGroup: "delivery",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Your parameter C",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One float uploaded per frame, and only when a chunk declares it; the value does not change the work per pixel.",
+        performanceRole: "responsiveness",
+        step: 0.01,
+        target: "stack.hookC",
+        type: "slider",
+      },
+      hookD: {
+        semanticGroup: "delivery",
+        applicability: { mode: "always" },
+        defaultValue: 0,
+        label: "Your parameter D",
+        max: 1,
+        min: 0,
+        performanceReason:
+          "One float uploaded per frame, and only when a chunk declares it; the value does not change the work per pixel.",
+        performanceRole: "responsiveness",
+        step: 0.01,
+        target: "stack.hookD",
+        type: "slider",
+      },
+    },
+    id: "composition-hook-parameters",
+    title: "Your Parameters",
+  },
+  {
+    controls: {
       reset: {
         semanticGroup: "delivery",
         applicability: { mode: "always" },

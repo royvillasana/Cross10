@@ -29,6 +29,8 @@ import {
 import {
   correctStudioHookErrors,
   studioHookLineOffset,
+  studioHookUniform,
+  STUDIO_HOOK_PARAMETERS,
 } from "./studio-hook";
 import { type StudioVertexPoint } from "./studio-stack-state";
 
@@ -64,6 +66,8 @@ export type StudioStackSceneParameters = Readonly<{
    * would be in one of the three and not the others.
    */
   hookSource?: string;
+  /** The knobs a hand-written chunk can read, in slot order. */
+  hookParameters?: readonly number[];
 }>;
 
 export interface StudioStackRenderer {
@@ -353,6 +357,13 @@ export function createStudioStackRenderer(
       if (cursor) gl.uniform2f(cursor, parameters.cursor[0], parameters.cursor[1]);
       const loop = location("uLoop");
       if (loop) gl.uniform1f(loop, parameters.loop);
+
+      // The knobs, uploaded only when the program declares them -- which is
+      // only when there is a chunk to read them.
+      STUDIO_HOOK_PARAMETERS.forEach((slot, index) => {
+        const target = location(studioHookUniform(slot));
+        if (target) gl.uniform1f(target, parameters.hookParameters?.[index] ?? 0);
+      });
 
       const background = location("uBackgroundColor");
       if (background) gl.uniform3fv(background, [...parameters.backgroundColor]);

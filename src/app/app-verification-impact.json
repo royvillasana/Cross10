@@ -152,6 +152,10 @@
     },
     {
       "acceptanceIds": [
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource"
       ],
@@ -160,6 +164,10 @@
     },
     {
       "acceptanceIds": [
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource"
       ],
@@ -315,6 +323,10 @@
         "selectedLayer.taper",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource",
         "stack.pathNodes"
@@ -519,6 +531,10 @@
         "selectedLayer.rampType",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource"
       ],
@@ -553,6 +569,10 @@
     {
       "acceptanceIds": [
         "export.image-action",
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource"
       ],
@@ -572,6 +592,10 @@
         "selectedLayer.rampType",
         "selectedLayer.type",
         "selectedLayer.widthRatio",
+        "stack.hookA",
+        "stack.hookB",
+        "stack.hookC",
+        "stack.hookD",
         "stack.hookReset",
         "stack.hookSource",
         "stack.pathNodes"

@@ -4,6 +4,7 @@ import { STUDIO_HOOK_DEFAULT } from "../src/app/studio-hook";
 import {
   openStudioSingleLayer,
   readStudioOutputSignature,
+  setStudioSlider,
   STUDIO_PRODUCT_OUTPUT,
 } from "./studio-product-helpers";
 import { test } from "./toolcraft-product-test";
@@ -128,4 +129,104 @@ test("browser: studio hook reset returns the shipped code and the frame with it"
     .poll(async () => readStudioOutputSignature(page), { timeout: 20_000 })
     .toBe(shipped);
   expect(await page.locator(EDITOR).first().inputValue()).toBe(STUDIO_HOOK_DEFAULT);
+});
+
+/**
+ * The knobs, which are what became of "a declared uniform registers itself as a
+ * control".
+ *
+ * That could not be built: the runtime takes its schema once at mount, so a
+ * control nobody declared would have to be added by editing signed source, and
+ * it would arrive with neither an inventory entry nor an acceptance row. A
+ * fixed pool inverts the problem -- the controls exist and are proved, and what
+ * an author writes is which of them their code reads.
+ *
+ * Four claims rather than four copies of one, because a pool can fail in four
+ * ways: a knob that does nothing, knobs that move together, a knob that does
+ * not survive being saved, and a knob that does not travel with the delivered
+ * source.
+ */
+const READS_A = `vec3 hook(vec3 colour, vec2 uv, float loop) {
+  return mix(colour, vec3(1.0, 0.0, 0.0), uHookA);
+}`;
+
+test("browser: studio hook parameter drives the frame from the author's code", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  await writeStudioHook(page, READS_A);
+  const atZero = await readStudioOutputSignature(page);
+
+  // The knob does whatever the chunk says it does. Nothing in the schema knows
+  // that this one tints toward red -- that is the point of the pool.
+  await setStudioSlider(page, "Your parameter A", 1);
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 20_000 })
+    .not.toBe(atZero);
+});
+
+test("browser: studio hook parameters move independently of one another", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  await writeStudioHook(page, READS_A);
+  const atZero = await readStudioOutputSignature(page);
+
+  // B is not read by this chunk, so moving it must change nothing. A pool whose
+  // knobs were one value would fail here rather than in the proof above.
+  await setStudioSlider(page, "Your parameter B", 1);
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 20_000 })
+    .toBe(atZero);
+
+  await setStudioSlider(page, "Your parameter A", 1);
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 20_000 })
+    .not.toBe(atZero);
+});
+
+test("browser: studio hook parameters survive a reload with the composition", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  await writeStudioHook(page, READS_A);
+  await setStudioSlider(page, "Your parameter A", 1);
+  const tinted = await readStudioOutputSignature(page);
+
+  await page.reload();
+  await expect(page.locator(STUDIO_PRODUCT_OUTPUT)).toBeVisible();
+
+  // Both halves have to come back: the chunk and the value it reads. Either one
+  // alone gives a frame the author did not leave.
+  await expect
+    .poll(async () => readStudioOutputSignature(page), { timeout: 20_000 })
+    .toBe(tinted);
+});
+
+test("browser: studio hook parameters are baked into the delivered source", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+
+  await openStudioSingleLayer(page);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await writeStudioHook(page, READS_A);
+  await setStudioSlider(page, "Your parameter A", 0.5);
+
+  await page.getByRole("button", { name: "Copy shader source" }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+
+  // The chunk travels, which is what makes a hand-editable shader and one-way
+  // delivery complements rather than alternatives.
+  expect(copied).toContain("vec3 hook(vec3 colour");
+  // And so does the knob's value, baked like every other: a recipient supplies
+  // nothing.
+  expect(copied).toMatch(/const float uHookA = 0\.5/u);
+  expect(copied).not.toContain("uniform float uHookA;");
 });

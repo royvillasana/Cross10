@@ -1,7 +1,9 @@
 import {
   isStudioHookDefault,
   studioHookChunk,
+  studioHookUniform,
   STUDIO_HOOK_ENTRY,
+  STUDIO_HOOK_PARAMETERS,
 } from "./studio-hook";
 import { type StudioVertexPoint } from "./studio-stack-state";
 /**
@@ -1914,6 +1916,19 @@ uniform vec2 uCursor;
  * seam invisible without the shader knowing anything about seams.
  */
 uniform float uLoop;
+${
+  studioHookChunk(hookSource)
+    ? `
+/**
+ * The knobs a hand-written chunk can read.
+ *
+ * Declared only when there is a chunk to read them, so a stack nobody has
+ * edited carries no uniform for a feature it is not using -- and a delivered
+ * shader does not ask a host to supply four values it never reads.
+ */
+${STUDIO_HOOK_PARAMETERS.map((slot) => `uniform float ${studioHookUniform(slot)};`).join("\n")}`
+    : ""
+}
 ${
   stack.some((entry) => (entry.vertices?.length ?? 0) >= 2)
     ? `
