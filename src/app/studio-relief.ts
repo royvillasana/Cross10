@@ -87,3 +87,55 @@ export function readStudioReliefFins(
     coverage: Math.min(1, Math.max(0.05, number("widthRatio", 0.5))),
   };
 }
+
+/**
+ * How far a viewer walks to either side of the work over one loop, in degrees.
+ *
+ * A relief is read by moving past it, and past is a limited arc: fifty-five
+ * degrees is far enough that the fins' side faces come fully into view and the
+ * far edges of the near faces go out of it, and near enough that the work never
+ * turns away. A full rotation would be a different gesture -- an object being
+ * spun rather than a viewer walking -- and would show the backs of the fins,
+ * which a Physichromie hanging on a wall does not have.
+ */
+export const STUDIO_RELIEF_SWEEP_DEGREES = 55;
+
+/**
+ * Where the viewer is standing at this point in the loop.
+ *
+ * **The rate is the layer's own travel per loop**, which in the flat view moves
+ * the viewer *along* the work by shifting which part of each lamella is
+ * presented. Here it moves them for real. One control, two readings of the same
+ * statement -- how many times a viewer passes this work in one loop -- which is
+ * what keeps a composition one work in two views rather than two works.
+ *
+ * A sine rather than a ramp, and that is what makes the seam close *and* the
+ * motion right. At a whole number of passes the sine returns to zero at the end
+ * of the loop, so the last frame is the first by construction rather than by
+ * an author choosing a rate that happens to divide. And a viewer walking past
+ * arrives, passes, and leaves the other way; they do not teleport back to where
+ * they started, which is what a ramp would draw.
+ */
+export function studioReliefSweep(travelPerLoop: number, loop: number): number {
+  if (!Number.isFinite(travelPerLoop) || travelPerLoop === 0) return 0;
+  if (!Number.isFinite(loop)) return 0;
+
+  return (
+    STUDIO_RELIEF_SWEEP_DEGREES *
+    Math.sin(2 * Math.PI * travelPerLoop * loop)
+  );
+}
+
+/** The travel the relief reads, taken from the field it stands up. */
+export function readStudioReliefTravel(
+  layers: readonly {
+    typeId: string;
+    values: Readonly<Record<string, number | readonly [number, number, number]>>;
+  }[],
+): number {
+  const field = layers.find(
+    (layer) => layer.typeId === "stripes" && layer.values.visible !== 0,
+  );
+  const value = field?.values.driftPhase;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}

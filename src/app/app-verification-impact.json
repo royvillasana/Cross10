@@ -513,6 +513,7 @@
     {
       "acceptanceIds": [
         "stack.reliefDepth",
+        "stack.reliefSweep",
         "stack.view"
       ],
       "kind": "functional",
@@ -529,6 +530,7 @@
     {
       "acceptanceIds": [
         "stack.reliefDepth",
+        "stack.reliefSweep",
         "stack.view"
       ],
       "kind": "functional",
@@ -564,6 +566,7 @@
         "stack.hookReset",
         "stack.hookSource",
         "stack.reliefDepth",
+        "stack.reliefSweep",
         "stack.view"
       ],
       "kind": "performance",
@@ -700,7 +703,8 @@
     },
     {
       "acceptanceIds": [
-        "canvas.viewport-yield"
+        "canvas.viewport-yield",
+        "stack.reliefSweep"
       ],
       "kind": "performance",
       "passIds": [

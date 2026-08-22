@@ -126,12 +126,30 @@ construction beside it — and that is also why nothing here declares a new
 workload dimension: the fin count *is* `band-count`, which the pipeline already
 declares and bounds. The one number the mode adds is how far they stand off.
 
+**Motion followed, and it freed the parallax from the gizmo.** I had recorded
+real parallax as blocked behind the orbit — occlusion under camera movement
+cannot be shown by a camera that does not move — and that was true of a camera
+with no other reason to move. It has one: the loop. Re-reading the requirement,
+it asks for genuine occlusion sampled across a sweep and never asks for a *user*
+orbit. A viewer walked past the work by the timeline gives real occlusion and a
+repeatable sweep, so the requirement is satisfied while the gizmo stays blocked.
+
+The rate is the layer's own `Travel per loop` — the control that in the flat
+view moves a viewer *along* the work by shifting which part of each lamella is
+presented. Here it moves them for real. One statement, two readings, which is
+what keeps a composition one work in two views.
+
+The sweep is a sine rather than a ramp, which makes the seam close *and* the
+motion right: at a whole number of passes it returns to zero at the end of the
+loop by construction, and a viewer walking past arrives, passes and leaves the
+other way rather than teleporting back. It is bounded to an arc, because a
+Physichromie hangs on a wall and has no back to show.
+
 The requirements below are therefore in three states. *Procedural lamellae
-inside the runtime scene surface* and *extruded lamellae driven by stripe
-geometry* are satisfied. *Orbit through the runtime gizmo* and *real parallax*
-are blocked upstream, and the second is blocked by the first: occlusion under
-camera movement cannot be shown by a camera that does not move. *Lighting*,
-*curved surfaces* and *export parity* remain unbuilt and unblocked.
+inside the runtime scene surface*, *extruded lamellae driven by stripe geometry*
+and *real parallax colour change* are satisfied. *Orbit through the runtime
+gizmo* is blocked upstream. *Lighting*, *curved surfaces* and *export parity*
+remain unbuilt and unblocked.
 
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface
@@ -185,6 +203,21 @@ Lamellae SHALL be instanced geometry whose count and spacing derive from the sam
 
 ### Requirement: Real parallax colour change
 Perceived colour change under camera movement SHALL arise from genuine geometric occlusion of the lamellae side faces, not a simulated shift.
+
+**Status: satisfied, by the loop rather than by an orbit gesture.** The camera
+is moved by the layer's own travel per loop, so the fins' side faces come into
+view and go out of it, and what changes is how much of each ink reaches the
+frame rather than which inks exist.
+
+That distinction is the proof's assertion rather than its description: a
+recolour would pass "the frame changed", so what is asserted is that the *set*
+of inks is unchanged while their *shares* move. Nothing new can appear, because
+nothing is being tinted — faces are being hidden. Checked against a version that
+holds the viewer still, which fails on exactly that assertion.
+
+The scenario below names an orbit pose because it was written for one. What it
+requires — occlusion sampled across a sweep — is what a walked loop provides,
+and the sweep is repeatable in a way a gesture is not.
 
 #### Scenario: Orbiting changes perceived colour
 - **WHEN** the orbit pose is sampled at N evenly spaced values across a sweep

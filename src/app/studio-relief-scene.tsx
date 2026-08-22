@@ -18,9 +18,15 @@ import {
 } from "@/toolcraft/runtime/react";
 
 import styles from "./studio-canvas.module.css";
-import { buildStudioSceneParameters } from "./studio-scene";
+import { buildStudioSceneParameters, readStudioLoopProgress } from "./studio-scene";
+import {
+  readStudioViewportPose,
+  useStudioViewportGesture,
+} from "./studio-viewport-gesture";
 import {
   readStudioReliefFins,
+  readStudioReliefTravel,
+  studioReliefSweep,
   STUDIO_RELIEF_DEPTH_TARGET,
   type StudioReliefFins,
 } from "./studio-relief";
@@ -122,6 +128,31 @@ export function StudioReliefScene(): React.JSX.Element {
   const depth =
     typeof depthValue === "number" && Number.isFinite(depthValue) ? depthValue : 0.3;
 
+  /**
+   * Where the viewer is standing, which is the whole of this mode's motion.
+   *
+   * Two rules carried over from the flat view rather than reinvented, because
+   * they are properties of the product rather than of a renderer.
+   *
+   * A composition that declares no travel is pinned: the sweep is a constant
+   * zero, the effect below sees no change, and the scene does not redraw. A
+   * still relief costs nothing, exactly as a still field does.
+   *
+   * And while the viewport is being moved the sweep is held at the value the
+   * last frame used, so a pan is not competing with a scene redrawing sixty
+   * times a second. Same reasoning as the flat canvas, same helper, and the
+   * clock keeps running underneath so what resumes is where the loop reached
+   * rather than where the gesture ended.
+   */
+  const travel = readStudioReliefTravel(scene.layers);
+  const moving = useStudioViewportGesture(
+    readStudioViewportPose((state as { canvas?: { offset?: { x?: number; y?: number }; zoom?: number } }).canvas),
+  );
+  const heldSweep = React.useRef(0);
+  const live = studioReliefSweep(travel, readStudioLoopProgress(state));
+  const sweep = moving ? heldSweep.current : live;
+  heldSweep.current = sweep;
+
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -199,13 +230,28 @@ export function StudioReliefScene(): React.JSX.Element {
     camera.right = aspect;
     camera.top = 1;
     camera.bottom = -1;
-    camera.position.set(1.9, 1.25, 3.4);
+
+    /**
+     * The viewer walks around the work rather than the work turning.
+     *
+     * It draws the same picture either way and means a different thing, and the
+     * difference is the subject: a Physichromie is a static object whose colour
+     * depends on where you are standing. Turning the object would make the work
+     * the thing that moves, which is what the flat view already has to pretend.
+     */
+    const radius = Math.hypot(1.9, 3.4);
+    const azimuth = Math.atan2(1.9, 3.4) + (sweep * Math.PI) / 180;
+    camera.position.set(
+      Math.sin(azimuth) * radius,
+      1.25,
+      Math.cos(azimuth) * radius,
+    );
     camera.up.set(0, 1, 0);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
 
     renderer.render(target, camera);
-  }, [depth, fins, frame]);
+  }, [depth, fins, frame, sweep]);
 
   return (
     <canvas
@@ -219,6 +265,12 @@ export function StudioReliefScene(): React.JSX.Element {
        * to be true is that the *geometry* followed it.
        */
       data-studio-fins={fins ? `${fins.count}@${depth.toFixed(2)}` : "none"}
+      /*
+       * Where the viewer was standing for the frame in front of you, as the
+       * scene drew it -- not as state holds it. A proof reading the sweep from
+       * state would be checking that state agrees with itself.
+       */
+      data-studio-sweep={sweep.toFixed(3)}
       // The product's one output, whichever renderer is drawing it. Two
       // canvases claiming to be the output would make every proof that reads
       // "the frame" ambiguous, so exactly one is mounted at a time.

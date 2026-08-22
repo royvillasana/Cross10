@@ -149,6 +149,22 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
 export const studioReliefAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {
     automated: true,
+    automatedTestName: "declares a viewer walks past the relief and returns",
+    browser: true,
+    browserTestName: "browser: studio relief parallax comes from occlusion rather than a colour shift",
+    componentType: "canvas",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "A layer that declares travel per loop moves the viewer past the relief rather than moving the work: over the loop the fins' side faces come into view and go out of it, so how much of each ink reaches the frame changes while which inks exist does not. The viewer arrives back where they started, so the last frame of the loop is the first. A composition declaring no travel does not move at all.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.reliefSweep",
+    kind: "runtime",
+    target: "stack.view",
+    userAction:
+      "In relief, set Travel per loop on the band layer and scrub the timeline across the loop.",
+  },
+  {
+    automated: true,
     automatedTestName: "declares the fins come from the field they are a relief of",
     browser: true,
     browserTestName: "browser: studio relief stands the band field up as fins",
