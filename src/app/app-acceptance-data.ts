@@ -16,11 +16,13 @@ import {
   studioSourceAcceptanceRows,
   studioRestoreAcceptanceRows,
   studioHookAcceptanceRows,
+  studioReliefAcceptanceRows,
   studioSvgAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
   studioReferenceAcceptanceRows,
 } from "./studio-acceptance-rows";
+import { STUDIO_RELIEF_POSE_TARGET } from "./studio-relief";
 
 const persistenceSlices =
   appSchema.persistence.storage === "localStorage"
@@ -87,6 +89,24 @@ export const appProductReadiness: ToolcraftProductReadiness = {
     {
       alternative: {
         reason:
+          "Paired angle sliders, a vector pad, or a product-authored camera. Every one is a second thing deciding where the view points, and two answers to that question is one too many — the first time they disagree the picture is wrong and neither is obviously at fault.",
+        surface: "panel",
+      },
+      capability: "direct-spatial-edit",
+      evidence: {
+        detail:
+          "Where a viewer stands is the whole subject of a relief: what changes as you move is which faces of the lamellae occlude which. Choosing that by dragging the work is the gesture the phenomenon describes, and reading it off two numbers is not.",
+        source: "usability-analysis",
+      },
+      id: "relief-orbit",
+      reason:
+        "The runtime's orientation handle owns the pose, and dragging the geometry writes the same target, so the canvas is the one surface deciding where the view points.",
+      surface: "canvas",
+      target: "stack.pose",
+    },
+    {
+      alternative: {
+        reason:
           "A product-authored media manager, which would restate the reorder, rename and delete the layers panel already owns and would drift from it the first time either changed.",
         surface: "canvas",
       },
@@ -128,9 +148,31 @@ export const appProductReadiness: ToolcraftProductReadiness = {
   requestedBehavior:
     "Build a shader from an ordered stack of layers — stripes, gradients, and later images and shapes — editing each layer's own parameters, and take the composed result away as source rather than only as a picture.",
   viewInteraction: {
-    mode: "non-spatial",
-    reason:
-      "Output is a two-dimensional shader field with no scene geometry, model, or camera to orbit. Layer order is a compositing sequence rather than depth in a space, so there is nothing an orbit gesture would move around.",
+    /**
+     * **This said `non-spatial` until the relief existed, and the reason it
+     * gave was true of the product at the time.** It read: output is a
+     * two-dimensional shader field with no scene geometry, model, or camera to
+     * orbit; layer order is a compositing sequence rather than depth in a
+     * space, so there is nothing an orbit gesture would move around.
+     *
+     * Every clause is still true of the flat view and false of the relief. The
+     * product now has a mode with real geometry, and a declaration describes
+     * what a product *can* do rather than what it is doing at a given moment —
+     * so the honest declaration admits the capability, with the gizmo gated on
+     * the mode that has something to turn.
+     *
+     * Drawn as a relief, the work is lamellae standing off a support: real
+     * geometry whose side faces occlude one another, so what a viewer sees
+     * depends on where they are. That is the phenomenon these techniques are
+     * about rather than an effect over it, and the flat view can only simulate
+     * it.
+     *
+     * `orbit` carries no `reason` field, unlike `non-spatial` — declining a
+     * capability is what needs explaining, and taking one on is explained by
+     * the thing that has it.
+     */
+    mode: "orbit",
+    orientationTargets: [STUDIO_RELIEF_POSE_TARGET],
   },
 };
 
@@ -163,6 +205,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioSourceAcceptanceRows,
   ...studioRestoreAcceptanceRows,
   ...studioHookAcceptanceRows,
+  ...studioReliefAcceptanceRows,
   ...studioSvgAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
@@ -269,6 +312,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["export.svg"],
       title: "Vector Copy",
       workflowStage: "deliver",
+    },
+    {
+      entity: "Composition",
+      entityId: "composition-view",
+      groupingReason:
+        "Which renderer draws the work, and where a viewer stands when it is drawn with geometry. Its own stage because it is the widest decision in the panel: everything else edits what is drawn, and this decides what draws it. The orbit pose sits here rather than in a section of its own because the contract puts a gizmo in the section that owns the view, which is what makes section and global reset return the pose along with the mode it belongs to.",
+      id: "composition-view",
+      targets: ["stack.view", "stack.pose"],
+      title: "The View",
+      workflowStage: "compose",
     },
     {
       entity: "Composition",

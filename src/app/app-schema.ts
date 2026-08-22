@@ -12,7 +12,9 @@ import {
   STUDIO_ONBOARDING_TARGET,
 } from "./studio-onboarding";
 import { STUDIO_HOOK_TARGET } from "./studio-hook";
+import { STUDIO_RELIEF_POSE_TARGET } from "./studio-relief";
 import { STUDIO_HOOK_SECTIONS } from "./studio-hook-sections";
+import { STUDIO_RELIEF_SECTIONS } from "./studio-relief-sections";
 import { STUDIO_RANDOMIZE_SECTIONS } from "./studio-randomize-sections";
 import { STUDIO_REFERENCE_SECTIONS } from "./studio-reference-sections";
 import { STUDIO_SMALL_VIEWPORT_TARGET } from "./studio-small-viewport";
@@ -70,6 +72,9 @@ export const appSchema = defineToolcraft({
         // want to see it differently, not a way of starting one.
         // After the layers and before the reroll: it acts on what they
         // composited into, which is the last thing that happens to a frame.
+        // Before the code and the reroll: which renderer draws the work is a
+        // wider decision than anything done to what it draws.
+        ...STUDIO_RELIEF_SECTIONS,
         ...STUDIO_HOOK_SECTIONS,
         ...STUDIO_RANDOMIZE_SECTIONS,
         ...STUDIO_EXPORT_SECTIONS,
@@ -108,6 +113,10 @@ export const appSchema = defineToolcraft({
       // a hook that vanished on reload would be the one part of a work that did
       // not survive being saved.
       STUDIO_HOOK_TARGET,
+      // The orbit pose. Persisted because it is part of how the composition is
+      // seen, and a reload that forgot it would show the relief from an angle
+      // the author did not choose.
+      STUDIO_RELIEF_POSE_TARGET,
       // Which construction the canvas was started from. Persisted because the
       // composition is: a reload that forgot it would report no current
       // technique for a canvas that plainly has one.

@@ -964,6 +964,67 @@ directly rather than assumed.
 The second is smaller and more honest about what the test is for: the click is
 incidental to the claim.
 
+## 21. Orientation preconditions read an ARIA attribute the runtime's own slider does not set
+
+**Blocking, and wider than issue 19.** Found while trying to prove an
+orientation gizmo after working around that one.
+
+`browser-orientation-gizmo-live-preconditions.ts` requires the render scale to
+be at maximum before any orientation baseline is taken. The requirement is
+correct — a reduced scale makes two readings differ for a reason that has
+nothing to do with the pose. How it checks is not:
+
+```ts
+const value = await readFiniteAriaNumber(slider, "aria-valuenow");
+const maximum = await readFiniteAriaNumber(slider, "aria-valuemax");
+expect(value).toBe(maximum);
+```
+
+`readFiniteAriaNumber` fails the proof when the attribute is absent.
+
+Measured on the generated app, on the runtime's own `canvas.renderScale`
+control:
+
+| Attribute | Value |
+|---|---|
+| tag | `INPUT`, `type="range"` |
+| `aria-valuenow` | `2` |
+| `aria-valuemax` | **absent** |
+| `max` | `2` |
+| `min` | `1` |
+
+The runtime sets `aria-valuenow` explicitly and leaves the ceiling to the native
+`max` attribute, which is correct markup: a native range input does not need
+`aria-valuemax`, and the accessibility tree computes it. But the precondition
+reads the DOM attribute, gets `null`, and fails with *"requires a finite
+aria-valuemax on canvas.renderScale"*.
+
+**The check's own intent was already satisfied** — the control was at `2` of a
+maximum of `2`. It failed because it could not read a ceiling that was there.
+
+**The consequence is that no product with render scale enabled can ship an
+orientationGizmo.** A gizmo control must declare all seven orientation
+coverages, five of which run through recipes that call these preconditions
+first. Enabling `canvas.renderScale` is required by
+`docs/toolcraft/schema-reference.md` and `core/setup-export.md` when the product
+supports it, so the framework mandates a control whose markup its own
+orientation preconditions cannot read.
+
+This is independent of issue 19. Fixing the model-drag surface selector still
+leaves five coverages unreachable.
+
+**Suggested fix**, smallest first:
+
+```diff
+-  const maximum = await readFiniteAriaNumber(slider, "aria-valuemax");
++  const maximum = await readFiniteAriaNumber(slider, "aria-valuemax", "max");
+```
+
+with `readFiniteAriaNumber` falling back to the second attribute name when the
+first is absent. Alternatively have the runtime's slider set `aria-valuemin` and
+`aria-valuemax` alongside the `aria-valuenow` it already sets, which makes the
+markup self-describing and leaves the precondition unchanged.
+
 ## Current effect on these apps
 
 **Croix10.** Full browser suite, 2 workers, with the local workarounds for 1 and 2 applied:

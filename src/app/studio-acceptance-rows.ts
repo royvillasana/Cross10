@@ -138,6 +138,60 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * -- a permanent row has to be present and inert most of the time, while an
  * offer that appears exactly when it can be taken is an offer.
  */
+/**
+ * The spatial mode: which renderer draws the work, and where a viewer stands.
+ *
+ * The gizmo row carries every orientation behaviour the contract requires,
+ * because they are one capability rather than seven: a pose the handle turns, a
+ * drag on the geometry turns, an axis snaps, undo returns, reset restores, the
+ * output follows, and none of it reaches the exported artifact.
+ */
+export const studioReliefAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares the relief is a second renderer rather than a layer",
+    browser: true,
+    browserTestName: "browser: studio relief replaces the field with geometry",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Choosing As a relief replaces the flat field with geometry: the canvas is drawn by the scene renderer rather than the stack, exactly one element claims to be the product output, and the orientation handle appears. Choosing As a field puts the stack back and takes the handle away, because a handle over a flat field would be a promise the view cannot keep.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.view",
+    kind: "control",
+    optionCoverage: "each-visible-item",
+    target: "stack.view",
+    userAction: "Switch How it is drawn between As a field and As a relief.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares one orbit pose shared by the gizmo and the geometry",
+    browser: true,
+    browserTestName:
+      "browser: studio relief orbit pose is shared, undoable, and out of the artifact",
+    canvasHandle: {
+      exportCleanTestName:
+        "browser: studio relief orbit pose is shared, undoable, and out of the artifact",
+      outputObservable:
+        "The relief turns, so faces that were hidden come into view and faces that were showing go behind others — which is the occlusion this mode exists for rather than a shift computed from an angle.",
+      testId: "toolcraft-orientation-gizmo",
+      writesTarget: "stack.pose",
+    },
+    componentType: "orientationGizmo",
+    evidence: "product-output",
+    expectedObservable:
+      "The runtime's orientation handle turns the relief, and dragging the geometry turns the same pose, so the two never disagree about where the view is pointing. A press that misses the geometry pans the canvas without moving the pose. Snapping to an axis moves the pose to that axis, one gesture is one history step, reset returns the declared pose, and the handle itself is absent from the exported artifact.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.pose",
+    interactionId: "relief-orbit",
+    kind: "canvas-handle",
+    orientationGizmoCoverage: "all-required-orientation-gizmo-behavior",
+    target: "stack.pose",
+    userAction:
+      "In relief, drag the orientation handle, drag the geometry, press away from it, snap an axis, undo, reset, and export.",
+  },
+];
+
 /** The author's own chunk, which is the one value in the product that can be wrong. */
 export const studioHookAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {

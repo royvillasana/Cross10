@@ -91,6 +91,9 @@ describe("appSchema", () => {
       // differently, and it is not something delivery is downstream of.
       // After every layer section: the code acts on what the layers composited
       // into, which is the last thing that happens to a frame.
+      // Widest first: which renderer draws the work comes before anything done
+      // to what it draws.
+      "The View",
       "Your Code",
       "Your Parameters",
       "Starting Over",
