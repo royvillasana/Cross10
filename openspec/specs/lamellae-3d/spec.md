@@ -78,10 +78,43 @@ runtime-owned and no model asset control exists, or routing the spatial mode
 through the model pipeline, which would contradict this file's first requirement
 instead of its second.
 
-Until the recipe lands, 1a.5a is blocked at the proof rather than at the build:
-the scene, the gizmo, the single product output and the flipped declaration all
-worked in a browser. What cannot be done is certifying one of the seven
-orientation behaviours a gizmo is required to declare.
+**A second attempt on 2026-08-22 found a second, wider blocker and one closed
+door.** It is recorded here because each was discovered by trying rather than by
+reading, and because together they change the answer from "waiting on one patch"
+to "waiting on two, with no way round either".
+
+**Issue 21 blocks five more of the seven.** The orientation recipes call
+preconditions that require the render scale to be at maximum before a baseline
+is taken — correct in intent, since a reduced scale makes two readings differ
+for reasons unrelated to the pose. They read it from `aria-valuemax`, which the
+runtime's own render-scale slider does not set: it is a native
+`<input type="range" min="1" max="2">` carrying `aria-valuenow` and no
+`aria-valuemax`. The control was already at maximum. The check failed because it
+could not read a ceiling that was there. Enabling `canvas.renderScale` is
+required by the framework's own documentation, so no product with it can prove
+an orientation gizmo at all.
+
+**The obvious workaround is forbidden by name.** Attaching the model-drag
+evidence from a product-owned proof — the same gesture, the same assertions, the
+same evidence type — trips the code-health policy: *product-owned source must
+not import, bridge, or forge reserved browser evidence channels.* The gate
+caught it before it shipped, which is the gate doing exactly its job.
+
+**Two real bugs were found and fixed on the way**, neither of which the first
+attempt reached because it was reverted before being proved end to end.
+Switching to the relief and back left the canvas blank: the stack renderer
+stayed bound to a canvas element that no longer existed, so every draw succeeded
+into a detached surface and nothing reported an error. And once that was
+released the pass still did not re-run, because its inputs were identical either
+side of the switch; the mode is now part of the pass's backing input, which is
+honest rather than convenient — while the relief owns the canvas, the stack is
+drawing into nothing.
+
+The work is preserved on the `relief-blocked-upstream` branch rather than
+discarded a second time. It resumes when issues 19 and 21 land, or if the owner
+decides to ship the mode without a gizmo — orbit by dragging the geometry alone
+— which is a deviation from the contract's "a rotatable scene declares an
+orientationGizmo" rule and therefore theirs to make rather than mine.
 
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface
