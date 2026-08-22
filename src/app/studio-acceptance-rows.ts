@@ -138,6 +138,48 @@ export const studioTimelineAcceptanceRows: readonly ToolcraftComponentAcceptance
  * -- a permanent row has to be present and inert most of the time, while an
  * offer that appears exactly when it can be taken is an offer.
  */
+/**
+ * The spatial mode: which renderer draws the work, and where a viewer stands.
+ *
+ * The gizmo row carries every orientation behaviour the contract requires,
+ * because they are one capability rather than seven: a pose the handle turns, a
+ * drag on the geometry turns, an axis snaps, undo returns, reset restores, the
+ * output follows, and none of it reaches the exported artifact.
+ */
+export const studioReliefAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
+  {
+    automated: true,
+    automatedTestName: "declares the fins come from the field they are a relief of",
+    browser: true,
+    browserTestName: "browser: studio relief stands the band field up as fins",
+    componentType: "slider",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "How far they stand off changes how much of each fin's side face the fixed viewpoint can see, so the relief reads as deeper or flatter while the number of fins and their inks are unchanged. At zero the fins have no side to show and the relief reads as the flat field seen at an angle.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.reliefDepth",
+    kind: "control",
+    target: "stack.reliefDepth",
+    userAction: "In relief, raise How far they stand off.",
+  },
+  {
+    automated: true,
+    automatedTestName: "declares the relief is a second renderer rather than a layer",
+    browser: true,
+    browserTestName: "browser: studio relief replaces the field with geometry",
+    componentType: "select",
+    evidence: "rendered-pixels",
+    expectedObservable:
+      "Choosing As a relief replaces the flat field with geometry: the canvas is drawn by the scene renderer rather than the stack, exactly one element claims to be the product output, and the orientation handle appears. Choosing As a field puts the stack back and takes the handle away, because a handle over a flat field would be a promise the view cannot keep.",
+    fixture: SELECTED_LAYER_FIXTURE,
+    id: "stack.view",
+    kind: "control",
+    optionCoverage: "each-visible-item",
+    target: "stack.view",
+    userAction: "Switch How it is drawn between As a field and As a relief.",
+  },
+];
+
 /** The author's own chunk, which is the one value in the product that can be wrong. */
 export const studioHookAcceptanceRows: readonly ToolcraftComponentAcceptance[] = [
   {

@@ -110,11 +110,28 @@ side of the switch; the mode is now part of the pass's backing input, which is
 honest rather than convenient — while the relief owns the canvas, the stack is
 drawing into nothing.
 
-The work is preserved on the `relief-blocked-upstream` branch rather than
-discarded a second time. It resumes when issues 19 and 21 land, or if the owner
-decides to ship the mode without a gizmo — orbit by dragging the geometry alone
-— which is a deviation from the contract's "a rotatable scene declares an
-orientationGizmo" rule and therefore theirs to make rather than mine.
+**Shipped on 2026-08-22 with a fixed viewpoint, on the owner's decision.**
+
+Shipping without a gizmo turned out to mean shipping without an orbit at all: a
+schema will not accept `viewInteraction: "orbit"` unless a matching
+`orientationGizmo` control exists, so "orbit by dragging the geometry alone" is
+not a declarable state. The declaration is therefore `fixed-camera` with
+`source: "explicit-user-request"`, which is the honest reading — the camera
+genuinely does not move — rather than an orbit the product cannot certify.
+
+What ships is the field standing up. The fins are instanced geometry whose
+count, width, inks and axis come from the band layer they are a relief *of*,
+because a Physichromie's fins are that field turned edge-on rather than a second
+construction beside it — and that is also why nothing here declares a new
+workload dimension: the fin count *is* `band-count`, which the pipeline already
+declares and bounds. The one number the mode adds is how far they stand off.
+
+The requirements below are therefore in three states. *Procedural lamellae
+inside the runtime scene surface* and *extruded lamellae driven by stripe
+geometry* are satisfied. *Orbit through the runtime gizmo* and *real parallax*
+are blocked upstream, and the second is blocked by the first: occlusion under
+camera movement cannot be shown by a camera that does not move. *Lighting*,
+*curved surfaces* and *export parity* remain unbuilt and unblocked.
 
 ## Requirements
 ### Requirement: Procedural lamellae inside the runtime scene surface

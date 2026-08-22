@@ -103,7 +103,9 @@
         "selectedLayer.pixelBlock",
         "selectedLayer.quantize",
         "stack.hookReset",
-        "stack.hookSource"
+        "stack.hookSource",
+        "stack.reliefDepth",
+        "stack.view"
       ],
       "kind": "performance",
       "passIds": [
@@ -510,6 +512,30 @@
     },
     {
       "acceptanceIds": [
+        "stack.reliefDepth",
+        "stack.view"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-relief-scene.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "stack.reliefDepth",
+        "stack.view"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-relief-sections.ts"
+    },
+    {
+      "acceptanceIds": [
+        "stack.reliefDepth",
+        "stack.view"
+      ],
+      "kind": "functional",
+      "path": "src/app/studio-relief.ts"
+    },
+    {
+      "acceptanceIds": [
         "background.color",
         "background.include",
         "canvas.infinity-video-export",
@@ -536,7 +562,9 @@
         "stack.hookC",
         "stack.hookD",
         "stack.hookReset",
-        "stack.hookSource"
+        "stack.hookSource",
+        "stack.reliefDepth",
+        "stack.view"
       ],
       "kind": "performance",
       "passIds": [

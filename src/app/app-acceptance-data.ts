@@ -16,6 +16,7 @@ import {
   studioSourceAcceptanceRows,
   studioRestoreAcceptanceRows,
   studioHookAcceptanceRows,
+  studioReliefAcceptanceRows,
   studioSvgAcceptanceRows,
   studioPointerAcceptanceRows,
   studioTimelineAcceptanceRows,
@@ -128,9 +129,10 @@ export const appProductReadiness: ToolcraftProductReadiness = {
   requestedBehavior:
     "Build a shader from an ordered stack of layers — stripes, gradients, and later images and shapes — editing each layer's own parameters, and take the composed result away as source rather than only as a picture.",
   viewInteraction: {
-    mode: "non-spatial",
-    reason:
-      "Output is a two-dimensional shader field with no scene geometry, model, or camera to orbit. Layer order is a compositing sequence rather than depth in a space, so there is nothing an orbit gesture would move around.",
+    evidence:
+      "The relief is shipped without an orbit because the orbit cannot be proved: an orientationGizmo must declare all seven orientation coverages, and two are unreachable through no fault of this product (upstream issues 19 and 21). The owner asked for the mode now rather than waiting, so it ships with a fixed viewpoint and gains its orbit when the recipes can see it.",
+    mode: "fixed-camera",
+    source: "explicit-user-request",
   },
 };
 
@@ -163,6 +165,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
   ...studioSourceAcceptanceRows,
   ...studioRestoreAcceptanceRows,
   ...studioHookAcceptanceRows,
+  ...studioReliefAcceptanceRows,
   ...studioSvgAcceptanceRows,
   ...studioPointerAcceptanceRows,
   ...studioTimelineAcceptanceRows,
@@ -269,6 +272,16 @@ export const appControlSectionInventory: readonly ToolcraftControlSectionInvento
       targets: ["export.svg"],
       title: "Vector Copy",
       workflowStage: "deliver",
+    },
+    {
+      entity: "Composition",
+      entityId: "composition-view",
+      groupingReason:
+        "Which renderer draws the work, and where a viewer stands when it is drawn with geometry. Its own stage because it is the widest decision in the panel: everything else edits what is drawn, and this decides what draws it. The orbit pose sits here rather than in a section of its own because the contract puts a gizmo in the section that owns the view, which is what makes section and global reset return the pose along with the mode it belongs to.",
+      id: "composition-view",
+      targets: ["stack.view", "stack.reliefDepth"],
+      title: "The View",
+      workflowStage: "compose",
     },
     {
       entity: "Composition",

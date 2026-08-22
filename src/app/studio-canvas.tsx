@@ -32,6 +32,8 @@ import {
   readStudioRenderScale,
 } from "./studio-scene";
 import { setStudioMediaRegistry } from "./studio-media-registry";
+import { isStudioReliefView, STUDIO_RELIEF_VIEW_TARGET } from "./studio-relief";
+import { StudioReliefScene } from "./studio-relief-scene";
 import { studioPathAtlasSignature } from "./studio-path-mask";
 import {
   readStudioViewportPose,
@@ -124,6 +126,9 @@ export function StudioCanvas(): React.JSX.Element {
   // call would return a new snapshot each time it ran, which is unsafe for an
   // external-store subscription.
   const state = useToolcraftSelector((current) => current);
+  // Which renderer owns the canvas, read before anything that depends on it.
+  const relief = isStudioReliefView(state.values[STUDIO_RELIEF_VIEW_TARGET]);
+
   const renderScale = readStudioRenderScale(state);
 
   // Brings the panels back within reach when the shell is wider than the screen.
@@ -397,8 +402,20 @@ export function StudioCanvas(): React.JSX.Element {
   useToolcraftPipelinePass(
     studioLayerStackPass,
     {
-      backing:
-        frame.rect === null
+      /*
+       * What the stack is drawing into, which is nothing while the relief owns
+       * the canvas.
+       *
+       * Saying so is load-bearing rather than descriptive: the pass runs when
+       * its input changes, and coming back from the relief mounts a fresh
+       * canvas while the scene parameters are exactly what they were before the
+       * switch. With no change there is nothing to run on, and the new canvas
+       * stays blank holding a composition the author can see in the panel and
+       * not on screen.
+       */
+      backing: relief
+        ? "relief"
+        : frame.rect === null
           ? "unavailable"
           : `${Math.round(frame.rect.width)}x${Math.round(frame.rect.height)}@${renderScale}`,
       sceneParameters: parameters,
@@ -427,8 +444,27 @@ export function StudioCanvas(): React.JSX.Element {
         const next = renderer.hookError();
         return previous === next ? previous : next;
       });
-    }, [acquireRenderer, frame, parameters, renderScale]),
+    }, [acquireRenderer, frame, parameters, relief, renderScale]),
   );
+
+  /**
+   * The stack renderer is released when the relief takes the canvas.
+   *
+   * Without this the renderer outlives the element it was created against: the
+   * relief replaces the canvas, the old one is destroyed, and coming back
+   * mounts a *new* element while the retained renderer keeps drawing into the
+   * detached one. The visible canvas stays blank and nothing reports an error,
+   * because every draw succeeds — into a surface nobody can see.
+   *
+   * Found by a proof that switched to the relief and back and read the frame,
+   * which is the only way this shows up: a mode switch on its own looks
+   * perfect, and so does a return, until something asks what is on screen.
+   */
+  React.useEffect(() => {
+    if (!relief) return;
+    rendererRef.current?.dispose();
+    rendererRef.current = null;
+  }, [relief]);
 
   const dispatch = useToolcraftDispatch();
 
@@ -496,6 +532,28 @@ export function StudioCanvas(): React.JSX.Element {
       if (frame) cancelAnimationFrame(frame);
     };
   }, [dispatch]);
+
+  /**
+   * Which renderer owns the canvas.
+   *
+   * Exactly one at a time, and that is not an optimisation. Two elements
+   * claiming to be the product output would make every proof that reads "the
+   * frame" ambiguous, and the runtime's export backing would have two things to
+   * choose between. So the relief replaces the field rather than sitting beside
+   * it — which is also the honest reading of the control, since an author
+   * picking "as a relief" is choosing how the work is drawn rather than adding
+   * something to it.
+   */
+  if (relief) {
+    return (
+      <>
+        <StudioReliefScene />
+        <StudioAddMediaMenuItem />
+        <StudioLayerRowActions />
+        <StudioOnboardingDialog />
+      </>
+    );
+  }
 
   if (unsupported) {
     // Product output, not app chrome: a WebGL2 failure means there is no other
